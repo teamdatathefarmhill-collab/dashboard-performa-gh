@@ -610,6 +610,7 @@ function getOutspecNotes(filtered){ return getOutspecAggregated('outspec_notes_m
 
 function render(){
   const rows = getFiltered();
+  const pFilter = document.getElementById('f-periode').value; // empty = semua periode
   if(!rows.length){ document.getElementById('gh-cards').innerHTML='<div class="no-data">Tidak ada data untuk filter yang dipilih.</div>'; return; }
 
   // Aggregate GH-level (deduplicate by GH since varian filter may produce multiple rows per GH)
@@ -721,7 +722,6 @@ function render(){
   });
 
   // ── CHART 1: STACKED BAR ──
-  const pFilter = document.getElementById('f-periode').value; // empty = semua periode
   destroyChart('ghbar');
   const ctx1 = document.getElementById('c-ghbar').getContext('2d');
   charts['ghbar'] = new Chart(ctx1,{
