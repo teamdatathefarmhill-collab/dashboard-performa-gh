@@ -878,11 +878,7 @@ function render(){
   document.getElementById('footer').textContent = `Data: ${ghList.length} GH · ${rows.length} records · Periode ${document.getElementById('f-periode').value||'Semua'} · ${k}`;
 }
 
-// Init
-document.getElementById('f-klas').addEventListener('change', onFilterChange);
-document.getElementById('f-periode').addEventListener('change', onFilterChange);
-document.getElementById('f-gh').addEventListener('change', render);
-document.getElementById('f-varian').addEventListener('change', render);
+// Filters handled by cascadeFilters inside initFilters()
 
 // Refresh button
 document.getElementById('btn-refresh').addEventListener('click', ()=>loadData(true));
