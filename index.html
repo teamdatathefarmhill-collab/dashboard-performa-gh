@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Performa Greenhouse</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+
+:root {
+  --bg:#f4f3ef; --surface:#fff; --surface2:#eeede7;
+  --border:rgba(0,0,0,0.07); --border-med:rgba(0,0,0,0.13);
+  --text:#1a1a18; --muted:#6b6b66; --hint:#9c9a92;
+  --green:#3b6d11; --green-mid:#639922; --green-bar:#5aac1a; --green-bg:#eaf3de;
+  --amber:#854f0b; --amber-mid:#ef9f27; --amber-bg:#faeeda;
+  --red:#791f1f; --red-mid:#e24b4a; --red-bg:#fcebeb;
+  --blue:#185fa5; --blue-mid:#378add; --blue-bg:#e6f1fb;
+  --teal:#0f6e56; --teal-mid:#1d9e75; --teal-bg:#e1f5ee;
+  --r:10px; --rs:6px; --shadow:0 1px 4px rgba(0,0,0,0.07);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);font-size:13px;line-height:1.5;}
+.page{max-width:1400px;margin:0 auto;padding:18px 20px 30px;}
+
+/* HEADER */
+.header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;}
+.header h1{font-size:19px;font-weight:700;letter-spacing:-.4px;}
+.header-sub{font-size:11px;color:var(--hint);margin-top:2px;}
+.filters{display:flex;gap:7px;flex-wrap:wrap;align-items:center;}
+.fpill{display:flex;align-items:center;gap:4px;padding:5px 10px;border-radius:20px;border:1px solid var(--border-med);background:var(--surface);font-size:11px;color:var(--muted);box-shadow:var(--shadow);}
+.fpill label{font-weight:600;white-space:nowrap;}
+.fpill select{border:none;background:transparent;font-size:11px;color:var(--text);font-weight:600;cursor:pointer;outline:none;max-width:130px;}
+.refresh-btn{display:flex;align-items:center;gap:5px;padding:6px 12px;border-radius:20px;border:1px solid var(--border-med);background:var(--surface);font-size:11px;color:var(--blue);font-weight:600;cursor:pointer;box-shadow:var(--shadow);}
+.refresh-btn:hover{background:var(--blue-bg);}
+
+/* ALERT */
+.alert-bar{background:var(--red-bg);border:1px solid #f09595;border-radius:var(--r);padding:9px 13px;margin-bottom:14px;display:flex;gap:9px;font-size:12px;color:var(--red);line-height:1.6;}
+.alert-dot{width:7px;height:7px;border-radius:50%;background:var(--red-mid);flex-shrink:0;margin-top:5px;}
+
+/* SECTION */
+.sec{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--hint);margin-bottom:8px;margin-top:14px;display:flex;align-items:center;gap:6px;}
+.bnew{background:var(--blue-bg);color:var(--blue);font-size:9px;padding:1px 6px;border-radius:4px;font-weight:700;}
+.blive{background:var(--teal-bg);color:var(--teal);font-size:9px;padding:1px 6px;border-radius:4px;font-weight:700;}
+
+/* KPI */
+.kpi-row{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:12px;}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 13px;box-shadow:var(--shadow);}
+.kpi.warn{background:var(--red-bg);border-color:#f09595;}
+.kpi.info{background:var(--blue-bg);border-color:#85b7eb;}
+.kpi.ok{background:var(--green-bg);border-color:#97c459;}
+.kpi-lbl{font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;}
+.kpi-val{font-size:20px;font-weight:700;line-height:1.1;}
+.kpi.warn .kpi-val{color:var(--red);}
+.kpi.info .kpi-val{color:var(--blue);}
+.kpi.ok .kpi-val{color:var(--green);}
+.kpi-sub{font-size:10px;color:var(--hint);margin-top:3px;}
+
+/* PROGRESS */
+.overall{margin-bottom:12px;}
+.op-track{background:var(--surface2);border-radius:5px;height:7px;overflow:hidden;}
+.op-fill{height:100%;border-radius:5px;background:var(--green-bar);transition:width .6s;}
+.op-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--hint);margin-top:3px;}
+.op-labels strong{color:var(--text);}
+
+/* GH CARDS */
+.gh-row{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:14px;}
+@media(max-width:1200px){.gh-row{grid-template-columns:repeat(4,1fr);}}
+@media(max-width:800px){.gh-row{grid-template-columns:repeat(3,1fr);}}
+.gh-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 11px;box-shadow:var(--shadow);}
+.gh-nm{font-size:12px;font-weight:700;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sbadge{display:inline-block;font-size:9px;font-weight:700;padding:1px 7px;border-radius:10px;margin-bottom:6px;}
+.s-belum{background:var(--amber-bg);color:var(--amber);}
+.s-ongoing{background:var(--green-bg);color:var(--green);}
+.s-terpenuhi{background:var(--blue-bg);color:var(--blue);}
+.s-tidak{background:var(--red-bg);color:var(--red);}
+.pb-bg{background:var(--surface2);border-radius:3px;height:5px;margin-bottom:5px;overflow:hidden;}
+.pb-fill{height:100%;border-radius:3px;transition:width .6s;}
+.gh-st{font-size:10px;color:var(--hint);display:flex;justify-content:space-between;}
+.gh-st strong{color:var(--text);font-weight:600;}
+.gh-eta{font-size:9px;color:var(--hint);margin-top:3px;}
+.gh-eta span{font-weight:600;}
+.gh-eta .sp-belum{color:var(--amber);}
+.gh-eta .sp-soon{color:var(--green);}
+.gh-eta .sp-done{color:var(--blue);}
+
+/* CHARTS */
+.chart-row{display:grid;grid-template-columns:3fr 2fr;gap:10px;margin-bottom:12px;}
+@media(max-width:900px){.chart-row{grid-template-columns:1fr;}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:13px 14px;box-shadow:var(--shadow);}
+.card-ttl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:9px;display:flex;align-items:center;gap:5px;}
+.leg{display:flex;flex-wrap:wrap;gap:9px;margin-top:6px;}
+.leg-item{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted);}
+.leg-sq{width:9px;height:9px;border-radius:2px;flex-shrink:0;}
+
+/* BOTTOM GRID */
+.bot-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+@media(max-width:900px){.bot-grid{grid-template-columns:1fr 1fr;}}
+@media(max-width:600px){.bot-grid{grid-template-columns:1fr;}}
+
+/* GRADE BARS */
+.grade-row{margin-bottom:6px;}
+.grade-lbl{font-size:10px;color:var(--muted);display:flex;justify-content:space-between;margin-bottom:2px;}
+.grade-bar{display:flex;height:9px;border-radius:4px;overflow:hidden;}
+.grade-totrow{margin-top:8px;padding-top:8px;border-top:1px solid var(--border);}
+.grade-totrow .grade-bar{height:12px;}
+.grade-leg{display:flex;gap:8px;margin-bottom:9px;}
+.gl-item{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted);}
+.gl-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0;}
+
+/* OUTSPEC */
+.os-row{display:flex;align-items:center;gap:6px;margin-bottom:6px;}
+.os-lbl{font-size:10px;color:var(--muted);width:110px;flex-shrink:0;text-align:right;}
+.os-bg{flex:1;background:var(--surface2);border-radius:3px;height:17px;overflow:visible;position:relative;}
+.os-fill{height:100%;display:flex;align-items:center;justify-content:flex-end;padding-right:5px;font-size:10px;font-weight:700;border-radius:3px;}
+
+/* PROD */
+.prod-row{display:flex;align-items:center;gap:6px;margin-bottom:5px;}
+.prod-lbl{font-size:10px;color:var(--muted);width:85px;flex-shrink:0;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.prod-bg{flex:1;background:var(--surface2);border-radius:3px;height:15px;overflow:hidden;}
+.prod-fill{height:100%;display:flex;align-items:center;justify-content:flex-end;padding-right:5px;font-size:10px;font-weight:700;color:#fff;border-radius:3px;}
+
+/* JADWAL */
+.sched-item{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);font-size:11px;}
+.sched-item:last-child{border-bottom:none;}
+.sdate{font-size:10px;padding:2px 7px;border-radius:7px;font-weight:700;}
+.sd-pending{background:var(--amber-bg);color:var(--amber);}
+.sd-soon{background:var(--green-bg);color:var(--green);}
+.sd-done{background:var(--blue-bg);color:var(--blue);}
+
+/* KPI GRID RESPONSIVE */
+@media(max-width:1100px){.kpi-row{grid-template-columns:repeat(3,1fr);}}
+@media(max-width:600px){.kpi-row{grid-template-columns:repeat(2,1fr);}}
+
+/* NO DATA */
+.no-data{text-align:center;padding:24px;color:var(--hint);font-size:12px;}
+
+
+@keyframes spin{to{transform:rotate(360deg);}}
+@keyframes livepulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+.rbtn{display:flex;align-items:center;gap:5px;padding:6px 12px;border-radius:20px;border:1px solid var(--border-med);background:var(--surface);font-size:11px;color:var(--blue);font-weight:600;cursor:pointer;box-shadow:var(--shadow);}
+.rbtn:hover{background:var(--blue-bg);}
+.blive{background:var(--teal-bg);color:var(--teal);animation:livepulse 2s ease-in-out infinite;}
+
+
+.skel{background:linear-gradient(90deg,#e8e7e1 25%,#f0efe9 50%,#e8e7e1 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;}
+@keyframes shimmer{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
+</style>
+</head>
+<body>
+
+<div id="loading-screen" style="position:fixed;inset:0;background:#f4f3ef;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:0;">
+
+  <!-- Logo / Title -->
+  <div style="margin-bottom:28px;text-align:center;">
+    <div style="font-size:18px;font-weight:700;color:#1a1a18;letter-spacing:-.3px;">Performa Greenhouse</div>
+    <div style="font-size:12px;color:#9c9a92;margin-top:3px;">Dashboard Monitoring Panen</div>
+  </div>
+
+  <!-- Progress bar -->
+  <div style="width:280px;background:rgba(0,0,0,0.07);border-radius:6px;height:5px;overflow:hidden;margin-bottom:14px;">
+    <div id="ld-bar" style="height:100%;width:0%;background:#5aac1a;border-radius:6px;transition:width .4s ease;"></div>
+  </div>
+
+  <!-- Timer + status -->
+  <div style="display:flex;align-items:center;gap:10px;">
+    <div style="width:16px;height:16px;border:2px solid rgba(0,0,0,0.1);border-top-color:#639922;border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0;"></div>
+    <div style="text-align:left;">
+      <div id="ld-status" style="font-size:12px;color:#6b6b66;">Menghubungkan ke Google Sheets...</div>
+      <div id="ld-timer" style="font-size:11px;color:#9c9a92;margin-top:2px;">0.0 detik</div>
+    </div>
+  </div>
+
+  <!-- Skeleton preview -->
+  <div style="margin-top:32px;width:min(600px,90vw);">
+    <!-- KPI skeleton -->
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:12px;">
+      <div class="skel" style="height:62px;border-radius:10px;"></div>
+      <div class="skel" style="height:62px;border-radius:10px;"></div>
+      <div class="skel" style="height:62px;border-radius:10px;"></div>
+      <div class="skel" style="height:62px;border-radius:10px;"></div>
+      <div class="skel" style="height:62px;border-radius:10px;"></div>
+      <div class="skel" style="height:62px;border-radius:10px;"></div>
+    </div>
+    <!-- GH cards skeleton -->
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:12px;">
+      <div class="skel" style="height:80px;border-radius:10px;"></div>
+      <div class="skel" style="height:80px;border-radius:10px;"></div>
+      <div class="skel" style="height:80px;border-radius:10px;"></div>
+      <div class="skel" style="height:80px;border-radius:10px;"></div>
+      <div class="skel" style="height:80px;border-radius:10px;"></div>
+      <div class="skel" style="height:80px;border-radius:10px;"></div>
+    </div>
+    <!-- Chart skeleton -->
+    <div style="display:grid;grid-template-columns:3fr 2fr;gap:10px;">
+      <div class="skel" style="height:120px;border-radius:10px;"></div>
+      <div class="skel" style="height:120px;border-radius:10px;"></div>
+    </div>
+  </div>
+
+</div>
+<div id="err-screen" style="display:none;position:fixed;inset:0;background:#f4f3ef;align-items:center;justify-content:center;flex-direction:column;gap:12px;padding:24px;text-align:center;z-index:998;">
+  <h2 style="font-size:16px;color:#791f1f;">Gagal memuat data</h2>
+  <p id="err-msg" style="font-size:12px;color:#6b6b66;max-width:500px;line-height:1.7;"></p>
+  <button onclick="loadData()" style="margin-top:8px;padding:8px 18px;border-radius:8px;border:1px solid rgba(0,0,0,0.13);background:#fff;font-size:12px;cursor:pointer;color:#185fa5;font-weight:600;">Coba Lagi</button>
+</div>
+
+<div class="page" id="dashboard" style="display:none">
+  <div class="header">
+    <div>
+      <h1>Performa Greenhouse</h1>
+      <div class="header-sub" id="hdr-sub">Dashboard Monitoring Panen</div>
+    </div>
+    <div class="filters">
+      <div class="fpill"><label>Periode</label><select id="f-periode"><option value="">Semua</option></select></div>
+      <div class="fpill"><label>Klasifikasi GH</label><select id="f-klas"><option value="">Semua</option></select></div>
+      <div class="fpill"><label>GH</label><select id="f-gh"><option value="">Semua</option></select></div>
+      <div class="fpill"><label>Varian</label><select id="f-varian"><option value="">Semua</option></select></div>
+      <button class="rbtn" id="btn-refresh">↻ Refresh Data</button>
+    </div>
+  </div>
+
+  <div class="alert-bar" id="alert-bar" style="display:none">
+    <div class="alert-dot"></div><div id="alert-txt"></div>
+  </div>
+
+  <div class="sec">Ringkasan KPI</div>
+  <div class="kpi-row">
+    <div class="kpi"><div class="kpi-lbl">Populasi Tanam</div><div class="kpi-val" id="k-pop">—</div><div class="kpi-sub" id="k-pop-s"></div></div>
+    <div class="kpi"><div class="kpi-lbl">Total Panen</div><div class="kpi-val" id="k-tot">—</div><div class="kpi-sub" id="k-tot-s"></div></div>
+    <div class="kpi" id="k-pct-card"><div class="kpi-lbl">% Tercapai vs Est</div><div class="kpi-val" id="k-pct">—</div><div class="kpi-sub" id="k-pct-s"></div></div>
+    <div class="kpi"><div class="kpi-lbl">Sisa Panen</div><div class="kpi-val" id="k-sisa">—</div><div class="kpi-sub" id="k-sisa-s"></div></div>
+    <div class="kpi info"><div class="kpi-lbl">GH Ongoing</div><div class="kpi-val" id="k-ong">—</div><div class="kpi-sub" id="k-ong-s"></div></div>
+    <div class="kpi warn"><div class="kpi-lbl">Total Outspec</div><div class="kpi-val" id="k-os">—</div><div class="kpi-sub" id="k-os-s"></div></div>
+  </div>
+
+  <div class="overall">
+    <div class="op-track"><div class="op-fill" id="op-fill" style="width:0%"></div></div>
+    <div class="op-labels">
+      <span>Panen: <strong id="op1">—</strong></span>
+      <span>Progress: <strong id="op2">—</strong></span>
+      <span>Est: <strong id="op3">—</strong></span>
+    </div>
+  </div>
+
+  <div class="sec">Status per Greenhouse <span class="blive">&#x25CF; LIVE</span></div>
+  <div class="gh-row" id="gh-cards"></div>
+
+  <div class="chart-row">
+    <div class="card">
+      <div class="card-ttl">Progress Panen per GH</div>
+      <div style="position:relative;height:230px"><canvas id="c-ghbar"></canvas></div>
+      <div class="leg">
+        <div class="leg-item"><div class="leg-sq" style="background:#5aac1a"></div>Selesai</div>
+        <div class="leg-item"><div class="leg-sq" style="background:#f5c842"></div>Sisa</div>
+        <div class="leg-item"><div class="leg-sq" style="background:#e24b4a"></div>Gap / Belum Mulai</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-ttl">Distribusi Grade Total</div>
+      <div style="position:relative;height:190px"><canvas id="c-donut"></canvas></div>
+      <div class="leg" style="justify-content:center;margin-top:8px;">
+        <div class="leg-item"><div class="leg-sq" style="background:#639922"></div>Premium <strong id="lp"></strong></div>
+        <div class="leg-item"><div class="leg-sq" style="background:#ef9f27"></div>Imperfect <strong id="li"></strong></div>
+        <div class="leg-item"><div class="leg-sq" style="background:#e24b4a"></div>Outspec <strong id="lo"></strong></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bot-grid">
+    <div class="card">
+      <div class="card-ttl">Grade per GH <span class="bnew">BARU</span></div>
+      <div class="grade-leg">
+        <div class="gl-item"><div class="gl-dot" style="background:#639922"></div>Premium</div>
+        <div class="gl-item"><div class="gl-dot" style="background:#ef9f27"></div>Imperfect</div>
+        <div class="gl-item"><div class="gl-dot" style="background:#e24b4a"></div>Outspec</div>
+      </div>
+      <div id="grade-gh"></div>
+    </div>
+    <div class="card">
+      <div class="card-ttl">Outspec by Keterangan</div>
+      <div id="os-bars"></div>
+      <div style="margin-top:10px;padding-top:9px;border-top:1px solid var(--border)">
+        <div style="font-size:10px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.04em;margin-bottom:7px">by Sub-Keterangan (Note)</div>
+        <div style="position:relative;height:160px"><canvas id="c-os"></canvas></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-ttl">Produktivitas &amp; Jadwal <span class="bnew">BARU</span></div>
+      <div style="font-size:10px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Kg per Tanaman (Ongoing)</div>
+      <div id="prod-bars"></div>
+      <div style="margin-top:11px;padding-top:10px;border-top:1px solid var(--border)">
+        <div style="font-size:10px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Jadwal &amp; Est. Selesai</div>
+        <div id="jadwal-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="text-align:center;font-size:10px;color:var(--hint);padding:14px 0 2px" id="footer"></div>
+</div>
+
+<script>
+
+const PROXY_URL = 'https://script.google.com/macros/s/AKfycbwE40xvuz6scQ8I4UXE3KzoQBBbC94NTPW59zuM2MbzSewouF8YUZ5Vvl1HigfTSEcYDQ/exec';
+const AUTO_REFRESH_MS = 5 * 60 * 1000; // auto refresh setiap 5 menit
+
+let RAW = null;
+let charts = {};
+
+// ── HELPERS ──────────────────────────────────────────────────────────────────
+function destroyChart(id){ if(charts[id]){charts[id].destroy();delete charts[id];} }
+
+const n   = v => parseFloat((v+'').replace(/,/g,''))||0;
+const fmt = v => {
+  if(v>=1000000) return (v/1000000).toFixed(2)+' T';
+  if(v>=1000)    return (v/1000).toFixed(2)+' T';
+  return v.toFixed(0)+' Kg';
+};
+const fmtKg = v => v.toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2})+' Kg';
+const unique = (arr,key) => [...new Set(arr.map(r=>r[key]).filter(Boolean))].sort();
+
+function showToast(msg){
+  let t = document.getElementById('toast');
+  if(!t){ t=document.createElement('div'); t.id='toast';
+    t.style.cssText='position:fixed;bottom:20px;right:20px;background:#1a1a18;color:#fff;padding:9px 14px;border-radius:8px;font-size:12px;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;';
+    document.body.appendChild(t); }
+  t.textContent=msg; t.style.opacity=1;
+  clearTimeout(t._t); t._t=setTimeout(()=>t.style.opacity=0, 3500);
+}
+
+// ── PARSE CSV → DATASET ──────────────────────────────────────────────────────
+function parseCSV(text){
+  const lines = text.split('\n');
+  const headers = lines[0].split(',').map(h=>h.trim().replace(/^"|"$/g,''));
+  return lines.slice(1).filter(l=>l.trim()).map(line=>{
+    const vals = [];
+    let cur='', inQ=false;
+    for(let i=0;i<line.length;i++){
+      if(line[i]==='"'){ inQ=!inQ; }
+      else if(line[i]===','&&!inQ){ vals.push(cur); cur=''; }
+      else cur+=line[i];
+    }
+    vals.push(cur);
+    const obj={};
+    headers.forEach((h,i)=>obj[h]=(vals[i]||'').trim().replace(/^"|"$/g,''));
+    return obj;
+  });
+}
+
+function buildDataset(rows){
+  const seen=new Set(), ghRecords=[];
+  rows.forEach(r=>{
+    const key=r['GH']+'||'+r['Periode'];
+    if(!seen.has(key)&&r['GH']){
+      seen.add(key);
+      ghRecords.push({
+        gh:r['GH'], periode:r['Periode'], klasifikasi:r['Klasifikasi GH'], varian:r['VARIAN'],
+        selesai:parseFloat(r['seg_Selesai']||0), sisa:parseFloat(r['seg_Sisa']||0),
+        gap:parseFloat(r['seg_Gap']||0), est:parseFloat(r['Est']||0),
+        pop:parseFloat(r['Populasi Awal Tanam']||0), premium:parseFloat(r['Premium']||0),
+        imperfect:parseFloat(r['Imperfect']||0), outspec:parseFloat(r['Outspec']||0),
+        total:parseFloat(r['Total']||0), kategori:r['Kategori_Chart']||'',
+        ket_panen:r['Keterangan Panen']||'',
+        tgl_mulai:(r['Tanggal Panen Awal']||'').substring(0,10),
+        tgl_akhir:(r['Tanggal Panen Akhir']||'').substring(0,10),
+      });
+    }
+  });
+
+  // Outspec by Notes (kategori)
+  const outspec_notes_map={}, seenN=new Set();
+  rows.forEach(r=>{
+    if(r['GRADE']==='OUTSPEC'&&r['Notes']){
+      const key=r['GH']+'||'+r['Periode']+'||'+r['Notes']+'||'+r['DATA KEBUN']+'||'+r['TANGGAL'];
+      if(!seenN.has(key)){
+        seenN.add(key);
+        const mk=r['GH']+'||'+r['Periode'];
+        if(!outspec_notes_map[mk]) outspec_notes_map[mk]={};
+        outspec_notes_map[mk][r['Notes']]=(outspec_notes_map[mk][r['Notes']]||0)+parseFloat(r['DATA KEBUN']||0);
+      }
+    }
+  });
+
+  // Outspec by Note (sub-kategori)
+  const outspec_note_map={}, seenS=new Set();
+  rows.forEach(r=>{
+    if(r['GRADE']==='OUTSPEC'&&r['Note']){
+      const key=r['GH']+'||'+r['Periode']+'||'+r['Note']+'||'+r['DATA KEBUN']+'||'+r['TANGGAL'];
+      if(!seenS.has(key)){
+        seenS.add(key);
+        const mk=r['GH']+'||'+r['Periode'];
+        if(!outspec_note_map[mk]) outspec_note_map[mk]={};
+        outspec_note_map[mk][r['Note']]=(outspec_note_map[mk][r['Note']]||0)+parseFloat(r['DATA KEBUN']||0);
+      }
+    }
+  });
+
+  return {
+    gh_records: ghRecords,
+    outspec_notes_map, outspec_note_map,
+    filters: {
+      periodes:     unique(ghRecords,'periode'),
+      klasifikasis: unique(ghRecords,'klasifikasi'),
+      ghs:          unique(ghRecords,'gh'),
+      variants:     unique(ghRecords,'varian'),
+    },
+    total_rows: rows.length,
+    loaded_at:  new Date().toLocaleString('id-ID'),
+  };
+}
+
+// ── FETCH LIVE ────────────────────────────────────────────────────────────────
+async function loadData(isRefresh=false){
+  const btn = document.getElementById('btn-refresh');
+  if(btn && isRefresh){ btn.disabled=true; btn.textContent='Memuat...'; }
+
+  // Timer & progress animation
+  const t0 = Date.now();
+  let timerInterval = null;
+  if(!isRefresh){
+    const bar    = document.getElementById('ld-bar');
+    const status = document.getElementById('ld-status');
+    const timer  = document.getElementById('ld-timer');
+    const steps  = [
+      {pct:15, msg:'Menghubungkan ke Google Sheets...'},
+      {pct:35, msg:'Mengambil data CSV...'},
+      {pct:60, msg:'Memproses data panen...'},
+      {pct:80, msg:'Membangun chart & filter...'},
+      {pct:92, msg:'Hampir selesai...'},
+    ];
+    let stepIdx = 0;
+    timerInterval = setInterval(()=>{
+      const elapsed = ((Date.now()-t0)/1000).toFixed(1);
+      if(timer) timer.textContent = elapsed + ' detik';
+      if(bar && stepIdx < steps.length){
+        const s = steps[stepIdx];
+        if(parseFloat(elapsed) >= stepIdx*1.2){
+          bar.style.width = s.pct + '%';
+          if(status) status.textContent = s.msg;
+          stepIdx++;
+        }
+      }
+    }, 100);
+  }
+
+  try {
+    const res = await fetch(PROXY_URL + (isRefresh?'?t='+Date.now():''));
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const text = await res.text();
+    if(!text||text.length<10) throw new Error('Data kosong dari server');
+    const rows = parseCSV(text);
+    if(!rows.length) throw new Error('Tidak ada baris data');
+
+    // preserve filter state on refresh
+    const prevP = RAW ? document.getElementById('f-periode').value : null;
+    const prevK = RAW ? document.getElementById('f-klas').value    : null;
+
+    RAW = buildDataset(rows);
+    initFilters(prevP, prevK);
+
+    // Complete progress bar
+    if(timerInterval) clearInterval(timerInterval);
+    if(!isRefresh){
+      const bar    = document.getElementById('ld-bar');
+      const status = document.getElementById('ld-status');
+      const timer  = document.getElementById('ld-timer');
+      const elapsed = ((Date.now()-t0)/1000).toFixed(1);
+      if(bar) bar.style.width = '100%';
+      if(status) status.textContent = 'Selesai!';
+      if(timer) timer.textContent = elapsed + ' detik';
+      await new Promise(r=>setTimeout(r,400)); // brief flash of 100%
+    }
+    document.getElementById('loading-screen').style.display = 'none';
+    document.getElementById('dashboard').style.display      = 'block';
+
+    if(isRefresh) showToast('✓ Data diperbarui · '+RAW.loaded_at+' · '+RAW.total_rows.toLocaleString()+' records');
+
+  } catch(e) {
+    console.error(e);
+    if(timerInterval) clearInterval(timerInterval);
+    if(!isRefresh) {
+      document.getElementById('loading-screen').style.display = 'none';
+      document.getElementById('err-screen').style.display     = 'flex';
+      document.getElementById('err-msg').textContent = e.message + ' — cek koneksi internet atau Apps Script.';
+    } else {
+      showToast('Gagal refresh: '+e.message);
+    }
+  } finally {
+    if(btn && isRefresh){ btn.disabled=false; btn.textContent='↻ Refresh Data'; }
+  }
+}
+
+
+
+const n = v => parseFloat((v+'').replace(/,/g,''))||0;
+const unique = (arr,key) => [...new Set(arr.map(r=>r[key]).filter(Boolean))].sort();
+
+// Init filters
+function initFilters(){
+  // Populate all filters with full options on first load
+  const fill = (id, vals, keepVal) => {
+    const sel = document.getElementById(id);
+    const cur = keepVal !== undefined ? keepVal : sel.value;
+    sel.innerHTML = '<option value="">Semua</option>';
+    vals.forEach(v=>{ const o=document.createElement('option');o.value=v;o.textContent=v;sel.appendChild(o); });
+    if(cur && vals.includes(cur)) sel.value = cur;
+  };
+  fill('f-periode',  RAW.filters.periodes);
+  fill('f-klas',     RAW.filters.klasifikasis);
+  fill('f-gh',       RAW.filters.ghs);
+  fill('f-varian',   RAW.filters.variants);
+
+  // Default ke periode terakhir
+  const lastPeriode = RAW.filters.periodes[RAW.filters.periodes.length-1];
+  if(!document.getElementById('f-periode').value)
+    document.getElementById('f-periode').value = lastPeriode;
+
+  // Attach cascade listeners
+  ['f-periode','f-klas','f-gh','f-varian'].forEach(id=>{
+    document.getElementById(id).addEventListener('change', ()=>cascadeFilters(id));
+  });
+
+  // Run initial cascade from periode
+  cascadeFilters('f-periode');
+}
+
+// Cascade: when one filter changes, update all others to only show
+// options that exist in the data matching current active filters
+function cascadeFilters(changedId){
+  const ids = ['f-periode','f-klas','f-gh','f-varian'];
+  const fields = { 'f-periode':'periode', 'f-klas':'klasifikasi', 'f-gh':'gh', 'f-varian':'varian' };
+
+  // Save current values of ALL filters
+  const cur = {};
+  ids.forEach(id => cur[id] = document.getElementById(id).value);
+
+  // For each filter (except the one that changed), recompute valid options
+  // based on all OTHER currently-selected filters
+  ids.forEach(targetId => {
+    if(targetId === changedId) return; // don't touch the filter that just changed
+
+    // Filter RAW data using all filters EXCEPT targetId
+    let rows = RAW.gh_records;
+    ids.forEach(id => {
+      if(id === targetId) return;
+      const val = cur[id];
+      if(val) rows = rows.filter(r => r[fields[id]] === val);
+    });
+
+    // Get valid options for targetId from the filtered rows
+    const validVals = unique(rows, fields[targetId]);
+
+    // Rebuild the select, preserving current value if still valid
+    const sel = document.getElementById(targetId);
+    const prevVal = cur[targetId];
+    sel.innerHTML = '<option value="">Semua</option>';
+    validVals.forEach(v => {
+      const o = document.createElement('option');
+      o.value = v; o.textContent = v;
+      sel.appendChild(o);
+    });
+    // Keep previous value only if still valid
+    sel.value = validVals.includes(prevVal) ? prevVal : '';
+  });
+
+  render();
+}
+
+
+function getFiltered(){
+  const p = document.getElementById('f-periode').value;
+  const k = document.getElementById('f-klas').value;
+  const g = document.getElementById('f-gh').value;
+  const v = document.getElementById('f-varian').value;
+  let rows = RAW.gh_records;
+  if(p) rows = rows.filter(r=>r.periode===p);
+  if(k) rows = rows.filter(r=>r.klasifikasi===k);
+  if(g) rows = rows.filter(r=>r.gh===g);
+  if(v) rows = rows.filter(r=>r.varian===v);
+  return rows;
+}
+
+function getOutspecAggregated(mapKey){
+  const p = document.getElementById('f-periode').value;
+  const k = document.getElementById('f-klas').value;
+  const g = document.getElementById('f-gh').value;
+  const map = RAW[mapKey] || {};
+  const totals = {};
+  Object.entries(map).forEach(([keyStr, noteMap])=>{
+    const [gh, periode] = keyStr.split('||');
+    const rec = RAW.gh_records.find(r=>r.gh===gh && r.periode===periode);
+    if(!rec) return;
+    if(p && rec.periode!==p) return;
+    if(k && rec.klasifikasi!==k) return;
+    if(g && rec.gh!==g) return;
+    Object.entries(noteMap).forEach(([note,val])=>{
+      totals[note] = (totals[note]||0)+val;
+    });
+  });
+  return Object.entries(totals).sort((a,b)=>b[1]-a[1]);
+}
+function getOutspecNotes(filtered){ return getOutspecAggregated('outspec_notes_map'); }
+
+function render(){
+  const rows = getFiltered();
+  if(!rows.length){ document.getElementById('gh-cards').innerHTML='<div class="no-data">Tidak ada data untuk filter yang dipilih.</div>'; return; }
+
+  // Aggregate GH-level (deduplicate by GH since varian filter may produce multiple rows per GH)
+  const ghMap = {};
+  rows.forEach(r=>{
+    const key = r.gh+'||'+r.periode;
+    if(!ghMap[key]){
+      ghMap[key] = {...r};
+    }
+  });
+  const ghList = Object.values(ghMap).sort((a,b)=>{
+    // Sort by periode first (numerically), then by GH name
+    const pA = parseFloat(a.periode)||0, pB = parseFloat(b.periode)||0;
+    if(pA !== pB) return pA - pB;
+    return a.gh.localeCompare(b.gh);
+  });
+
+  // Totals
+  const totSelesai = ghList.reduce((a,r)=>a+r.selesai,0);
+  const totSisa    = ghList.reduce((a,r)=>a+r.sisa,0);
+  const totEst     = ghList.reduce((a,r)=>a+r.est,0);
+  const totPop     = ghList.reduce((a,r)=>a+r.pop,0);
+  const totPrem    = ghList.reduce((a,r)=>a+r.premium,0);
+  const totImp     = ghList.reduce((a,r)=>a+r.imperfect,0);
+  const totOS      = ghList.reduce((a,r)=>a+r.outspec,0);
+  const totPanen   = totPrem+totImp+totOS;
+  const pctPrem    = totPanen ? totPrem/totPanen*100 : 0;
+  const pctImp     = totPanen ? totImp/totPanen*100 : 0;
+  const pctOS      = totPanen ? totOS/totPanen*100 : 0;
+  const pctTercapai= totEst   ? totSelesai/totEst*100 : 0;
+
+  const kategoriCount = {};
+  ghList.forEach(r=>{ kategoriCount[r.kategori]=(kategoriCount[r.kategori]||0)+1; });
+  const ongoingCount  = (kategoriCount['Ongoing']||0);
+  const belumList     = ghList.filter(r=>r.kategori==='Belum Panen');
+
+  // HEADER
+  const p = document.getElementById('f-periode').value||'Semua Periode';
+  const k = document.getElementById('f-klas').value||'Semua Klasifikasi';
+  document.getElementById('hdr-sub').textContent = `Monitoring Panen · ${p} · ${k} · ${ghList.length} GH`;
+
+  // ALERT
+  const alerts=[];
+  if(belumList.length) alerts.push(`<strong>${belumList.map(r=>r.gh).join(', ')}</strong> belum mulai panen.`);
+  const maxSisaGH = ghList.filter(r=>r.kategori==='Ongoing').sort((a,b)=>b.sisa-a.sisa)[0];
+  if(maxSisaGH) alerts.push(`<strong>${maxSisaGH.gh}</strong> sisa panen terbesar (${fmt(maxSisaGH.sisa)}).`);
+  if(pctOS>10) alerts.push(`Outspec tinggi: <strong>${pctOS.toFixed(1)}%</strong> dari total.`);
+  const alertEl = document.getElementById('alert-bar');
+  if(alerts.length){ alertEl.style.display='flex'; document.getElementById('alert-txt').innerHTML=alerts.join(' '); }
+  else alertEl.style.display='none';
+
+  // KPI
+  document.getElementById('k-pop').textContent   = totPop.toLocaleString('id-ID');
+  document.getElementById('k-pop-s').textContent  = 'tanaman';
+  document.getElementById('k-tot').textContent   = fmt(totPanen);
+  document.getElementById('k-tot-s').textContent  = `dari est. ${fmt(totEst)}`;
+  document.getElementById('k-pct').textContent   = pctTercapai.toFixed(1)+'%';
+  document.getElementById('k-pct-s').textContent  = `%Tercapai vs Estimasi`;
+  const pctCard = document.getElementById('k-pct-card');
+  pctCard.className = 'kpi'+(pctTercapai>=80?' ok':pctTercapai<50?' warn':'');
+  document.getElementById('k-sisa').textContent  = fmt(totSisa);
+  document.getElementById('k-sisa-s').textContent = `dari target`;
+  document.getElementById('k-ong').textContent   = ongoingCount;
+  document.getElementById('k-ong-s').textContent  = `dari ${ghList.length} GH`;
+  document.getElementById('k-os').textContent    = fmt(totOS);
+  document.getElementById('k-os-s').textContent   = `${pctOS.toFixed(1)}% dari total`;
+
+  // OVERALL PROGRESS
+  const op = Math.min(pctTercapai,100);
+  document.getElementById('op-fill').style.width = op+'%';
+  document.getElementById('op1').textContent = fmt(totPanen);
+  document.getElementById('op2').textContent = op.toFixed(1)+'% dari estimasi';
+  document.getElementById('op3').textContent = fmt(totEst);
+
+  // DONUT labels
+  document.getElementById('lp').textContent = pctPrem.toFixed(1)+'%';
+  document.getElementById('li').textContent = pctImp.toFixed(1)+'%';
+  document.getElementById('lo').textContent = pctOS.toFixed(1)+'%';
+
+  // ── GH CARDS ──
+  const ghCardsEl = document.getElementById('gh-cards');
+  ghCardsEl.innerHTML = '';
+  ghList.forEach(r=>{
+    const pBar = r.est ? Math.min(r.selesai/r.est*100,100) : 0;
+    const kat  = r.kategori||r.keterangan_panen||'';
+    let sClass, sLabel, barColor;
+    if(kat==='Belum Panen'||kat==='BELUM PANEN'){ sClass='s-belum';sLabel='Belum Panen';barColor='#d3d1c7'; }
+    else if(kat==='Ongoing'){ sClass='s-ongoing';sLabel='Ongoing';barColor='#5aac1a'; }
+    else if(kat==='Terpenuhi'||kat==='HABIS'||kat==='SELESAI'){ sClass='s-terpenuhi';sLabel='Selesai ✓';barColor='#378add'; }
+    else { sClass='s-tidak';sLabel='Tidak Terpenuhi';barColor='#f5a027'; }
+    let etaHTML = '';
+    if(kat==='Belum Panen'||kat==='BELUM PANEN'){
+      etaHTML = `<div class="gh-eta">Est. mulai: <span class="sp-belum">${r.tgl_mulai||'—'}</span></div>`;
+    } else if(kat==='Ongoing'){
+      etaHTML = `<div class="gh-eta">Sisa: <span class="sp-belum">${fmt(r.sisa)}</span> · Est. selesai: <span class="sp-soon">${r.tgl_akhir||'—'}</span></div>`;
+    } else {
+      etaHTML = `<div class="gh-eta"><span class="sp-done">Selesai ${r.tgl_akhir||''}</span></div>`;
+    }
+    ghCardsEl.insertAdjacentHTML('beforeend',`
+      <div class="gh-card">
+        <div class="gh-nm" title="${r.gh}">${r.gh}</div>
+        ${!pFilter ? `<div style="font-size:9px;color:var(--hint);margin-bottom:3px;font-weight:600;">Periode ${r.periode}</div>` : ''}
+        <div class="sbadge ${sClass}">${sLabel}</div>
+        <div class="pb-bg"><div class="pb-fill" style="width:${pBar.toFixed(0)}%;background:${barColor}"></div></div>
+        <div class="gh-st"><span>${pBar.toFixed(0)}%</span><strong>${fmt(r.selesai)}</strong></div>
+        <div class="gh-st" style="margin-top:2px"><span>Est: ${fmt(r.est)}</span><span>Pop: ${r.pop>0?r.pop.toLocaleString('id-ID'):'-'}</span></div>
+        ${etaHTML}
+      </div>`);
+  });
+
+  // ── CHART 1: STACKED BAR ──
+  const pFilter = document.getElementById('f-periode').value; // empty = semua periode
+  destroyChart('ghbar');
+  const ctx1 = document.getElementById('c-ghbar').getContext('2d');
+  charts['ghbar'] = new Chart(ctx1,{
+    type:'bar',
+    data:{
+      labels: ghList.map(r=> pFilter ? r.gh : r.gh+' ('+r.periode+')'),
+      datasets:[
+        {label:'Selesai', data:ghList.map(r=>r.selesai), backgroundColor:'#5aac1a', stack:'a', borderRadius:2},
+        {label:'Sisa',    data:ghList.map(r=>r.sisa),    backgroundColor:'#f5c842', stack:'a'},
+        {label:'Gap',     data:ghList.map(r=>r.gap),     backgroundColor:'#e24b4a', stack:'a', borderRadius:{topLeft:2,topRight:2}}
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${fmtKg(c.raw)}`}}},
+      scales:{
+        x:{stacked:true,ticks:{font:{size:9},color:'#9c9a92',maxRotation:45},grid:{display:false},border:{display:false}},
+        y:{stacked:true,ticks:{font:{size:9},color:'#9c9a92',callback:v=>v>=1000?(v/1000).toFixed(0)+'K':v},grid:{color:'rgba(0,0,0,0.04)'},border:{display:false}}
+      }
+    }
+  });
+
+  // ── CHART 2: DONUT ──
+  destroyChart('donut');
+  const ctx2 = document.getElementById('c-donut').getContext('2d');
+  charts['donut'] = new Chart(ctx2,{
+    type:'doughnut',
+    data:{labels:['Premium','Imperfect','Outspec'],datasets:[{data:[totPrem,totImp,totOS],backgroundColor:['#639922','#ef9f27','#e24b4a'],borderWidth:0,hoverOffset:4}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'68%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.label}: ${fmtKg(c.raw)}`}}}},
+    plugins:[{id:'ctr',afterDraw(ch){
+      const {ctx,chartArea:{width,height,left,top}}=ch;
+      ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';
+      const cx=left+width/2,cy=top+height/2;
+      ctx.font='700 14px Segoe UI,system-ui,sans-serif';ctx.fillStyle='#1a1a18';ctx.fillText(fmt(totPanen),cx,cy-7);
+      ctx.font='400 10px Segoe UI,system-ui,sans-serif';ctx.fillStyle='#9c9a92';ctx.fillText('total panen',cx,cy+8);
+      ctx.restore();
+    }}]
+  });
+
+  // ── GRADE PER GH ──
+  const gradeEl = document.getElementById('grade-gh');
+  gradeEl.innerHTML = '';
+  ghList.filter(r=>r.premium||r.imperfect||r.outspec).forEach(r=>{
+    const tot=r.premium+r.imperfect+r.outspec||1;
+    const wp=(r.premium/tot*100).toFixed(1);
+    const wi=(r.imperfect/tot*100).toFixed(1);
+    const wo=(r.outspec/tot*100).toFixed(1);
+    const ghLabel = pFilter ? r.gh : r.gh+' ('+r.periode+')';
+    gradeEl.insertAdjacentHTML('beforeend',`
+      <div class="grade-row">
+        <div class="grade-lbl"><span>${ghLabel}</span><span style="font-size:9px;color:var(--hint)">${wp}/${wi}/${wo}%</span></div>
+        <div class="grade-bar">
+          <div style="width:${wp}%;background:#639922"></div>
+          <div style="width:${wi}%;background:#ef9f27"></div>
+          <div style="width:${wo}%;background:#e24b4a"></div>
+        </div>
+      </div>`);
+  });
+  const totG=totPrem+totImp+totOS||1;
+  gradeEl.insertAdjacentHTML('beforeend',`
+    <div class="grade-totrow">
+      <div class="grade-lbl"><strong>Total</strong><span style="font-size:9px;color:var(--hint)">${pctPrem.toFixed(1)}/${pctImp.toFixed(1)}/${pctOS.toFixed(1)}%</span></div>
+      <div class="grade-bar">
+        <div style="width:${pctPrem}%;background:#639922"></div>
+        <div style="width:${pctImp}%;background:#ef9f27"></div>
+        <div style="width:${pctOS}%;background:#e24b4a"></div>
+      </div>
+    </div>`);
+
+  // ── OUTSPEC BARS (by Notes = kategori) ──
+  const notesByCat = {};
+  ghList.forEach(r=>{
+    // use outspec total per GH (from grade totals)
+    // Category breakdown comes from outspec_map
+  });
+  // aggregate outspec by Notes category across filtered GH
+  const osCatTotals = {};
+  // Outspec: Notes=kategori for bars, Note=sub for chart
+  const osKategoriEntries = getOutspecAggregated('outspec_notes_map');
+  const osSubEntries      = getOutspecAggregated('outspec_note_map');
+  // Also show main category totals from outspec_map Notes field
+  // For simplicity show Note (sub-keterangan) bars as main outspec bars
+  const osEl = document.getElementById('os-bars');
+  osEl.innerHTML='';
+  const maxOS2 = osKategoriEntries[0]?.[1]||1;
+  osKategoriEntries.slice(0,6).forEach(([note,val])=>{
+    const w=(val/maxOS2*90).toFixed(1);
+    const wNum=parseFloat(w);
+    const color=note.toLowerCase().includes('crack')?'#e24b4a':'#ef9f27';
+    const tc=color==='#e24b4a'?'#fff':'#633806';
+    // If bar is short (<25%), show label outside to the right
+    const labelInside = wNum >= 25;
+    const barHtml = labelInside
+      ? `<div class="os-bg"><div class="os-fill" style="width:${Math.max(w,8)}%;background:${color};color:${tc}">${fmtKg(val)}</div></div>`
+      : `<div class="os-bg" style="position:relative"><div class="os-fill" style="width:${Math.max(w,8)}%;background:${color};color:${tc}"></div><span style="position:absolute;left:calc(${Math.max(w,8)}% + 5px);top:50%;transform:translateY(-50%);font-size:10px;font-weight:700;color:${color};white-space:nowrap">${fmtKg(val)}</span></div>`;
+    osEl.insertAdjacentHTML('beforeend',`
+      <div class="os-row">
+        <div class="os-lbl">${note}</div>
+        ${barHtml}
+      </div>`);
+  });
+
+  // ── CHART 3: OUTSPEC SUB-KETERANGAN ──
+  destroyChart('c-os');
+  const ctx3 = document.getElementById('c-os').getContext('2d');
+  const osTop8 = osSubEntries.slice(0,8);
+  charts['c-os'] = new Chart(ctx3,{
+    type:'bar',
+    data:{labels:osTop8.map(([k])=>k),datasets:[{label:'Outspec (Kg)',data:osTop8.map(([,v])=>v),backgroundColor:'#e24b4a',borderRadius:3}]},
+    options:{
+      indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${fmtKg(c.raw)}`}}},
+      scales:{
+        x:{ticks:{font:{size:9},color:'#9c9a92'},grid:{color:'rgba(0,0,0,0.04)'},border:{display:false}},
+        y:{ticks:{font:{size:9},color:'#9c9a92'},grid:{display:false},border:{display:false}}
+      }
+    }
+  });
+
+  // ── PRODUKTIVITAS ──
+  const ongoingGH = ghList.filter(r=>r.kategori==='Ongoing' && r.pop>0).sort((a,b)=>(b.selesai/b.pop)-(a.selesai/a.pop));
+  const prodEl = document.getElementById('prod-bars');
+  prodEl.innerHTML='';
+  const maxKg = ongoingGH.length ? ongoingGH[0].selesai/ongoingGH[0].pop : 1;
+  ongoingGH.forEach(r=>{
+    const kpp = r.selesai/r.pop;
+    const w   = maxKg ? Math.min(kpp/maxKg*88,88).toFixed(1) : 0;
+    const col = kpp>=maxKg*0.7?'#378add':'#5dcaa5';
+    const tc  = col==='#5dcaa5'?'#04342c':'#fff';
+    prodEl.insertAdjacentHTML('beforeend',`
+      <div class="prod-row">
+        <div class="prod-lbl" title="${r.gh}">${r.gh}</div>
+        <div class="prod-bg"><div class="prod-fill" style="width:${Math.max(w,14)}%;background:${col};color:${tc}">${kpp.toFixed(2)}</div></div>
+      </div>`);
+  });
+  if(!ongoingGH.length) prodEl.innerHTML='<div style="font-size:11px;color:var(--hint);padding:6px 0">Tidak ada GH ongoing</div>';
+
+  // ── JADWAL ──
+  const jadwalEl = document.getElementById('jadwal-list');
+  jadwalEl.innerHTML='';
+  // Belum panen first
+  ghList.filter(r=>r.kategori==='Belum Panen').forEach(r=>{
+    jadwalEl.insertAdjacentHTML('beforeend',`
+      <div class="sched-item"><span>${r.gh}</span><span class="sdate sd-pending">${r.tgl_mulai||'—'}</span></div>`);
+  });
+  // Ongoing
+  ghList.filter(r=>r.kategori==='Ongoing').sort((a,b)=>a.tgl_akhir.localeCompare(b.tgl_akhir)).forEach(r=>{
+    jadwalEl.insertAdjacentHTML('beforeend',`
+      <div class="sched-item"><span>${r.gh}</span><span class="sdate sd-soon">${r.tgl_akhir||'Ongoing'}</span></div>`);
+  });
+  if(!jadwalEl.children.length) jadwalEl.innerHTML='<div style="font-size:11px;color:var(--hint);padding:4px 0">Semua GH sudah selesai</div>';
+
+  // FOOTER
+  document.getElementById('footer').textContent = `Data: ${ghList.length} GH · ${rows.length} records · Periode ${document.getElementById('f-periode').value||'Semua'} · ${k}`;
+}
+
+// Init
+document.getElementById('f-klas').addEventListener('change', onFilterChange);
+document.getElementById('f-periode').addEventListener('change', onFilterChange);
+document.getElementById('f-gh').addEventListener('change', render);
+document.getElementById('f-varian').addEventListener('change', render);
+
+// Refresh button
+document.getElementById('btn-refresh').addEventListener('click', ()=>loadData(true));
+// Auto-refresh setiap 5 menit
+setInterval(()=>loadData(true), AUTO_REFRESH_MS);
+// Initial load
+loadData();
+
+</script>
+</body>
+</html>
