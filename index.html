@@ -951,43 +951,6 @@ function render(){
 
   // ── CHART 1: STACKED BAR ──
   destroyChart('ghbar');
-    // Custom plugin: % labels per segment + total on top
-  const barLabelPlugin = {
-    id:'barLabels',
-    afterDatasetsDraw(chart){
-      const {ctx, scales:{x,y}} = chart;
-      ctx.save();
-      ctx.textAlign='center';
-      chart.data.datasets.forEach((ds,di)=>{
-        chart.getDatasetMeta(di).data.forEach((bar,i)=>{
-          const val = ds.data[i];
-          const est = ghList[i]?ghList[i].est:0;
-          if(!val||!est||val<est*0.04) return;
-          const pct = (val/est*100).toFixed(0)+'%';
-          const {x:bx,y:by} = bar.tooltipPosition();
-          ctx.font='600 9px Segoe UI,system-ui,sans-serif';
-          ctx.fillStyle = di===0?'#fff':di===1?'#633806':'#fff';
-          ctx.textBaseline='middle';
-          ctx.fillText(pct,bx,by);
-        });
-      });
-      // Total on top
-      ctx.font='700 10px Segoe UI,system-ui,sans-serif';
-      ctx.fillStyle='#1a1a18';
-      ctx.textBaseline='bottom';
-      ghList.forEach((r,i)=>{
-        const total = r.est||0;
-        if(!total) return;
-        const meta = chart.getDatasetMeta(2);
-        const bar  = meta.data[i];
-        if(!bar) return;
-        const topY = y.getPixelForValue(total)-4;
-        ctx.fillText(fmt(total), bar.x, topY);
-      });
-      ctx.restore();
-    }
-  };
-
     const ctx1 = document.getElementById('c-ghbar').getContext('2d');
 
   // Build 100% stacked data
