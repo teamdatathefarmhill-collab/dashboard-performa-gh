@@ -352,6 +352,7 @@ function parseCSV(text){
 }
 
 function buildDataset(rows){
+  // Step 1: Dedup GH+Periode for meta info (est, pop, kategori, dates)
   const seen=new Set(), ghRecords=[];
   rows.forEach(r=>{
     const key=r['GH']+'||'+r['Periode'];
@@ -359,57 +360,78 @@ function buildDataset(rows){
       seen.add(key);
       ghRecords.push({
         gh:r['GH'], periode:r['Periode'], klasifikasi:r['Klasifikasi GH'], varian:r['VARIAN'],
-        selesai:parseFloat(r['seg_Selesai']||0), sisa:parseFloat(r['seg_Sisa']||0),
-        gap:parseFloat(r['seg_Gap']||0), est:parseFloat(r['Est']||0),
-        pop:parseFloat(r['Populasi Awal Tanam']||0), premium:parseFloat(r['Premium']||0),
-        imperfect:parseFloat(r['Imperfect']||0), outspec:parseFloat(r['Outspec']||0),
-        total:parseFloat(r['Total']||0), kategori:r['Kategori_Chart']||'',
-        ket_panen:r['Keterangan Panen']||'',
+        est:parseFloat(r['Est']||0), pop:parseFloat(r['Populasi Awal Tanam']||0),
+        kategori:r['Kategori_Chart']||'', ket_panen:r['Keterangan Panen']||'',
         tgl_mulai:(r['Tanggal Panen Awal']||'').substring(0,10),
         tgl_akhir:(r['Tanggal Panen Akhir']||'').substring(0,10),
+        seg_sisa:parseFloat(r['seg_Sisa']||0),
+        seg_gap:parseFloat(r['seg_Gap']||0),
+        // Will be filled from monthly aggregation below
+        premium:0, imperfect:0, outspec:0, selesai:0, sisa:0, gap:0,
       });
     }
   });
 
-  // Outspec by Notes (kategori)
-  const outspec_notes_map={}, seenN=new Set();
+  // Step 2: Aggregate per GH+Periode+YearMonth from DATA KEBUN + Tanggal Ref
+  const monthly={};
   rows.forEach(r=>{
-    if(r['GRADE']==='OUTSPEC'&&r['Notes']){
-      const key=r['GH']+'||'+r['Periode']+'||'+r['Notes']+'||'+r['DATA KEBUN']+'||'+r['TANGGAL'];
-      if(!seenN.has(key)){
-        seenN.add(key);
-        const mk=r['GH']+'||'+r['Periode'];
+    const val=parseFloat(r['DATA KEBUN']||0);
+    if(!r['GH']||!r['Tanggal Ref']||val<=0) return;
+    const ym=r['Tanggal Ref'].substring(0,7);
+    const mk=r['GH']+'||'+r['Periode']+'||'+ym;
+    if(!monthly[mk]) monthly[mk]={premium:0,imperfect:0,outspec:0,total:0,ym,gh:r['GH'],periode:r['Periode']};
+    const grade=(r['GRADE']||'').toUpperCase();
+    if(grade==='PERFECT')        monthly[mk].premium   += val;
+    else if(grade==='IMPERFECT') monthly[mk].imperfect += val;
+    else if(grade==='OUTSPEC')   monthly[mk].outspec   += val;
+    monthly[mk].total += val;
+  });
+
+  // Step 3: Merge monthly totals into gh_records
+  const ghTotals={};
+  Object.values(monthly).forEach(m=>{
+    const gpk=m.gh+'||'+m.periode;
+    if(!ghTotals[gpk]) ghTotals[gpk]={premium:0,imperfect:0,outspec:0,total:0};
+    ghTotals[gpk].premium   += m.premium;
+    ghTotals[gpk].imperfect += m.imperfect;
+    ghTotals[gpk].outspec   += m.outspec;
+    ghTotals[gpk].total     += m.total;
+  });
+  ghRecords.forEach(rec=>{
+    const t=ghTotals[rec.gh+'||'+rec.periode]||{premium:0,imperfect:0,outspec:0,total:0};
+    rec.premium=t.premium; rec.imperfect=t.imperfect; rec.outspec=t.outspec;
+    rec.selesai=t.total; rec.sisa=rec.seg_sisa; rec.gap=rec.seg_gap;
+  });
+
+  // Step 4: Outspec by Notes (kategori) and Note (sub-kategori)
+  const outspec_notes_map={}, outspec_note_map={}, seenN=new Set(), seenS=new Set();
+  rows.forEach(r=>{
+    if((r['GRADE']||'').toUpperCase()!=='OUTSPEC'||!r['DATA KEBUN']) return;
+    const val=parseFloat(r['DATA KEBUN']||0); if(val<=0) return;
+    const mk=r['GH']+'||'+r['Periode'];
+    if(r['Notes']){
+      const key=mk+'||N||'+r['Notes']+'||'+r['DATA KEBUN']+'||'+r['TANGGAL'];
+      if(!seenN.has(key)){ seenN.add(key);
         if(!outspec_notes_map[mk]) outspec_notes_map[mk]={};
-        outspec_notes_map[mk][r['Notes']]=(outspec_notes_map[mk][r['Notes']]||0)+parseFloat(r['DATA KEBUN']||0);
-      }
+        outspec_notes_map[mk][r['Notes']]=(outspec_notes_map[mk][r['Notes']]||0)+val; }
     }
-  });
-
-  // Outspec by Note (sub-kategori)
-  const outspec_note_map={}, seenS=new Set();
-  rows.forEach(r=>{
-    if(r['GRADE']==='OUTSPEC'&&r['Note']){
-      const key=r['GH']+'||'+r['Periode']+'||'+r['Note']+'||'+r['DATA KEBUN']+'||'+r['TANGGAL'];
-      if(!seenS.has(key)){
-        seenS.add(key);
-        const mk=r['GH']+'||'+r['Periode'];
+    if(r['Note']){
+      const key=mk+'||S||'+r['Note']+'||'+r['DATA KEBUN']+'||'+r['TANGGAL'];
+      if(!seenS.has(key)){ seenS.add(key);
         if(!outspec_note_map[mk]) outspec_note_map[mk]={};
-        outspec_note_map[mk][r['Note']]=(outspec_note_map[mk][r['Note']]||0)+parseFloat(r['DATA KEBUN']||0);
-      }
+        outspec_note_map[mk][r['Note']]=(outspec_note_map[mk][r['Note']]||0)+val; }
     }
   });
 
-  return {
-    gh_records: ghRecords,
-    outspec_notes_map, outspec_note_map,
-    filters: {
-      periodes:     unique(ghRecords,'periode'),
-      klasifikasis: unique(ghRecords,'klasifikasi'),
-      ghs:          unique(ghRecords,'gh'),
-      variants:     unique(ghRecords,'varian'),
+  return{
+    gh_records:ghRecords, monthly, outspec_notes_map, outspec_note_map,
+    filters:{
+      periodes:  [...new Set(ghRecords.map(r=>r.periode).filter(Boolean))].sort(),
+      klasifikasis:[...new Set(ghRecords.map(r=>r.klasifikasi).filter(Boolean))].sort(),
+      ghs:       [...new Set(ghRecords.map(r=>r.gh).filter(Boolean))].sort(),
     },
-    total_rows: rows.length,
-    loaded_at:  new Date().toLocaleString('id-ID'),
+    total_rows:rows.length,
+    loaded_at:new Date().toLocaleString('id-ID'),
   };
 }
 
@@ -452,18 +474,29 @@ async function loadData(isRefresh=false){
     const url = PROXY_URL + '?t=' + Date.now();
     let text = '';
     try {
-      // Try direct fetch first
-      const res = await fetch(url, { redirect: 'follow', cache: 'no-cache' });
-      if(!res.ok) throw new Error('HTTP '+res.status);
+      // Fetch dengan timeout 30 detik
+      const controller = new AbortController();
+      const timeoutId  = setTimeout(()=>controller.abort(), 30000);
+      const res = await fetch(url, {
+        redirect: 'follow',
+        cache:    'no-cache',
+        signal:   controller.signal,
+      });
+      clearTimeout(timeoutId);
+      if(!res.ok) throw new Error('HTTP '+res.status+' dari Apps Script');
       text = await res.text();
+      console.log('Fetch OK, content-type:', res.headers.get('content-type'));
     } catch(fetchErr) {
-      // Fallback: try via no-cors (won't get body, but triggers cache)
-      throw new Error('Gagal fetch: '+fetchErr.message+'. Pastikan Apps Script sudah diotorisasi dan deploy sebagai Anyone.');
+      if(fetchErr.name === 'AbortError')
+        throw new Error('Timeout 30 detik — Apps Script tidak merespons. Coba refresh.');
+      throw new Error('Gagal fetch: '+fetchErr.message);
     }
-    if(!text || text.length < 10) throw new Error('Data kosong — cek Apps Script');
+    // Log response for debugging
+    console.log('Response length:', text.length, 'First 200:', text.substring(0,200));
+    if(!text || text.length < 10) throw new Error('Data kosong ('+text.length+' chars) — cek Apps Script');
     // Detect if response is HTML error page instead of CSV
     if(text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html')) {
-      throw new Error('Apps Script mengembalikan halaman HTML — pastikan deploy ulang dengan Who has access: Anyone');
+      throw new Error('Apps Script return HTML bukan CSV — pastikan: 1) deploy sebagai Web App 2) Who has access: Anyone 3) sudah authorize');
     }
     const rows = parseCSV(text);
     if(!rows.length) throw new Error('Tidak ada baris data');
@@ -534,11 +567,17 @@ function populateBulanFilter(){
   const prevYM = prevDate.toISOString().substring(0,7);
   const nextYM = nextDate.toISOString().substring(0,7);
 
-  // Collect all year-months from data
+  // Collect all year-months from actual Tanggal Ref data
   const ymSet = new Set();
+  if(RAW.monthly){
+    Object.keys(RAW.monthly).forEach(mk=>{
+      const parts=mk.split('||');
+      if(parts[2]) ymSet.add(parts[2]);
+    });
+  }
+  // Also add tgl_mulai for upcoming GH (Belum Panen)
   RAW.gh_records.forEach(r=>{
-    if(r.tgl_mulai) ymSet.add(getYearMonth(r.tgl_mulai));
-    if(r.tgl_akhir) ymSet.add(getYearMonth(r.tgl_akhir));
+    if((r.kategori==='Belum Panen') && r.tgl_mulai) ymSet.add(r.tgl_mulai.substring(0,7));
   });
   const allYMs = [...ymSet].filter(Boolean).sort();
 
@@ -659,17 +698,22 @@ function getFiltered(){
   if(p)   rows = rows.filter(r => r.periode     === p);
   if(k)   rows = rows.filter(r => r.klasifikasi === k);
   if(g)   rows = rows.filter(r => r.gh          === g);
-  if(bln){
-    // today as fallback end for ongoing GH (tgl_akhir kosong)
-    const todayYM = new Date().toISOString().substring(0,7);
-    rows = rows.filter(r => {
-      const start = getYearMonth(r.tgl_mulai);
-      // If tgl_akhir kosong = ongoing, pakai bulan ini sebagai end sementara
-      const end   = r.tgl_akhir ? getYearMonth(r.tgl_akhir) : todayYM;
-      if(!start) return false;
-      // GH muncul jika periode panen overlap dengan bulan yang dipilih
-      // start <= bln <= end
-      return start <= bln && bln <= end;
+  if(bln && RAW){
+    // Filter by Tanggal Ref month - GH has data in that month
+    const hasActivity = new Set(
+      Object.keys(RAW.monthly||{})
+        .filter(mk=>mk.endsWith('||'+bln))
+        .map(mk=>mk.split('||')[0]+'||'+mk.split('||')[1])
+    );
+    // Also include GH that haven't started yet but will start in that month
+    rows = rows.filter(r=>{
+      const gpk = r.gh+'||'+r.periode;
+      if(hasActivity.has(gpk)) return true;
+      // Include Belum Panen GH if tgl_mulai is in selected month
+      if((r.kategori==='Belum Panen'||r.kat_panen==='BELUM PANEN') && r.tgl_mulai){
+        return r.tgl_mulai.substring(0,7) === bln;
+      }
+      return false;
     });
   }
   return rows;
@@ -776,10 +820,22 @@ function render(){
   const totSisa    = ghList.reduce((a,r)=>a+r.sisa,0);
   const totEst     = ghList.reduce((a,r)=>a+r.est,0);
   const totPop     = ghList.reduce((a,r)=>a+r.pop,0);
-  const totPrem    = ghList.reduce((a,r)=>a+r.premium,0);
-  const totImp     = ghList.reduce((a,r)=>a+r.imperfect,0);
-  const totOS      = ghList.reduce((a,r)=>a+r.outspec,0);
-  const totPanen   = totPrem+totImp+totOS;
+  // When bulan filter active: use monthly Tanggal Ref data for accurate totals
+  function getMonthlyTotals(ghList, bln){
+    if(!bln||!RAW||!RAW.monthly) return null;
+    let prem=0,imp=0,os=0,total=0;
+    ghList.forEach(r=>{
+      const mk=r.gh+'||'+r.periode+'||'+bln;
+      const m=RAW.monthly[mk];
+      if(m){ prem+=m.premium; imp+=m.imperfect; os+=m.outspec; total+=m.total; }
+    });
+    return {prem,imp,os,total};
+  }
+  const mTotals  = getMonthlyTotals(ghList, bFilter);
+  const totPrem  = mTotals ? mTotals.prem  : ghList.reduce((a,r)=>a+r.premium,0);
+  const totImp   = mTotals ? mTotals.imp   : ghList.reduce((a,r)=>a+r.imperfect,0);
+  const totOS    = mTotals ? mTotals.os    : ghList.reduce((a,r)=>a+r.outspec,0);
+  const totPanen = mTotals ? mTotals.total : totPrem+totImp+totOS;
   const pctPrem    = totPanen ? totPrem/totPanen*100 : 0;
   const pctImp     = totPanen ? totImp/totPanen*100 : 0;
   const pctOS      = totPanen ? totOS/totPanen*100 : 0;
@@ -840,14 +896,23 @@ function render(){
     const pBar = r.est ? Math.min(r.selesai/r.est*100,100) : 0;
     const kat  = r.kategori||r.keterangan_panen||'';
     let sClass, sLabel, barColor;
-    if(kat==='Belum Panen'||kat==='BELUM PANEN'){ sClass='s-belum';sLabel='Belum Panen';barColor='#d3d1c7'; }
-    else if(kat==='Ongoing'){ sClass='s-ongoing';sLabel='Ongoing';barColor='#5aac1a'; }
-    else if(kat==='Terpenuhi'||kat==='HABIS'||kat==='SELESAI'){ sClass='s-terpenuhi';sLabel='Selesai ✓';barColor='#378add'; }
-    else { sClass='s-tidak';sLabel='Tidak Terpenuhi';barColor='#f5a027'; }
+    const pBar2 = r.est ? (r.selesai / r.est * 100) : 0;
+    const isSelesai = kat==='Terpenuhi'||kat==='HABIS'||kat==='SELESAI'||kat==='Tidak Terpenuhi';
+    if(kat==='Belum Panen'||kat==='BELUM PANEN'){
+      sClass='s-belum'; sLabel='Belum Panen'; barColor='#d3d1c7';
+    } else if(kat==='Ongoing'){
+      sClass='s-ongoing'; sLabel='Ongoing'; barColor='#5aac1a';
+    } else if(isSelesai && pBar2 >= 85){
+      sClass='s-terpenuhi'; sLabel='Selesai ✓'; barColor='#378add';
+    } else {
+      sClass='s-tidak'; sLabel='Tidak Terpenuhi'; barColor='#f5a027';
+    }
     let etaHTML = '';
     if(kat==='Belum Panen'||kat==='BELUM PANEN'){
+      // Est mulai = tgl_mulai dari data (jadwal mulai panen)
       etaHTML = `<div class="gh-eta">Est. mulai: <span class="sp-belum">${r.tgl_mulai||'—'}</span></div>`;
     } else if(kat==='Ongoing'){
+      // Est selesai = tgl_akhir dari data (bukan tanggal terakhir input)
       etaHTML = `<div class="gh-eta">Sisa: <span class="sp-belum">${fmt(r.sisa)}</span> · Est. selesai: <span class="sp-soon">${r.tgl_akhir||'—'}</span></div>`;
     } else {
       etaHTML = `<div class="gh-eta"><span class="sp-done">Selesai ${r.tgl_akhir||''}</span></div>`;
@@ -866,17 +931,19 @@ function render(){
           if(bd.length <= 1) return '';
           return '<div style="margin-top:7px;padding-top:7px;border-top:1px solid rgba(0,0,0,0.07);">' +
             '<div style="font-size:9px;font-weight:700;color:#9c9a92;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px;">Breakdown Bulanan</div>' +
-            bd.map(b=>
-              '<div style="margin-bottom:5px;">' +
+            bd.map((b,bi,arr)=>{
+              const totalKg = arr.reduce((s,x)=>s+x.kg,0);
+              const sharePct = totalKg > 0 ? (b.kg/totalKg*100).toFixed(0) : 0;
+              return '<div style="margin-bottom:5px;">' +
                 '<div style="display:flex;justify-content:space-between;font-size:9px;color:#6b6b66;margin-bottom:2px;">' +
                   '<span style="font-weight:600;">'+b.label+'</span>' +
-                  '<span>'+fmt(b.kg)+' <span style="color:#9c9a92">('+b.pctEst.toFixed(0)+'% est)</span></span>' +
+                  '<span>'+fmt(b.kg)+' <span style="color:#9c9a92">('+sharePct+'% share · '+b.pctEst.toFixed(0)+'% est)</span></span>' +
                 '</div>' +
                 '<div style="background:#eeede7;border-radius:3px;height:4px;overflow:hidden;">' +
                   '<div style="width:'+Math.min(b.pctEst,100).toFixed(0)+'%;height:100%;border-radius:3px;background:'+(b.pctEst>=80?'#5aac1a':b.pctEst>=50?'#ef9f27':'#e24b4a')+'"></div>' +
                 '</div>' +
-              '</div>'
-            ).join('') +
+              '</div>';
+            }).join('') +
           '</div>';
         })()}
       </div>`);
@@ -921,15 +988,63 @@ function render(){
     }
   };
 
-  const ctx1 = document.getElementById('c-ghbar').getContext('2d');
+    const ctx1 = document.getElementById('c-ghbar').getContext('2d');
+
+  // Build 100% stacked data
+  const ghBarData = ghList.map(r=>{
+    const total = r.est || (r.selesai + r.sisa + r.gap) || 1;
+    return {
+      selesaiPct: (r.selesai / total * 100),
+      sisaPct:    (r.sisa    / total * 100),
+      gapPct:     (r.gap     / total * 100),
+      total,
+    };
+  });
+
+  // Plugin: total label on top + 85% reference line
+  const barLabelPlugin = {
+    id:'barLabels',
+    afterDatasetsDraw(chart){
+      const {ctx, scales:{x,y}} = chart;
+      ctx.save();
+      // Total est label on top of each bar
+      ctx.font='700 10px Segoe UI,system-ui,sans-serif';
+      ctx.fillStyle='#1a1a18';
+      ctx.textAlign='center';
+      ctx.textBaseline='bottom';
+      ghList.forEach((r,i)=>{
+        const meta = chart.getDatasetMeta(0);
+        const bar  = meta.data[i];
+        if(!bar) return;
+        ctx.fillText(fmt(r.est||0), bar.x, y.getPixelForValue(100)-4);
+      });
+      // 85% reference line
+      const y85 = y.getPixelForValue(85);
+      ctx.beginPath();
+      ctx.setLineDash([4,3]);
+      ctx.strokeStyle='rgba(0,0,0,0.35)';
+      ctx.lineWidth=1;
+      ctx.moveTo(chart.chartArea.left, y85);
+      ctx.lineTo(chart.chartArea.right, y85);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.font='600 9px Segoe UI,system-ui,sans-serif';
+      ctx.fillStyle='rgba(0,0,0,0.45)';
+      ctx.textAlign='left';
+      ctx.textBaseline='bottom';
+      ctx.fillText('85%', chart.chartArea.left+3, y85-2);
+      ctx.restore();
+    }
+  };
+
   charts['ghbar'] = new Chart(ctx1,{
     type:'bar',
     data:{
       labels: ghList.map(r=> pFilter ? r.gh : r.gh+' ('+r.periode+')'),
       datasets:[
-        {label:'Selesai', data:ghList.map(r=>r.selesai), backgroundColor:'#5aac1a', stack:'a', borderRadius:2},
-        {label:'Sisa',    data:ghList.map(r=>r.sisa),    backgroundColor:'#f5c842', stack:'a'},
-        {label:'Gap',     data:ghList.map(r=>r.gap),     backgroundColor:'#e24b4a', stack:'a', borderRadius:{topLeft:2,topRight:2}}
+        {label:'Selesai', data:ghBarData.map(d=>d.selesaiPct), backgroundColor:'#5aac1a', stack:'a', borderRadius:2},
+        {label:'Sisa',    data:ghBarData.map(d=>d.sisaPct),    backgroundColor:'#f5c842', stack:'a'},
+        {label:'Gap',     data:ghBarData.map(d=>d.gapPct),     backgroundColor:'#e24b4a', stack:'a', borderRadius:{topLeft:2,topRight:2}}
       ]
     },
     options:{
@@ -938,15 +1053,16 @@ function render(){
       plugins:{
         legend:{display:false},
         tooltip:{callbacks:{label:c=>{
-          const r=ghList[c.dataIndex];
-          const est=r?r.est:0;
-          const pct=est?' ('+( c.raw/est*100).toFixed(1)+'% est)':'';
-          return ` ${c.dataset.label}: ${fmtKg(c.raw)}${pct}`;
+          const r   = ghList[c.dataIndex];
+          const val = c.dataset.label==='Selesai' ? r.selesai : c.dataset.label==='Sisa' ? r.sisa : r.gap;
+          return ` ${c.dataset.label}: ${fmtKg(val)} (${c.raw.toFixed(1)}%)`;
         }}}
       },
       scales:{
-        x:{stacked:true,ticks:{font:{size:9},color:'#9c9a92',maxRotation:45},grid:{display:false},border:{display:false}},
-        y:{stacked:true,ticks:{font:{size:9},color:'#9c9a92',callback:v=>v>=1000?(v/1000).toFixed(0)+'K':v},grid:{color:'rgba(0,0,0,0.04)'},border:{display:false}}
+        x:{stacked:true, ticks:{font:{size:9},color:'#9c9a92',maxRotation:45}, grid:{display:false}, border:{display:false}},
+        y:{stacked:true, min:0, max:100,
+          ticks:{font:{size:9},color:'#9c9a92',callback:v=>v+'%'},
+          grid:{color:'rgba(0,0,0,0.04)'}, border:{display:false}}
       }
     },
     plugins:[barLabelPlugin]
