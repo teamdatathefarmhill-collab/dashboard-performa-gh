@@ -443,10 +443,23 @@ async function loadData(isRefresh=false){
   }
 
   try {
-    const res = await fetch(PROXY_URL + (isRefresh?'?t='+Date.now():''));
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    const text = await res.text();
-    if(!text||text.length<10) throw new Error('Data kosong dari server');
+    // Fetch dari Apps Script proxy
+    const url = PROXY_URL + '?t=' + Date.now();
+    let text = '';
+    try {
+      // Try direct fetch first
+      const res = await fetch(url, { redirect: 'follow', cache: 'no-cache' });
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      text = await res.text();
+    } catch(fetchErr) {
+      // Fallback: try via no-cors (won't get body, but triggers cache)
+      throw new Error('Gagal fetch: '+fetchErr.message+'. Pastikan Apps Script sudah diotorisasi dan deploy sebagai Anyone.');
+    }
+    if(!text || text.length < 10) throw new Error('Data kosong — cek Apps Script');
+    // Detect if response is HTML error page instead of CSV
+    if(text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html')) {
+      throw new Error('Apps Script mengembalikan halaman HTML — pastikan deploy ulang dengan Who has access: Anyone');
+    }
     const rows = parseCSV(text);
     if(!rows.length) throw new Error('Tidak ada baris data');
 
@@ -488,11 +501,6 @@ async function loadData(isRefresh=false){
     if(btn && isRefresh){ btn.disabled=false; btn.textContent='↻ Refresh Data'; }
   }
 }
-
-
-
-const n = v => parseFloat((v+'').replace(/,/g,''))||0;
-const unique = (arr,key) => [...new Set(arr.map(r=>r[key]).filter(Boolean))].sort();
 
 // Init filters
 function initFilters(){
