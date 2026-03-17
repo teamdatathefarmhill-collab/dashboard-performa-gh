@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%235aac1a'/><text y='.9em' font-size='75' x='12'>🌱</text></svg>">
 <title>Dashboard Performa Greenhouse</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
@@ -598,6 +599,9 @@ function initFilters(){
   ['f-periode','f-klas','f-gh'].forEach(id=>{
     document.getElementById(id).addEventListener('change', ()=>cascadeFilters(id));
   });
+  // Bulan filter triggers render directly (not cascade)
+  const bulanSel = document.getElementById('f-bulan');
+  if(bulanSel) bulanSel.addEventListener('change', render);
 
   // Run initial cascade from periode
   cascadeFilters('f-periode');
@@ -655,7 +659,19 @@ function getFiltered(){
   if(p)   rows = rows.filter(r => r.periode     === p);
   if(k)   rows = rows.filter(r => r.klasifikasi === k);
   if(g)   rows = rows.filter(r => r.gh          === g);
-  if(bln) rows = rows.filter(r => getYearMonth(r.tgl_mulai) === bln || getYearMonth(r.tgl_akhir) === bln);
+  if(bln){
+    // today as fallback end for ongoing GH (tgl_akhir kosong)
+    const todayYM = new Date().toISOString().substring(0,7);
+    rows = rows.filter(r => {
+      const start = getYearMonth(r.tgl_mulai);
+      // If tgl_akhir kosong = ongoing, pakai bulan ini sebagai end sementara
+      const end   = r.tgl_akhir ? getYearMonth(r.tgl_akhir) : todayYM;
+      if(!start) return false;
+      // GH muncul jika periode panen overlap dengan bulan yang dipilih
+      // start <= bln <= end
+      return start <= bln && bln <= end;
+    });
+  }
   return rows;
 }
 
@@ -679,6 +695,59 @@ function getOutspecAggregated(mapKey){
   return Object.entries(totals).sort((a,b)=>b[1]-a[1]);
 }
 function getOutspecNotes(filtered){ return getOutspecAggregated('outspec_notes_map'); }
+
+
+// Hitung breakdown panen per bulan secara proporsional
+// berdasarkan tgl_mulai dan tgl_akhir
+function getMonthlyBreakdown(r){
+  const start = r.tgl_mulai ? new Date(r.tgl_mulai) : null;
+  const end   = r.tgl_akhir ? new Date(r.tgl_akhir) : new Date();
+  if(!start) return [];
+
+  const totalKg  = r.selesai || 0;
+  const totalEst = r.est     || 0;
+
+  // Collect all months between start and end
+  const months = [];
+  const cur = new Date(start.getFullYear(), start.getMonth(), 1);
+  const endMonth = new Date(end.getFullYear(), end.getMonth(), 1);
+  while(cur <= endMonth){
+    months.push(cur.getFullYear()+'-'+String(cur.getMonth()+1).padStart(2,'0'));
+    cur.setMonth(cur.getMonth()+1);
+  }
+  if(!months.length) return [];
+
+  // Calculate days in each month that overlap with harvest period
+  const dayCounts = months.map(ym=>{
+    const [y,m] = ym.split('-').map(Number);
+    const mStart = new Date(y,m-1,1);
+    const mEnd   = new Date(y,m,0); // last day of month
+    const overlapStart = start > mStart ? start : mStart;
+    const overlapEnd   = end   < mEnd   ? end   : mEnd;
+    const days = Math.max(0, (overlapEnd - overlapStart)/(1000*60*60*24) + 1);
+    return {ym, days};
+  });
+
+  const totalDays = dayCounts.reduce((a,d)=>a+d.days,0);
+  if(!totalDays) return [];
+
+  const MONTH_LABELS = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+  return dayCounts.filter(d=>d.days>0).map(d=>{
+    const pct    = d.days / totalDays;
+    const kg     = totalKg  * pct;
+    const estKg  = totalEst * pct;
+    const pctEst = estKg ? (kg/estKg*100) : 0;
+    const [y,mo] = d.ym.split('-').map(Number);
+    return {
+      ym:    d.ym,
+      label: MONTH_LABELS[mo-1]+' '+y,
+      kg,
+      estKg,
+      pctEst,
+      days:  d.days,
+    };
+  });
+}
 
 function render(){
   if(!RAW) return;
@@ -792,11 +861,66 @@ function render(){
         <div class="gh-st"><span>${pBar.toFixed(0)}%</span><strong>${fmt(r.selesai)}</strong></div>
         <div class="gh-st" style="margin-top:2px"><span>Est: ${fmt(r.est)}</span><span>Pop: ${r.pop>0?r.pop.toLocaleString('id-ID'):'-'}</span></div>
         ${etaHTML}
+        ${(()=>{
+          const bd = getMonthlyBreakdown(r);
+          if(bd.length <= 1) return '';
+          return '<div style="margin-top:7px;padding-top:7px;border-top:1px solid rgba(0,0,0,0.07);">' +
+            '<div style="font-size:9px;font-weight:700;color:#9c9a92;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px;">Breakdown Bulanan</div>' +
+            bd.map(b=>
+              '<div style="margin-bottom:5px;">' +
+                '<div style="display:flex;justify-content:space-between;font-size:9px;color:#6b6b66;margin-bottom:2px;">' +
+                  '<span style="font-weight:600;">'+b.label+'</span>' +
+                  '<span>'+fmt(b.kg)+' <span style="color:#9c9a92">('+b.pctEst.toFixed(0)+'% est)</span></span>' +
+                '</div>' +
+                '<div style="background:#eeede7;border-radius:3px;height:4px;overflow:hidden;">' +
+                  '<div style="width:'+Math.min(b.pctEst,100).toFixed(0)+'%;height:100%;border-radius:3px;background:'+(b.pctEst>=80?'#5aac1a':b.pctEst>=50?'#ef9f27':'#e24b4a')+'"></div>' +
+                '</div>' +
+              '</div>'
+            ).join('') +
+          '</div>';
+        })()}
       </div>`);
   });
 
   // ── CHART 1: STACKED BAR ──
   destroyChart('ghbar');
+    // Custom plugin: % labels per segment + total on top
+  const barLabelPlugin = {
+    id:'barLabels',
+    afterDatasetsDraw(chart){
+      const {ctx, scales:{x,y}} = chart;
+      ctx.save();
+      ctx.textAlign='center';
+      chart.data.datasets.forEach((ds,di)=>{
+        chart.getDatasetMeta(di).data.forEach((bar,i)=>{
+          const val = ds.data[i];
+          const est = ghList[i]?ghList[i].est:0;
+          if(!val||!est||val<est*0.04) return;
+          const pct = (val/est*100).toFixed(0)+'%';
+          const {x:bx,y:by} = bar.tooltipPosition();
+          ctx.font='600 9px Segoe UI,system-ui,sans-serif';
+          ctx.fillStyle = di===0?'#fff':di===1?'#633806':'#fff';
+          ctx.textBaseline='middle';
+          ctx.fillText(pct,bx,by);
+        });
+      });
+      // Total on top
+      ctx.font='700 10px Segoe UI,system-ui,sans-serif';
+      ctx.fillStyle='#1a1a18';
+      ctx.textBaseline='bottom';
+      ghList.forEach((r,i)=>{
+        const total = r.est||0;
+        if(!total) return;
+        const meta = chart.getDatasetMeta(2);
+        const bar  = meta.data[i];
+        if(!bar) return;
+        const topY = y.getPixelForValue(total)-4;
+        ctx.fillText(fmt(total), bar.x, topY);
+      });
+      ctx.restore();
+    }
+  };
+
   const ctx1 = document.getElementById('c-ghbar').getContext('2d');
   charts['ghbar'] = new Chart(ctx1,{
     type:'bar',
@@ -810,12 +934,22 @@ function render(){
     },
     options:{
       responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${fmtKg(c.raw)}`}}},
+      layout:{padding:{top:22}},
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:c=>{
+          const r=ghList[c.dataIndex];
+          const est=r?r.est:0;
+          const pct=est?' ('+( c.raw/est*100).toFixed(1)+'% est)':'';
+          return ` ${c.dataset.label}: ${fmtKg(c.raw)}${pct}`;
+        }}}
+      },
       scales:{
         x:{stacked:true,ticks:{font:{size:9},color:'#9c9a92',maxRotation:45},grid:{display:false},border:{display:false}},
         y:{stacked:true,ticks:{font:{size:9},color:'#9c9a92',callback:v=>v>=1000?(v/1000).toFixed(0)+'K':v},grid:{color:'rgba(0,0,0,0.04)'},border:{display:false}}
       }
-    }
+    },
+    plugins:[barLabelPlugin]
   });
 
   // ── CHART 2: DONUT ──
