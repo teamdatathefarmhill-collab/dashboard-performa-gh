@@ -358,7 +358,6 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 
 
 
-
 const PROXY_URL = 'https://script.google.com/macros/s/AKfycbzr5MO-8XXrO0jQuzmtwNO_87sdoWTKAiplAsLlq3PqsGP0wvopdpprnpMpa_nu4LVRVA/exec';
 const AUTO_REFRESH_MS = 5 * 60 * 1000; // auto refresh setiap 5 menit
 
@@ -370,8 +369,8 @@ function destroyChart(id){ if(charts[id]){charts[id].destroy();delete charts[id]
 
 const n   = v => parseFloat((v+'').replace(/,/g,''))||0;
 const fmt = v => {
-  if(v>=1000000) return (v/1000000).toFixed(2)+' T';
-  if(v>=1000)    return (v/1000).toFixed(2)+' T';
+  if(v>=1000000) return (v/1000000).toFixed(2)+' Ton';
+  if(v>=1000)    return (v/1000).toFixed(2)+' Ton';
   return v.toFixed(0)+' Kg';
 };
 const fmtKg = v => v.toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2})+' Kg';
@@ -428,20 +427,10 @@ function buildDataset(rows){
   });
 
   // Step 2: Aggregate per GH+Periode+YearMonth from DATA KEBUN + Tanggal Ref
-  // Also track first/last Tanggal Ref per GH+Periode
   const monthly={};
-  const tglRefMap={}; // { 'GH||Periode': {first, last} }
   rows.forEach(r=>{
-    if(!r['GH']||!r['Tanggal Ref']) return;
-    const tgl = r['Tanggal Ref'].substring(0,10);
-    const gpk = r['GH']+'||'+r['Periode'];
-    if(!tglRefMap[gpk]) tglRefMap[gpk]={first:tgl, last:tgl};
-    else {
-      if(tgl < tglRefMap[gpk].first) tglRefMap[gpk].first = tgl;
-      if(tgl > tglRefMap[gpk].last)  tglRefMap[gpk].last  = tgl;
-    }
     const val=parseFloat(r['DATA KEBUN']||0);
-    if(val<=0) return;
+    if(!r['GH']||!r['Tanggal Ref']||val<=0) return;
     const ym=r['Tanggal Ref'].substring(0,7);
     const mk=r['GH']+'||'+r['Periode']+'||'+ym;
     if(!monthly[mk]) monthly[mk]={premium:0,imperfect:0,outspec:0,total:0,ym,gh:r['GH'],periode:r['Periode']};
@@ -474,12 +463,6 @@ function buildDataset(rows){
     // KPI: pakai selesai_dk jika lebih akurat, tapi untuk Belum Panen tetap 0
     if(rec.kategori==='Belum Panen'||rec.ket_panen==='BELUM PANEN'){
       rec.selesai=0; rec.sisa=0;
-    }
-    // Overwrite tgl_mulai/tgl_akhir with first/last Tanggal Ref
-    const tglRef = tglRefMap[rec.gh+'||'+rec.periode];
-    if(tglRef){
-      rec.tgl_mulai = tglRef.first;
-      rec.tgl_akhir = tglRef.last;
     }
   });
 
@@ -519,7 +502,7 @@ function buildDataset(rows){
   });
 
   return{
-    gh_records:ghRecords, monthly, tglRefMap, outspec_notes_map, outspec_note_map, notes_note_map,
+    gh_records:ghRecords, monthly, outspec_notes_map, outspec_note_map, notes_note_map,
     filters:{
       periodes:  [...new Set(ghRecords.map(r=>r.periode).filter(Boolean))].sort(),
       klasifikasis:[...new Set(ghRecords.map(r=>r.klasifikasi).filter(Boolean))].sort(),
@@ -1366,7 +1349,6 @@ function render(){
 document.getElementById('btn-refresh').addEventListener('click', ()=>loadData(true));
 setInterval(()=>loadData(true), AUTO_REFRESH_MS);
 loadData();
-
 
 </script>
 </body>
