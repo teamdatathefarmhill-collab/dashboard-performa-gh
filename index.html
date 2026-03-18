@@ -413,7 +413,8 @@ function buildDataset(rows){
       seen.add(key);
       ghRecords.push({
         gh:r['GH'], periode:r['Periode'], klasifikasi:r['Klasifikasi GH'], varian:r['VARIAN'],
-        est:parseFloat(r['Est']||0), pop:parseFloat(r['Populasi Awal Tanam']||0),
+        pop:parseFloat(r['Populasi Awal Tanam']||0),
+        est:parseFloat(r['Est']||0)||parseFloat(r['Populasi Awal Tanam']||0),
         kategori:r['Kategori_Chart']||'', ket_panen:r['Keterangan Panen']||'',
         tgl_mulai:(r['Tanggal Panen Awal']||'').substring(0,10),
         tgl_akhir:(r['Tanggal Panen Akhir']||'').substring(0,10),
@@ -428,7 +429,18 @@ function buildDataset(rows){
 
   // Step 2: Aggregate per GH+Periode+YearMonth from DATA KEBUN + Tanggal Ref
   const monthly={};
+  const tglRefMap={};
   rows.forEach(r=>{
+    // Track first/last Tanggal Ref per GH+Periode regardless of DATA KEBUN value
+    if(r['GH']&&r['Tanggal Ref']){
+      const tgl=r['Tanggal Ref'].substring(0,10);
+      const gpk=r['GH']+'||'+r['Periode'];
+      if(!tglRefMap[gpk]) tglRefMap[gpk]={first:tgl,last:tgl};
+      else{
+        if(tgl<tglRefMap[gpk].first) tglRefMap[gpk].first=tgl;
+        if(tgl>tglRefMap[gpk].last)  tglRefMap[gpk].last=tgl;
+      }
+    }
     const val=parseFloat(r['DATA KEBUN']||0);
     if(!r['GH']||!r['Tanggal Ref']||val<=0) return;
     const ym=r['Tanggal Ref'].substring(0,7);
@@ -463,6 +475,12 @@ function buildDataset(rows){
     // KPI: pakai selesai_dk jika lebih akurat, tapi untuk Belum Panen tetap 0
     if(rec.kategori==='Belum Panen'||rec.ket_panen==='BELUM PANEN'){
       rec.selesai=0; rec.sisa=0;
+    }
+    // Overwrite tgl_mulai/tgl_akhir with first/last Tanggal Ref (more accurate)
+    const tglRef=tglRefMap[rec.gh+'||'+rec.periode];
+    if(tglRef){
+      rec.tgl_mulai=tglRef.first;
+      rec.tgl_akhir=tglRef.last;
     }
   });
 
@@ -502,7 +520,7 @@ function buildDataset(rows){
   });
 
   return{
-    gh_records:ghRecords, monthly, outspec_notes_map, outspec_note_map, notes_note_map,
+    gh_records:ghRecords, monthly, tglRefMap, outspec_notes_map, outspec_note_map, notes_note_map,
     filters:{
       periodes:  [...new Set(ghRecords.map(r=>r.periode).filter(Boolean))].sort(),
       klasifikasis:[...new Set(ghRecords.map(r=>r.klasifikasi).filter(Boolean))].sort(),
@@ -1042,10 +1060,10 @@ function render(){
   const ghCardsEl = document.getElementById('gh-cards');
   ghCardsEl.innerHTML = '';
   ghList.forEach(r=>{
-    const pBar = r.est ? Math.min(r.selesai/r.est*100,100) : 0;
+    const pBar = r.est ? Math.min((r.selesai_dk||r.selesai)/r.est*100,100) : 0;
     const kat  = r.kategori||r.keterangan_panen||'';
     let sClass, sLabel, barColor;
-    const pBar2 = r.est ? (r.selesai / r.est * 100) : 0;
+    const pBar2 = r.est ? ((r.selesai_dk||r.selesai) / r.est * 100) : 0;
     const isSelesai = kat==='Terpenuhi'||kat==='HABIS'||kat==='SELESAI'||kat==='Tidak Terpenuhi';
     if(kat==='Belum Panen'||kat==='BELUM PANEN'){
       sClass='s-belum'; sLabel='Belum Panen'; barColor='#d3d1c7';
@@ -1072,7 +1090,7 @@ function render(){
         ${!pFilter ? `<div style="font-size:9px;color:var(--hint);margin-bottom:3px;font-weight:600;">Periode ${r.periode}</div>` : ''}
         <div class="sbadge ${sClass}">${sLabel}</div>
         <div class="pb-bg"><div class="pb-fill" style="width:${pBar.toFixed(0)}%;background:${barColor}"></div></div>
-        <div class="gh-st"><span>${pBar.toFixed(0)}%</span><strong>${fmt(r.selesai)}</strong></div>
+        <div class="gh-st"><span>${pBar.toFixed(0)}%</span><strong>${fmt(r.selesai_dk||r.selesai)}</strong></div>
         <div class="gh-st" style="margin-top:2px"><span>Est: ${fmt(r.est)}</span><span>Pop: ${r.pop>0?r.pop.toLocaleString('id-ID'):'-'}</span></div>
         ${etaHTML}
         ${(()=>{
