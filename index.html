@@ -149,54 +149,153 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 </head>
 <body>
 
-<div id="loading-screen" style="position:fixed;inset:0;background:#f4f3ef;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:0;">
+<div id="loading-screen" style="position:fixed;inset:0;background:#1a3a0a;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;overflow:hidden;">
 
-  <!-- Logo / Title -->
-  <div style="margin-bottom:28px;text-align:center;">
-    <div style="font-size:18px;font-weight:700;color:#1a1a18;letter-spacing:-.3px;">Performa Greenhouse</div>
-    <div style="font-size:12px;color:#9c9a92;margin-top:3px;">Dashboard Monitoring Panen</div>
+<style>
+/* Night greenhouse background */
+#loading-screen::before {
+  content:'';
+  position:absolute;inset:0;
+  background:
+    radial-gradient(ellipse at 30% 40%, rgba(90,172,26,0.08) 0%, transparent 40%),
+    radial-gradient(ellipse at 70% 60%, rgba(90,172,26,0.06) 0%, transparent 40%);
+  pointer-events:none;
+}
+
+/* Stars */
+@keyframes twinkle { 0%,100%{opacity:.3;} 50%{opacity:1;} }
+.star { position:absolute; width:2px; height:2px; background:#fff; border-radius:50%; animation:twinkle var(--d,2s) ease-in-out infinite; }
+
+/* Ground */
+@keyframes groundScroll { from{background-position:0 0;} to{background-position:-200px 0;} }
+
+/* Person running */
+@keyframes runAcross { from{left:-80px;} to{left:calc(100% + 80px);} }
+@keyframes personRun {
+  0%,100%{transform:translateY(0);}
+  50%{transform:translateY(-6px);}
+}
+@keyframes legSwing { 0%,100%{transform:rotate(-30deg);} 50%{transform:rotate(30deg);} }
+@keyframes armSwing { 0%,100%{transform:rotate(20deg);} 50%{transform:rotate(-20deg);} }
+@keyframes scream { 0%,100%{transform:scale(1);} 50%{transform:scale(1.15);} }
+
+/* Melon rolling/chasing */
+@keyframes melonChase { from{left:-160px;} to{left:calc(100% + 160px);} }
+@keyframes melonRoll { from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
+@keyframes melonBounce { 0%,100%{bottom:38px;} 40%{bottom:50px;} }
+
+/* Ground plants scroll */
+@keyframes plantScroll { from{transform:translateX(0);} to{transform:translateX(-300px);} }
+
+/* Title float */
+@keyframes titleFloat { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-5px);} }
+</style>
+
+<!-- Stars -->
+<div class="star" style="top:8%;left:10%;--d:2.1s;"></div>
+<div class="star" style="top:15%;left:25%;--d:1.7s;width:3px;height:3px;"></div>
+<div class="star" style="top:6%;left:45%;--d:2.5s;"></div>
+<div class="star" style="top:20%;left:65%;--d:1.9s;width:3px;height:3px;"></div>
+<div class="star" style="top:10%;left:80%;--d:2.3s;"></div>
+<div class="star" style="top:25%;left:90%;--d:1.6s;"></div>
+<div class="star" style="top:30%;left:35%;--d:2.8s;width:1px;height:1px;"></div>
+<div class="star" style="top:18%;left:55%;--d:2.0s;width:1px;height:1px;"></div>
+
+<!-- Moon -->
+<div style="position:absolute;top:6%;right:12%;width:32px;height:32px;background:radial-gradient(circle at 35% 35%,#fffde7,#ffd54f);border-radius:50%;box-shadow:0 0 20px rgba(255,213,79,.4);"></div>
+
+<!-- Greenhouse silhouette -->
+<div style="position:absolute;bottom:55px;left:50%;transform:translateX(-50%);width:180px;height:100px;opacity:.15;">
+  <div style="position:absolute;bottom:0;left:10%;width:80%;height:70px;background:#5aac1a;border-radius:2px;"></div>
+  <div style="position:absolute;bottom:70px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:50px solid transparent;border-right:50px solid transparent;border-bottom:35px solid #5aac1a;"></div>
+</div>
+
+<!-- Scrolling ground plants -->
+<div style="position:absolute;bottom:34px;left:0;right:0;overflow:hidden;height:24px;">
+  <div style="display:flex;gap:30px;animation:plantScroll 3s linear infinite;white-space:nowrap;width:600px;">
+    <span style="font-size:18px;">🌿</span><span style="font-size:14px;">🌱</span><span style="font-size:20px;">🌿</span><span style="font-size:16px;">🌱</span>
+    <span style="font-size:18px;">🌿</span><span style="font-size:14px;">🌱</span><span style="font-size:20px;">🌿</span><span style="font-size:16px;">🌱</span>
+    <span style="font-size:18px;">🌿</span><span style="font-size:14px;">🌱</span><span style="font-size:20px;">🌿</span><span style="font-size:16px;">🌱</span>
   </div>
+</div>
 
-  <!-- Progress bar -->
-  <div style="width:280px;background:rgba(0,0,0,0.07);border-radius:6px;height:5px;overflow:hidden;margin-bottom:14px;">
-    <div id="ld-bar" style="height:100%;width:0%;background:#5aac1a;border-radius:6px;transition:width .4s ease;"></div>
-  </div>
+<!-- Ground -->
+<div style="position:absolute;bottom:0;left:0;right:0;height:38px;background:linear-gradient(to bottom,#2d5a0a,#1a3a05);border-top:2px solid #5aac1a44;"></div>
+<div style="position:absolute;bottom:34px;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(90,172,26,.6),transparent);"></div>
 
-  <!-- Timer + status -->
-  <div style="display:flex;align-items:center;gap:10px;">
-    <div style="width:16px;height:16px;border:2px solid rgba(0,0,0,0.1);border-top-color:#639922;border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0;"></div>
-    <div style="text-align:left;">
-      <div id="ld-status" style="font-size:12px;color:#6b6b66;">Menghubungkan ke Google Sheets...</div>
-      <div id="ld-timer" style="font-size:11px;color:#9c9a92;margin-top:2px;">0.0 detik</div>
+<!-- PERSON RUNNING (CSS character) -->
+<div style="position:absolute;bottom:38px;animation:runAcross 3.5s linear infinite,personRun .35s ease-in-out infinite;">
+  <!-- Shadow -->
+  <div style="position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);width:28px;height:5px;background:rgba(0,0,0,.3);border-radius:50%;"></div>
+  <!-- Body group -->
+  <div style="position:relative;width:30px;height:60px;">
+    <!-- Head -->
+    <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:18px;height:18px;background:radial-gradient(circle at 40% 35%,#ffcc80,#ff9800);border-radius:50%;animation:scream .35s ease-in-out infinite;">
+      <!-- Mouth open screaming -->
+      <div style="position:absolute;bottom:3px;left:50%;transform:translateX(-50%);width:8px;height:6px;background:#c62828;border-radius:0 0 4px 4px;border:1px solid #333;"></div>
+      <!-- Eyes wide -->
+      <div style="position:absolute;top:4px;left:3px;width:4px;height:4px;background:#fff;border-radius:50%;"></div>
+      <div style="position:absolute;top:4px;right:3px;width:4px;height:4px;background:#fff;border-radius:50%;"></div>
+      <div style="position:absolute;top:5px;left:4px;width:2px;height:2px;background:#333;border-radius:50%;"></div>
+      <div style="position:absolute;top:5px;right:4px;width:2px;height:2px;background:#333;border-radius:50%;"></div>
+      <!-- Hair flying back (panic) -->
+      <div style="position:absolute;top:-3px;right:-2px;width:10px;height:5px;background:#5d3a00;border-radius:0 50% 50% 0;transform:rotate(-20deg);"></div>
+    </div>
+    <!-- Body (shirt) -->
+    <div style="position:absolute;top:18px;left:50%;transform:translateX(-50%);width:14px;height:18px;background:#1565c0;border-radius:2px;"></div>
+    <!-- Left arm swinging forward -->
+    <div style="position:absolute;top:20px;left:0;width:7px;height:13px;background:#ff9800;border-radius:3px;transform-origin:top center;animation:armSwing .35s ease-in-out infinite;"></div>
+    <!-- Right arm swinging back -->
+    <div style="position:absolute;top:20px;right:0;width:7px;height:13px;background:#ff9800;border-radius:3px;transform-origin:top center;animation:armSwing .35s ease-in-out infinite .175s;"></div>
+    <!-- Pants -->
+    <div style="position:absolute;top:34px;left:50%;transform:translateX(-50%);width:14px;height:10px;background:#37474f;border-radius:1px;"></div>
+    <!-- Left leg -->
+    <div style="position:absolute;top:42px;left:4px;width:6px;height:16px;background:#37474f;border-radius:3px;transform-origin:top center;animation:legSwing .35s ease-in-out infinite;">
+      <div style="position:absolute;bottom:0;left:-1px;width:8px;height:5px;background:#5d3a00;border-radius:2px;"></div>
+    </div>
+    <!-- Right leg -->
+    <div style="position:absolute;top:42px;right:4px;width:6px;height:16px;background:#37474f;border-radius:3px;transform-origin:top center;animation:legSwing .35s ease-in-out infinite .175s;">
+      <div style="position:absolute;bottom:0;left:-1px;width:8px;height:5px;background:#5d3a00;border-radius:2px;"></div>
     </div>
   </div>
+</div>
 
-  <!-- Skeleton preview -->
-  <div style="margin-top:32px;width:min(600px,90vw);">
-    <!-- KPI skeleton -->
-    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:12px;">
-      <div class="skel" style="height:62px;border-radius:10px;"></div>
-      <div class="skel" style="height:62px;border-radius:10px;"></div>
-      <div class="skel" style="height:62px;border-radius:10px;"></div>
-      <div class="skel" style="height:62px;border-radius:10px;"></div>
-      <div class="skel" style="height:62px;border-radius:10px;"></div>
-      <div class="skel" style="height:62px;border-radius:10px;"></div>
-    </div>
-    <!-- GH cards skeleton -->
-    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:12px;">
-      <div class="skel" style="height:80px;border-radius:10px;"></div>
-      <div class="skel" style="height:80px;border-radius:10px;"></div>
-      <div class="skel" style="height:80px;border-radius:10px;"></div>
-      <div class="skel" style="height:80px;border-radius:10px;"></div>
-      <div class="skel" style="height:80px;border-radius:10px;"></div>
-      <div class="skel" style="height:80px;border-radius:10px;"></div>
-    </div>
-    <!-- Chart skeleton -->
-    <div style="display:grid;grid-template-columns:3fr 2fr;gap:10px;">
-      <div class="skel" style="height:120px;border-radius:10px;"></div>
-      <div class="skel" style="height:120px;border-radius:10px;"></div>
+<!-- MELON CHASING (using actual photo cropped) -->
+<div style="position:absolute;bottom:38px;animation:melonChase 3.5s linear infinite,melonBounce .5s ease-in-out infinite;animation-delay:0s,0s;">
+  <!-- Melon rolling with photo -->
+  <div style="animation:melonRoll 1s linear infinite;position:relative;">
+    <img src="data:image/webp;base64,UklGRpQEAABXRUJQVlA4IIgEAABQGQCdASp4AHgAPrVWpU0nJKOrqJaY2XAWiUDfEKCGpZn7FHX/AMMHpD27vPD6bNu5L+xc59rMsqH3yWfzXe4V+wuKepRK9f/MdJSp1cSgOOyyzSE8TNb9fyVFpw/BsDr+UR+AXnybemYJRGeb96NI/3f7JWke6ryT0AzBte9/zw7alhbbVA3tIIfRWOgDyLNTOi4X+uTLDJ2s7CYoUMX7cBZzke5gUDhm5z/8uvicdf1pfCyJaXmY8I3kFpk4CFJLQrgISX340PlsPLXk5FsKXrgwAP7z4YCYXTNSZHjsXaKK5u1VZWDFQjtbj0T0Ut7HwTkCR1L0ElHaN8hEzeauRN599q0PDUS76jDQpccs+sk1mALacfa23P5btXVbE82eEUT0z6rxv0Kz+QAxHWG3KvOPjW2eU8T640oHIHAmeCWey7lnwr5U6kLsscv6WNmhFMbs2+4iNuKfgzjWmKxlNtLFuLtmBbXbDDKxoUp4oHqkLiR7C3qiB4sPgy0LUP97HxHoElU1dOYhIZluEVgGyTkYQnZ7VOD1G7UdEzVyauaK8iTlHf8E/eTVpNNIDkZsGAjPJcfbGVrlG0JGphq4VaA1CmgiWwV7JboFZk/yUQx87FY7guHRbIlOSQeAtVAzXZzRiSg1aagMitR52QiAkpXZoqMq59m32xdqfrD57hLyJrtztJx3dRDcM+VKyhU0yNzsiw0CWdK6s7AQSS9DuQoWc6s4uM7PU6GBa6y2QH+VMhFoHtD0hxmLT3Se6EIbqFIyjXlbLDuBHzMM5iSFYGI7kM+4UqszEs6+dQRo8vUFzjdEawmlmYuhm/AaRpK1nKFhsbDzV5idN3adn68E4uIfBycSHCZspgn3NJBbZKqUNf5lfBqOGefPkZVjwVvULYt+RfYBXlwzXNIUUjKs8N9UUr3vhuRbHDxTdNDXFV9pINjKCBSBTovrNtCnpFZlhsjh+4jRNep5dVGbxZkOCYt2ko6WNDxpCPxui9/G+d9g/VXrnIdJm2EPw6tiUtO9Q5NB+MGkKmzlz5cS8dkxlA+HKCIkIXGsk6PxDULhvw5pOu02eA4qyJtWYUkBPdsYMV0AekBNzsJnbCi/3Flz1v9P/qS9/oBlqo/n/Ra+afHLhxwbCiDZK+LpubLIYm6GqNdgcOi0PTtdbQ8mOIPA/tFnOJoKxTmxspI0NcJlk+2D+u7pQiex5BQBg9tYmpE/mOduirY8vLUNPW9cutTb5KnexR0J9TF8yCcZ2SoDA1f9RdliDVe8QZ+BpuHk1Z6GwwQx98ZWU4ullhote8N860T81P3EELssdan0R2mgPbSvuxIcukEBRRPxxn3bB5Mcj4B2fyZRGthBB5cUhgzBb/NREyaeybUQCq+TQGPUkSIvkDoMI0cCqbqAAituSwrzDuo2WtRHdGYWSdqvoo5M1A5v5L4Iv9B0GV133vmB4qaMa3EIAqbL48N2Rqf+hsGrZjlskAlE+Q1TS6yYiHABoqijv0jQ6mcH8bn81dpKUpdogKWuxNEFDaZrzd4dwXUPdwqUnLoAAA==" 
+         style="width:65px;height:65px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,200,50,.4);box-shadow:0 4px 15px rgba(0,0,0,.5);"
+         alt="melon"/>
+    <!-- Speed lines -->
+    <div style="position:absolute;top:50%;left:-25px;transform:translateY(-50%);display:flex;flex-direction:column;gap:5px;">
+      <div style="width:20px;height:2px;background:rgba(255,200,50,.6);border-radius:1px;"></div>
+      <div style="width:14px;height:1.5px;background:rgba(255,200,50,.4);border-radius:1px;margin-left:6px;"></div>
+      <div style="width:18px;height:1.5px;background:rgba(255,200,50,.5);border-radius:1px;margin-left:2px;"></div>
     </div>
   </div>
+  <!-- Shadow -->
+  <div style="position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);width:50px;height:7px;background:rgba(0,0,0,.3);border-radius:50%;"></div>
+</div>
+
+<!-- TITLE -->
+<div style="position:relative;z-index:2;text-align:center;margin-bottom:28px;animation:titleFloat 2.5s ease-in-out infinite;">
+  <div style="font-size:20px;font-weight:800;color:#fff;letter-spacing:-.3px;text-shadow:0 2px 12px rgba(90,172,26,.8);">🌿 Performa Greenhouse</div>
+  <div style="font-size:11px;color:#8fce3a;margin-top:3px;letter-spacing:.05em;">Dashboard Monitoring Panen</div>
+</div>
+
+<!-- PROGRESS BAR -->
+<div style="position:relative;z-index:2;width:260px;margin-bottom:10px;">
+  <div style="background:rgba(90,172,26,.2);border-radius:6px;height:6px;overflow:hidden;border:1px solid rgba(90,172,26,.3);">
+    <div id="ld-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#5aac1a,#8fce3a);border-radius:6px;transition:width .4s ease;box-shadow:0 0 8px rgba(90,172,26,.6);"></div>
+  </div>
+</div>
+
+<!-- STATUS -->
+<div style="position:relative;z-index:2;text-align:center;">
+  <div id="ld-status" style="font-size:12px;color:#8fce3a;font-weight:500;">Menghubungkan ke Google Sheets...</div>
+  <div id="ld-timer" style="font-size:11px;color:#639922;margin-top:2px;">0.0 detik</div>
+</div>
 
 </div>
 <div id="err-screen" style="display:none;position:fixed;inset:0;background:#f4f3ef;align-items:center;justify-content:center;flex-direction:column;gap:12px;padding:24px;text-align:center;z-index:998;">
@@ -315,6 +414,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 
 
 <script>
+
 
 
 
@@ -1326,6 +1426,7 @@ function render(){
 document.getElementById('btn-refresh').addEventListener('click', ()=>loadData(true));
 setInterval(()=>loadData(true), AUTO_REFRESH_MS);
 loadData();
+
 
 </script>
 </body>
