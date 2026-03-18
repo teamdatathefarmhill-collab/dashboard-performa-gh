@@ -288,13 +288,13 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
     </div>
     <div class="card">
       <div class="card-ttl">Outspec by Keterangan</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start;">
+      <div style="display:grid;grid-template-columns:160px 1fr;gap:12px;align-items:start;">
         <div>
-          <div style="position:relative;height:180px"><canvas id="c-os-pie"></canvas></div>
-          <div id="os-pie-legend" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px;justify-content:center;"></div>
+          <div style="position:relative;height:150px"><canvas id="c-os-pie"></canvas></div>
+          <div id="os-pie-legend" style="margin-top:5px;display:flex;flex-direction:column;gap:3px;"></div>
         </div>
         <div id="os-sub-detail">
-          <div style="font-size:10px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.04em;margin-bottom:7px;">Sub-keterangan</div>
+          <div id="os-sub-title" style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:7px;">Sub-keterangan</div>
           <div id="os-sub-bars" style="font-size:11px;color:var(--hint);font-style:italic;">Klik slice pie untuk detail</div>
         </div>
       </div>
@@ -315,6 +315,8 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 
 
 <script>
+<script>
+
 
 
 
@@ -387,10 +389,20 @@ function buildDataset(rows){
   });
 
   // Step 2: Aggregate per GH+Periode+YearMonth from DATA KEBUN + Tanggal Ref
+  // Also track first/last Tanggal Ref per GH+Periode
   const monthly={};
+  const tglRefMap={}; // { 'GH||Periode': {first, last} }
   rows.forEach(r=>{
+    if(!r['GH']||!r['Tanggal Ref']) return;
+    const tgl = r['Tanggal Ref'].substring(0,10);
+    const gpk = r['GH']+'||'+r['Periode'];
+    if(!tglRefMap[gpk]) tglRefMap[gpk]={first:tgl, last:tgl};
+    else {
+      if(tgl < tglRefMap[gpk].first) tglRefMap[gpk].first = tgl;
+      if(tgl > tglRefMap[gpk].last)  tglRefMap[gpk].last  = tgl;
+    }
     const val=parseFloat(r['DATA KEBUN']||0);
-    if(!r['GH']||!r['Tanggal Ref']||val<=0) return;
+    if(val<=0) return;
     const ym=r['Tanggal Ref'].substring(0,7);
     const mk=r['GH']+'||'+r['Periode']+'||'+ym;
     if(!monthly[mk]) monthly[mk]={premium:0,imperfect:0,outspec:0,total:0,ym,gh:r['GH'],periode:r['Periode']};
@@ -424,6 +436,12 @@ function buildDataset(rows){
     if(rec.kategori==='Belum Panen'||rec.ket_panen==='BELUM PANEN'){
       rec.selesai=0; rec.sisa=0;
     }
+    // Overwrite tgl_mulai/tgl_akhir with first/last Tanggal Ref
+    const tglRef = tglRefMap[rec.gh+'||'+rec.periode];
+    if(tglRef){
+      rec.tgl_mulai = tglRef.first;
+      rec.tgl_akhir = tglRef.last;
+    }
   });
 
   // Step 4: Outspec by Notes (kategori) and Note (sub-kategori)
@@ -446,8 +464,23 @@ function buildDataset(rows){
     }
   });
 
+  // Step 5: Build Notes→Note mapping (for pie click drill-down)
+  const notes_note_map={}, seenNN=new Set();
+  rows.forEach(r=>{
+    if((r['GRADE']||'').toUpperCase()!=='OUTSPEC'||!r['Notes']||!r['Note']||!r['DATA KEBUN']) return;
+    const val=parseFloat(r['DATA KEBUN']||0); if(val<=0) return;
+    const key=r['GH']+'||'+r['Periode']+'||'+r['Notes']+'||'+r['Note']+'||'+r['DATA KEBUN']+'||'+(r['TANGGAL']||'');
+    if(!seenNN.has(key)){
+      seenNN.add(key);
+      const mk=r['GH']+'||'+r['Periode'];
+      if(!notes_note_map[mk]) notes_note_map[mk]={};
+      if(!notes_note_map[mk][r['Notes']]) notes_note_map[mk][r['Notes']]={};
+      notes_note_map[mk][r['Notes']][r['Note']]=(notes_note_map[mk][r['Notes']][r['Note']]||0)+val;
+    }
+  });
+
   return{
-    gh_records:ghRecords, monthly, outspec_notes_map, outspec_note_map,
+    gh_records:ghRecords, monthly, tglRefMap, outspec_notes_map, outspec_note_map, notes_note_map,
     filters:{
       periodes:  [...new Set(ghRecords.map(r=>r.periode).filter(Boolean))].sort(),
       klasifikasis:[...new Set(ghRecords.map(r=>r.klasifikasi).filter(Boolean))].sort(),
@@ -831,31 +864,50 @@ function setSortMode(mode){
 
 
 function showOsSubDetail(kat, color){
-  const subEl = document.getElementById('os-sub-bars');
+  const subEl   = document.getElementById('os-sub-bars');
+  const titleEl = document.getElementById('os-sub-title');
   if(!subEl) return;
+  if(titleEl) titleEl.textContent = 'Sub-keterangan: ' + kat;
 
-  // Get sub items for this kategori from outspec_note_map
-  // Notes=kategori, Note=sub — we need to find Note items that belong to this Notes category
-  // Since we don't have a direct Notes→Note mapping in aggregated data,
-  // show all Note sub-items and label with parent kat
-  const subEntries = getOutspecAggregated('outspec_note_map');
-  if(!subEntries.length){
-    subEl.innerHTML = '<div style="font-size:11px;color:var(--hint);font-style:italic;">Tidak ada data sub-keterangan</div>';
+  // Aggregate Note subs for this specific Notes category using notes_note_map
+  const totals = {};
+  if(RAW && RAW.notes_note_map){
+    const p   = document.getElementById('f-periode').value;
+    const k   = document.getElementById('f-klas').value;
+    const g   = document.getElementById('f-gh').value;
+    Object.entries(RAW.notes_note_map).forEach(([mk, cats])=>{
+      const [gh, periode] = mk.split('||');
+      const rec = RAW.gh_records.find(r=>r.gh===gh&&r.periode===periode);
+      if(!rec) return;
+      if(p && rec.periode!==p) return;
+      if(k && rec.klasifikasi!==k) return;
+      if(g && rec.gh!==g) return;
+      const subs = cats[kat];
+      if(!subs) return;
+      Object.entries(subs).forEach(([note,val])=>{
+        totals[note] = (totals[note]||0)+val;
+      });
+    });
+  }
+
+  const entries = Object.entries(totals).sort((a,b)=>b[1]-a[1]);
+  if(!entries.length){
+    subEl.innerHTML = '<div style="font-size:11px;color:var(--hint);font-style:italic;">Tidak ada data</div>';
     return;
   }
 
-  const maxSub = subEntries[0][1] || 1;
-  const titleEl = document.getElementById('os-sub-detail').querySelector('div');
-  if(titleEl) titleEl.textContent = 'Sub-keterangan: ' + kat;
-
-  subEl.innerHTML = subEntries.slice(0,8).map(([note,val])=>{
-    const w = (val/maxSub*88).toFixed(1);
-    return `<div style="margin-bottom:6px;">
+  const maxVal = entries[0][1]||1;
+  const total  = entries.reduce((a,[,v])=>a+v,0);
+  subEl.innerHTML = entries.map(([note,val])=>{
+    const w   = (val/maxVal*90).toFixed(1);
+    const pct = total ? (val/total*100).toFixed(0) : 0;
+    return `<div style="margin-bottom:7px;">
       <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:2px;">
-        <span>${note}</span><span style="font-weight:600;">${fmtKg(val)}</span>
+        <span style="font-weight:500;">${note}</span>
+        <span style="font-weight:700;">${fmtKg(val)} <span style="color:var(--hint);font-weight:400;">(${pct}%)</span></span>
       </div>
-      <div style="background:var(--surface2);border-radius:3px;height:6px;overflow:hidden;">
-        <div style="width:${Math.max(w,4)}%;height:100%;border-radius:3px;background:${color};opacity:.85;"></div>
+      <div style="background:var(--surface2);border-radius:3px;height:5px;overflow:hidden;">
+        <div style="width:${Math.max(w,3)}%;height:100%;border-radius:3px;background:${color};opacity:.85;"></div>
       </div>
     </div>`;
   }).join('');
@@ -1254,20 +1306,27 @@ function render(){
     if(!jadwalEl.children.length) jadwalEl.innerHTML='<div style="font-size:11px;color:var(--hint);padding:4px 0">Semua GH sudah selesai</div>';
   }
 
-  // ── LAST PANEN DATE ────────────────────────────────────────────────────────
-  if(RAW && RAW.monthly){
-    const allYMs = Object.keys(RAW.monthly)
-      .filter(mk=>{ const p=mk.split('||'); return ghList.some(x=>x.gh===p[0]&&x.periode===p[1]); })
-      .map(mk=>mk.split('||')[2]).filter(Boolean).sort();
-    const lastYM = allYMs[allYMs.length-1]||'';
+  // ── LAST PANEN DATE (only from GH that are SELESAI/HABIS) ──────────────────
+  {
+    const selesaiDates = ghList
+      .filter(r=>r.ket_panen==='SELESAI'||r.ket_panen==='HABIS'||r.kategori==='Terpenuhi')
+      .map(r=>r.tgl_akhir)
+      .filter(Boolean)
+      .sort();
+    const lastDate = selesaiDates[selesaiDates.length-1]||'';
     const lastEl = document.getElementById('last-panen');
-    if(lastEl) lastEl.textContent = lastYM ? getBulanLabel(lastYM)+' ('+lastYM+')' : '—';
+    if(lastEl) lastEl.textContent = lastDate || '—';
   }
 
   // ── FOOTER ────────────────────────────────────────────────────────────────
   const footerEl = document.getElementById('footer');
   if(footerEl) footerEl.textContent=`Data: ${ghList.length} GH · ${RAW?RAW.total_rows.toLocaleString():0} records · Diperbarui: ${RAW?RAW.loaded_at:''}`;
 }
+
+// ── STARTUP ───────────────────────────────────────────────────────────────────
+document.getElementById('btn-refresh').addEventListener('click', ()=>loadData(true));
+setInterval(()=>loadData(true), AUTO_REFRESH_MS);
+loadData();
 
 </script>
 </body>
