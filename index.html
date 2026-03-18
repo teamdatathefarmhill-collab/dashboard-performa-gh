@@ -839,56 +839,48 @@ function getOutspecAggregated(mapKey){
 function getOutspecNotes(filtered){ return getOutspecAggregated('outspec_notes_map'); }
 
 
-// Hitung breakdown panen per bulan secara proporsional
-// berdasarkan tgl_mulai dan tgl_akhir
+// Hitung breakdown panen per bulan dari data aktual (RAW.monthly)
+// Hanya bulan yang benar-benar ada data Tanggal Ref yang ditampilkan
 function getMonthlyBreakdown(r){
-  const start = r.tgl_mulai ? new Date(r.tgl_mulai) : null;
-  const end   = r.tgl_akhir ? new Date(r.tgl_akhir) : new Date();
-  if(!start) return [];
-
-  const totalKg  = r.selesai || 0;
-  const totalEst = r.est     || 0;
-
-  // Collect all months between start and end
-  const months = [];
-  const cur = new Date(start.getFullYear(), start.getMonth(), 1);
-  const endMonth = new Date(end.getFullYear(), end.getMonth(), 1);
-  while(cur <= endMonth){
-    months.push(cur.getFullYear()+'-'+String(cur.getMonth()+1).padStart(2,'0'));
-    cur.setMonth(cur.getMonth()+1);
-  }
-  if(!months.length) return [];
-
-  // Calculate days in each month that overlap with harvest period
-  const dayCounts = months.map(ym=>{
-    const [y,m] = ym.split('-').map(Number);
-    const mStart = new Date(y,m-1,1);
-    const mEnd   = new Date(y,m,0); // last day of month
-    const overlapStart = start > mStart ? start : mStart;
-    const overlapEnd   = end   < mEnd   ? end   : mEnd;
-    const days = Math.max(0, (overlapEnd - overlapStart)/(1000*60*60*24) + 1);
-    return {ym, days};
-  });
-
-  const totalDays = dayCounts.reduce((a,d)=>a+d.days,0);
-  if(!totalDays) return [];
+  if(!RAW || !RAW.monthly) return [];
 
   const MONTH_LABELS = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
-  return dayCounts.filter(d=>d.days>0).map(d=>{
-    const pct    = d.days / totalDays;
-    const kg     = totalKg  * pct;
-    const estKg  = totalEst * pct;
-    const pctEst = estKg ? (kg/estKg*100) : 0;
-    const [y,mo] = d.ym.split('-').map(Number);
-    return {
-      ym:    d.ym,
-      label: MONTH_LABELS[mo-1]+' '+y,
-      kg,
-      estKg,
-      pctEst,
-      days:  d.days,
-    };
+  const result = [];
+
+  // Hitung total bulan aktual untuk pembagi estimasi per bulan
+  const activeMonths = Object.keys(RAW.monthly).filter(mk=>{
+    const parts = mk.split('||');
+    return parts[0]===r.gh && parts[1]===r.periode;
   });
+
+  const numMonths = activeMonths.length || 1;
+  // Estimasi per bulan = total est dibagi jumlah bulan aktual panen
+  const estPerMonth = (r.est || 0) / numMonths;
+
+  activeMonths.forEach(mk=>{
+    const m = RAW.monthly[mk];
+    if(!m || m.total <= 0) return;
+    const ym = mk.split('||')[2];
+    if(!ym) return;
+    const [y, mo] = ym.split('-').map(Number);
+    const pctEst = estPerMonth > 0 ? (m.total / estPerMonth * 100) : 0;
+    result.push({
+      ym,
+      label: MONTH_LABELS[mo-1] + ' ' + y,
+      kg:    m.total,
+      estKg: estPerMonth,
+      pctEst,
+    });
+  });
+
+  result.sort((a,b) => a.ym.localeCompare(b.ym));
+
+  // Hitung share% dari total aktual antar bulan
+  const totalActual = result.reduce((s,x)=>s+x.kg, 0);
+  result.forEach(b => b.sharePct = totalActual > 0 ? (b.kg/totalActual*100) : 0);
+
+  // Hanya tampilkan breakdown jika ada 2+ bulan data aktual
+  return result.length > 1 ? result : [];
 }
 
 
@@ -1100,9 +1092,8 @@ function render(){
           if(bd.length <= 1) return '';
           return '<div style="margin-top:7px;padding-top:7px;border-top:1px solid rgba(0,0,0,0.07);">' +
             '<div style="font-size:9px;font-weight:700;color:#9c9a92;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px;">Breakdown Bulanan</div>' +
-            bd.map((b,bi,arr)=>{
-              const totalKg = arr.reduce((s,x)=>s+x.kg,0);
-              const sharePct = totalKg > 0 ? (b.kg/totalKg*100).toFixed(0) : 0;
+            bd.map((b)=>{
+              const sharePct = (b.sharePct||0).toFixed(0);
               return '<div style="margin-bottom:5px;">' +
                 '<div style="display:flex;justify-content:space-between;font-size:9px;color:#6b6b66;margin-bottom:2px;">' +
                   '<span style="font-weight:600;">'+b.label+'</span>' +
