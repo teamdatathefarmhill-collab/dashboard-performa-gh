@@ -210,6 +210,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
     <div>
       <h1>Performa Greenhouse</h1>
       <div class="header-sub" id="hdr-sub">Dashboard Monitoring Panen</div>
+      <div style="font-size:11px;color:var(--hint);margin-top:2px;">Terakhir panen: <strong id="last-panen" style="color:var(--text);">—</strong></div>
     </div>
     <div class="filters">
       <div class="fpill"><label>Periode</label><select id="f-periode"><option value="">Semua</option></select></div>
@@ -250,7 +251,13 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 
   <div class="chart-row">
     <div class="card">
-      <div class="card-ttl">Progress Panen per GH</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;">
+        <div class="card-ttl" style="margin-bottom:0">Progress Panen per GH</div>
+        <div style="display:flex;gap:5px;">
+          <button id="sort-tercapai" onclick="setSortMode('tercapai')" style="font-size:10px;padding:3px 9px;border-radius:6px;border:1px solid var(--border-med);background:var(--green-bg);color:var(--green);font-weight:600;cursor:pointer;">↑ % Tercapai</button>
+          <button id="sort-est" onclick="setSortMode('est')" style="font-size:10px;padding:3px 9px;border-radius:6px;border:1px solid var(--border-med);background:var(--surface2);color:var(--muted);font-weight:600;cursor:pointer;">↑ Est. Total</button>
+        </div>
+      </div>
       <div style="position:relative;height:230px"><canvas id="c-ghbar"></canvas></div>
       <div class="leg">
         <div class="leg-item"><div class="leg-sq" style="background:#5aac1a"></div>Selesai</div>
@@ -281,10 +288,15 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
     </div>
     <div class="card">
       <div class="card-ttl">Outspec by Keterangan</div>
-      <div id="os-bars"></div>
-      <div style="margin-top:10px;padding-top:9px;border-top:1px solid var(--border)">
-        <div style="font-size:10px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.04em;margin-bottom:7px">by Sub-Keterangan (Note)</div>
-        <div style="position:relative;height:160px"><canvas id="c-os"></canvas></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start;">
+        <div>
+          <div style="position:relative;height:180px"><canvas id="c-os-pie"></canvas></div>
+          <div id="os-pie-legend" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px;justify-content:center;"></div>
+        </div>
+        <div id="os-sub-detail">
+          <div style="font-size:10px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.04em;margin-bottom:7px;">Sub-keterangan</div>
+          <div id="os-sub-bars" style="font-size:11px;color:var(--hint);font-style:italic;">Klik slice pie untuk detail</div>
+        </div>
       </div>
     </div>
     <div class="card">
@@ -303,6 +315,8 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 
 
 <script>
+<script>
+
 
 
 const PROXY_URL = 'https://script.google.com/macros/s/AKfycbzr5MO-8XXrO0jQuzmtwNO_87sdoWTKAiplAsLlq3PqsGP0wvopdpprnpMpa_nu4LVRVA/exec';
@@ -364,6 +378,7 @@ function buildDataset(rows){
         kategori:r['Kategori_Chart']||'', ket_panen:r['Keterangan Panen']||'',
         tgl_mulai:(r['Tanggal Panen Awal']||'').substring(0,10),
         tgl_akhir:(r['Tanggal Panen Akhir']||'').substring(0,10),
+        seg_selesai:parseFloat(r['seg_Selesai']||0),
         seg_sisa:parseFloat(r['seg_Sisa']||0),
         seg_gap:parseFloat(r['seg_Gap']||0),
         // Will be filled from monthly aggregation below
@@ -400,7 +415,16 @@ function buildDataset(rows){
   ghRecords.forEach(rec=>{
     const t=ghTotals[rec.gh+'||'+rec.periode]||{premium:0,imperfect:0,outspec:0,total:0};
     rec.premium=t.premium; rec.imperfect=t.imperfect; rec.outspec=t.outspec;
-    rec.selesai=t.total; rec.sisa=rec.seg_sisa; rec.gap=rec.seg_gap;
+    // selesai_dk = sum DATA KEBUN (untuk KPI total panen)
+    rec.selesai_dk = t.total;
+    // selesai/sisa/gap = dari seg_* (untuk progress bar chart - sudah dikalkulasi di sheet)
+    rec.selesai = rec.seg_selesai || 0;
+    rec.sisa    = rec.seg_sisa;
+    rec.gap     = rec.seg_gap;
+    // KPI: pakai selesai_dk jika lebih akurat, tapi untuk Belum Panen tetap 0
+    if(rec.kategori==='Belum Panen'||rec.ket_panen==='BELUM PANEN'){
+      rec.selesai=0; rec.sisa=0;
+    }
   });
 
   // Step 4: Outspec by Notes (kategori) and Note (sub-kategori)
@@ -793,6 +817,51 @@ function getMonthlyBreakdown(r){
   });
 }
 
+
+// ── SORT MODE ─────────────────────────────────────────────────────────────────
+let sortMode = 'tercapai'; // 'tercapai' | 'est'
+
+function setSortMode(mode){
+  sortMode = mode;
+  document.getElementById('sort-tercapai').style.background = mode==='tercapai' ? 'var(--green-bg)' : 'var(--surface2)';
+  document.getElementById('sort-tercapai').style.color      = mode==='tercapai' ? 'var(--green)'    : 'var(--muted)';
+  document.getElementById('sort-est').style.background      = mode==='est'      ? 'var(--blue-bg)'  : 'var(--surface2)';
+  document.getElementById('sort-est').style.color           = mode==='est'      ? 'var(--blue)'     : 'var(--muted)';
+  render();
+}
+
+
+function showOsSubDetail(kat, color){
+  const subEl = document.getElementById('os-sub-bars');
+  if(!subEl) return;
+
+  // Get sub items for this kategori from outspec_note_map
+  // Notes=kategori, Note=sub — we need to find Note items that belong to this Notes category
+  // Since we don't have a direct Notes→Note mapping in aggregated data,
+  // show all Note sub-items and label with parent kat
+  const subEntries = getOutspecAggregated('outspec_note_map');
+  if(!subEntries.length){
+    subEl.innerHTML = '<div style="font-size:11px;color:var(--hint);font-style:italic;">Tidak ada data sub-keterangan</div>';
+    return;
+  }
+
+  const maxSub = subEntries[0][1] || 1;
+  const titleEl = document.getElementById('os-sub-detail').querySelector('div');
+  if(titleEl) titleEl.textContent = 'Sub-keterangan: ' + kat;
+
+  subEl.innerHTML = subEntries.slice(0,8).map(([note,val])=>{
+    const w = (val/maxSub*88).toFixed(1);
+    return `<div style="margin-bottom:6px;">
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:2px;">
+        <span>${note}</span><span style="font-weight:600;">${fmtKg(val)}</span>
+      </div>
+      <div style="background:var(--surface2);border-radius:3px;height:6px;overflow:hidden;">
+        <div style="width:${Math.max(w,4)}%;height:100%;border-radius:3px;background:${color};opacity:.85;"></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
 function render(){
   if(!RAW) return;
   const rows = getFiltered();
@@ -809,14 +878,21 @@ function render(){
     }
   });
   const ghList = Object.values(ghMap).sort((a,b)=>{
-    // Sort by periode first (numerically), then by GH name
-    const pA = parseFloat(a.periode)||0, pB = parseFloat(b.periode)||0;
-    if(pA !== pB) return pA - pB;
+    if(sortMode === 'tercapai'){
+      const pA = a.est ? a.selesai/a.est : 0;
+      const pB = b.est ? b.selesai/b.est : 0;
+      if(Math.abs(pA-pB) > 0.001) return pB - pA;
+    } else {
+      if(Math.abs((a.est||0)-(b.est||0)) > 0.001) return (b.est||0)-(a.est||0);
+    }
+    // Secondary: periode then name
+    const nA=parseFloat(a.periode)||0, nB=parseFloat(b.periode)||0;
+    if(nA!==nB) return nA-nB;
     return a.gh.localeCompare(b.gh);
   });
 
   // Totals
-  const totSelesai = ghList.reduce((a,r)=>a+r.selesai,0);
+  const totSelesai = ghList.reduce((a,r)=>a+(r.selesai_dk||r.selesai||0),0);
   const totSisa    = ghList.reduce((a,r)=>a+r.sisa,0);
   const totEst     = ghList.reduce((a,r)=>a+r.est,0);
   const totPop     = ghList.reduce((a,r)=>a+r.pop,0);
@@ -1091,89 +1167,108 @@ function render(){
   const osSubEntries      = getOutspecAggregated('outspec_note_map');
   // Also show main category totals from outspec_map Notes field
   // For simplicity show Note (sub-keterangan) bars as main outspec bars
-  const osEl = document.getElementById('os-bars');
-  osEl.innerHTML='';
-  const maxOS2 = osKategoriEntries[0]?.[1]||1;
-  osKategoriEntries.slice(0,6).forEach(([note,val])=>{
-    const w=(val/maxOS2*90).toFixed(1);
-    const wNum=parseFloat(w);
-    const color=note.toLowerCase().includes('crack')?'#e24b4a':'#ef9f27';
-    const tc=color==='#e24b4a'?'#fff':'#633806';
-    // If bar is short (<25%), show label outside to the right
-    const labelInside = wNum >= 25;
-    const barHtml = labelInside
-      ? `<div class="os-bg"><div class="os-fill" style="width:${Math.max(w,8)}%;background:${color};color:${tc}">${fmtKg(val)}</div></div>`
-      : `<div class="os-bg" style="position:relative"><div class="os-fill" style="width:${Math.max(w,8)}%;background:${color};color:${tc}"></div><span style="position:absolute;left:calc(${Math.max(w,8)}% + 5px);top:50%;transform:translateY(-50%);font-size:10px;font-weight:700;color:${color};white-space:nowrap">${fmtKg(val)}</span></div>`;
-    osEl.insertAdjacentHTML('beforeend',`
-      <div class="os-row">
-        <div class="os-lbl">${note}</div>
-        ${barHtml}
-      </div>`);
-  });
 
-  // ── CHART 3: OUTSPEC SUB-KETERANGAN ──
-  destroyChart('c-os');
-  const ctx3 = document.getElementById('c-os').getContext('2d');
-  const osTop8 = osSubEntries.slice(0,8);
-  charts['c-os'] = new Chart(ctx3,{
-    type:'bar',
-    data:{labels:osTop8.map(([k])=>k),datasets:[{label:'Outspec (Kg)',data:osTop8.map(([,v])=>v),backgroundColor:'#e24b4a',borderRadius:3}]},
-    options:{
-      indexAxis:'y',responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${fmtKg(c.raw)}`}}},
-      scales:{
-        x:{ticks:{font:{size:9},color:'#9c9a92'},grid:{color:'rgba(0,0,0,0.04)'},border:{display:false}},
-        y:{ticks:{font:{size:9},color:'#9c9a92'},grid:{display:false},border:{display:false}}
-      }
+  // ── OUTSPEC PIE CHART + SUB DETAIL ──────────────────────────────────────────
+  const osKatEntries = getOutspecAggregated('outspec_notes_map');
+  const pieColors    = ['#ef9f27','#e24b4a','#378add','#5aac1a','#d85a30','#9c59c2','#1d9e75'];
+
+  destroyChart('c-os-pie');
+  const pieCvs = document.getElementById('c-os-pie');
+  if(osKatEntries.length && pieCvs){
+    const ctxPie = pieCvs.getContext('2d');
+    charts['c-os-pie'] = new Chart(ctxPie, {
+      type: 'pie',
+      data: {
+        labels: osKatEntries.map(([k])=>k),
+        datasets:[{
+          data: osKatEntries.map(([,v])=>v),
+          backgroundColor: pieColors.slice(0, osKatEntries.length),
+          borderWidth: 2, borderColor: '#fff', hoverOffset: 8,
+        }]
+      },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{
+          legend:{display:false},
+          tooltip:{callbacks:{label:c=>{
+            const tot = osKatEntries.reduce((a,[,v])=>a+v,0);
+            return ` ${c.label}: ${fmtKg(c.raw)} (${tot?(c.raw/tot*100).toFixed(1):0}%)`;
+          }}}
+        }
+      },
+    });
+
+    // Click handler - show sub detail
+    pieCvs.onclick = function(evt){
+      const pts = charts['c-os-pie'].getElementsAtEventForMode(evt,'nearest',{intersect:true},true);
+      if(!pts.length) return;
+      const i = pts[0].index;
+      showOsSubDetail(osKatEntries[i][0], pieColors[i%pieColors.length]);
+    };
+
+    // Legend
+    const legEl = document.getElementById('os-pie-legend');
+    if(legEl){
+      const tot = osKatEntries.reduce((a,[,v])=>a+v,0);
+      legEl.innerHTML = osKatEntries.map(([kat,val],i)=>`
+        <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted);cursor:pointer;"
+          onclick="showOsSubDetail('${kat}','${pieColors[i%pieColors.length]}')">
+          <div style="width:9px;height:9px;border-radius:2px;background:${pieColors[i%pieColors.length]};flex-shrink:0"></div>
+          ${kat} ${tot?(val/tot*100).toFixed(0):0}%
+        </div>`).join('');
     }
-  });
 
-  // ── PRODUKTIVITAS ──
-  const ongoingGH = ghList.filter(r=>r.kategori==='Ongoing' && r.pop>0).sort((a,b)=>(b.selesai/b.pop)-(a.selesai/a.pop));
-  const prodEl = document.getElementById('prod-bars');
-  prodEl.innerHTML='';
-  const maxKg = ongoingGH.length ? ongoingGH[0].selesai/ongoingGH[0].pop : 1;
-  ongoingGH.forEach(r=>{
-    const kpp = r.selesai/r.pop;
-    const w   = maxKg ? Math.min(kpp/maxKg*88,88).toFixed(1) : 0;
-    const col = kpp>=maxKg*0.7?'#378add':'#5dcaa5';
-    const tc  = col==='#5dcaa5'?'#04342c':'#fff';
-    prodEl.insertAdjacentHTML('beforeend',`
-      <div class="prod-row">
-        <div class="prod-lbl" title="${r.gh}">${r.gh}</div>
-        <div class="prod-bg"><div class="prod-fill" style="width:${Math.max(w,14)}%;background:${col};color:${tc}">${kpp.toFixed(2)}</div></div>
-      </div>`);
-  });
-  if(!ongoingGH.length) prodEl.innerHTML='<div style="font-size:11px;color:var(--hint);padding:6px 0">Tidak ada GH ongoing</div>';
+    // Auto-show first category sub detail
+    if(osKatEntries.length) showOsSubDetail(osKatEntries[0][0], pieColors[0]);
+  }
 
-  // ── JADWAL ──
-  const jadwalEl = document.getElementById('jadwal-list');
-  jadwalEl.innerHTML='';
-  // Belum panen first
-  ghList.filter(r=>r.kategori==='Belum Panen').forEach(r=>{
-    jadwalEl.insertAdjacentHTML('beforeend',`
-      <div class="sched-item"><span>${r.gh}</span><span class="sdate sd-pending">${r.tgl_mulai||'—'}</span></div>`);
-  });
-  // Ongoing
-  ghList.filter(r=>r.kategori==='Ongoing').sort((a,b)=>a.tgl_akhir.localeCompare(b.tgl_akhir)).forEach(r=>{
-    jadwalEl.insertAdjacentHTML('beforeend',`
-      <div class="sched-item"><span>${r.gh}</span><span class="sdate sd-soon">${r.tgl_akhir||'Ongoing'}</span></div>`);
-  });
-  if(!jadwalEl.children.length) jadwalEl.innerHTML='<div style="font-size:11px;color:var(--hint);padding:4px 0">Semua GH sudah selesai</div>';
+  // ── PRODUKTIVITAS ──────────────────────────────────────────────────────────
+  const ongoingGH=ghList.filter(r=>r.kategori==='Ongoing'&&r.pop>0).sort((a,b)=>(b.selesai/b.pop)-(a.selesai/a.pop));
+  const prodEl=document.getElementById('prod-bars');
+  if(prodEl){
+    prodEl.innerHTML='';
+    const maxKg=ongoingGH.length?ongoingGH[0].selesai/ongoingGH[0].pop:1;
+    ongoingGH.forEach(r=>{
+      const kpp=r.selesai/r.pop;
+      const w=maxKg?Math.min(kpp/maxKg*88,88).toFixed(1):0;
+      const col=kpp>=maxKg*0.7?'#378add':'#5dcaa5';
+      const tc=col==='#5dcaa5'?'#04342c':'#fff';
+      prodEl.insertAdjacentHTML('beforeend',`
+        <div class="prod-row">
+          <div class="prod-lbl" title="${r.gh}">${r.gh}</div>
+          <div class="prod-bg"><div class="prod-fill" style="width:${Math.max(w,14)}%;background:${col};color:${tc}">${kpp.toFixed(2)}</div></div>
+        </div>`);
+    });
+    if(!ongoingGH.length) prodEl.innerHTML='<div style="font-size:11px;color:var(--hint);padding:6px 0">Tidak ada GH ongoing</div>';
+  }
 
-  // FOOTER
-  document.getElementById('footer').textContent = `Data: ${ghList.length} GH · ${rows.length} records · Periode ${document.getElementById('f-periode').value||'Semua'} · ${k}`;
+  // ── JADWAL ─────────────────────────────────────────────────────────────────
+  const jadwalEl=document.getElementById('jadwal-list');
+  if(jadwalEl){
+    jadwalEl.innerHTML='';
+    ghList.filter(r=>r.kategori==='Belum Panen').forEach(r=>{
+      jadwalEl.insertAdjacentHTML('beforeend',`<div class="sched-item"><span>${pFilter?r.gh:r.gh+' ('+r.periode+')'}</span><span class="sdate sd-pending">${r.tgl_mulai||'—'}</span></div>`);
+    });
+    ghList.filter(r=>r.kategori==='Ongoing').sort((a,b)=>a.tgl_akhir.localeCompare(b.tgl_akhir)).forEach(r=>{
+      jadwalEl.insertAdjacentHTML('beforeend',`<div class="sched-item"><span>${pFilter?r.gh:r.gh+' ('+r.periode+')'}</span><span class="sdate sd-soon">${r.tgl_akhir||'Ongoing'}</span></div>`);
+    });
+    if(!jadwalEl.children.length) jadwalEl.innerHTML='<div style="font-size:11px;color:var(--hint);padding:4px 0">Semua GH sudah selesai</div>';
+  }
+
+  // ── LAST PANEN DATE ────────────────────────────────────────────────────────
+  if(RAW && RAW.monthly){
+    const allYMs = Object.keys(RAW.monthly)
+      .filter(mk=>{ const p=mk.split('||'); return ghList.some(x=>x.gh===p[0]&&x.periode===p[1]); })
+      .map(mk=>mk.split('||')[2]).filter(Boolean).sort();
+    const lastYM = allYMs[allYMs.length-1]||'';
+    const lastEl = document.getElementById('last-panen');
+    if(lastEl) lastEl.textContent = lastYM ? getBulanLabel(lastYM)+' ('+lastYM+')' : '—';
+  }
+
+  // ── FOOTER ────────────────────────────────────────────────────────────────
+  const footerEl = document.getElementById('footer');
+  if(footerEl) footerEl.textContent=`Data: ${ghList.length} GH · ${RAW?RAW.total_rows.toLocaleString():0} records · Diperbarui: ${RAW?RAW.loaded_at:''}`;
 }
-
-// Filters handled by cascadeFilters inside initFilters()
-
-// Refresh button
-document.getElementById('btn-refresh').addEventListener('click', ()=>loadData(true));
-// Auto-refresh setiap 5 menit
-setInterval(()=>loadData(true), AUTO_REFRESH_MS);
-// Initial load
-loadData();
-
 
 </script>
 </body>
