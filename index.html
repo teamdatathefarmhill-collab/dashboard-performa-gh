@@ -421,6 +421,7 @@ function buildDataset(rows){
         seg_selesai:parseFloat(r['seg_Selesai']||0),
         seg_sisa:parseFloat(r['seg_Sisa']||0),
         seg_gap:parseFloat(r['seg_Gap']||0),
+        total_col:parseFloat(r['Total']||0),
         // Will be filled from monthly aggregation below
         premium:0, imperfect:0, outspec:0, selesai:0, sisa:0, gap:0,
       });
@@ -467,14 +468,15 @@ function buildDataset(rows){
     const t=ghTotals[rec.gh+'||'+rec.periode]||{premium:0,imperfect:0,outspec:0,total:0};
     rec.premium=t.premium; rec.imperfect=t.imperfect; rec.outspec=t.outspec;
     // selesai_dk = sum DATA KEBUN (untuk KPI total panen)
-    rec.selesai_dk = t.total;
-    // selesai/sisa/gap = dari seg_* (untuk progress bar chart - sudah dikalkulasi di sheet)
-    rec.selesai = rec.seg_selesai || 0;
-    rec.sisa    = rec.seg_sisa;
-    rec.gap     = rec.seg_gap;
-    // KPI: pakai selesai_dk jika lebih akurat, tapi untuk Belum Panen tetap 0
+    // selesai = Total col from sheet (actual harvested = Premium+Imperfect+Outspec)
+    // selesai_dk = same (Total col is accurate, not sum DATA KEBUN which includes future)
+    rec.selesai    = rec.total_col || rec.seg_selesai || 0;
+    rec.selesai_dk = rec.total_col || t.total || 0;
+    rec.sisa       = rec.seg_sisa;
+    rec.gap        = rec.seg_gap;
+    // Belum Panen: force 0
     if(rec.kategori==='Belum Panen'||rec.ket_panen==='BELUM PANEN'){
-      rec.selesai=0; rec.sisa=0;
+      rec.selesai=0; rec.selesai_dk=0; rec.sisa=0;
     }
     // Overwrite tgl_mulai/tgl_akhir with first/last Tanggal Ref (more accurate)
     const tglRef=tglRefMap[rec.gh+'||'+rec.periode];
