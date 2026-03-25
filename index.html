@@ -164,13 +164,9 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 .rbtn{display:flex;align-items:center;gap:5px;padding:6px 12px;border-radius:20px;border:1px solid var(--border-med);background:var(--surface);font-size:11px;color:var(--blue);font-weight:600;cursor:pointer;box-shadow:var(--shadow);}
 .rbtn:hover{background:var(--blue-bg);}
 .blive{background:var(--teal-bg);color:var(--teal);animation:livepulse 2s ease-in-out infinite;}
-
-
 .skel{background:linear-gradient(90deg,#e8e7e1 25%,#f0efe9 50%,#e8e7e1 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;}
 @keyframes shimmer{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
-
-/* PRINT / PDF */
-@media print {
+@media print{
   body{background:#fff;font-size:11px;}
   #loading-screen,#err-screen{display:none!important;}
   .filters,#btn-refresh,#btn-pdf,#quick-bulan-btns,#pill-bulan{display:none!important;}
@@ -468,22 +464,22 @@ function buildDataset(rows){
   // Step 1: Dedup GH+Periode for meta info (est, pop, kategori, dates)
   const seen=new Set(), ghRecords=[];
   rows.forEach(r=>{
-    if(!r['GH']||!r['Periode']) return; // FIX: skip baris tanpa GH atau Periode
-    // FIX: trim whitespace dari GH & Periode agar tidak ada duplikat tersembunyi
-    r['GH']      = (r['GH']||'').trim();
-    r['Periode'] = (r['Periode']||'').trim();
     const key=r['GH']+'||'+r['Periode'];
-    if(!seen.has(key)){
+    if(!seen.has(key)&&r['GH']){
       seen.add(key);
       ghRecords.push({
         gh:r['GH'], periode:r['Periode'], klasifikasi:r['Klasifikasi GH'], varian:r['VARIAN'],
         pop:parseFloat(r['Populasi Awal Tanam']||0),
-        // FIX double Est: kolom 'Est' di sheet bisa double karena terhitung per varian.
-        // Gunakan seg_Selesai + seg_Sisa sebagai estimasi yang benar per GH+Periode.
-        // Fallback ke kolom 'Est' hanya jika seg tidak tersedia.
-        est: (parseFloat(r['seg_Selesai']||0) + parseFloat(r['seg_Sisa']||0)) ||
-             parseFloat(r['Est']||0) ||
-             parseFloat(r['Populasi Awal Tanam']||0),
+        est:(function(){
+          const estCol = parseFloat(r['Est']||0);
+          const segSum = parseFloat(r['seg_Selesai']||0) + parseFloat(r['seg_Sisa']||0);
+          const pop    = parseFloat(r['Populasi Awal Tanam']||0);
+          // FIX: jika Est dari sheet > 1.5× seg_Selesai+seg_Sisa (indikasi double-count),
+          // gunakan seg_Selesai+seg_Sisa sebagai Est yang benar.
+          // Ini menangani kasus seperti Bergas 8 di mana Est di sheet terhitung ganda.
+          if(estCol > 0 && segSum > 0 && estCol > segSum * 1.5) return segSum;
+          return estCol || segSum || pop;
+        })(),
         kategori:r['Kategori_Chart']||'', ket_panen:r['Keterangan Panen']||'',
         tgl_mulai:(r['Tanggal Panen Awal']||'').substring(0,10),
         tgl_akhir:(r['Tanggal Panen Akhir']||'').substring(0,10),
@@ -500,7 +496,6 @@ function buildDataset(rows){
   // Step 2: Aggregate per GH+Periode+YearMonth from DATA KEBUN + Tanggal Ref
   const monthly={};
   const tglRefMap={};
-  const seenRow=new Set(); // FIX: dedup baris duplikat agar tidak double count
   rows.forEach(r=>{
     // Track first/last Tanggal Ref per GH+Periode regardless of DATA KEBUN value
     if(r['GH']&&r['Tanggal Ref']){
@@ -514,10 +509,6 @@ function buildDataset(rows){
     }
     const val=parseFloat(r['DATA KEBUN']||0);
     if(!r['GH']||!r['Tanggal Ref']||val<=0) return;
-    // FIX double-count: skip baris duplikat persis (GH+Periode+Tanggal+Grade+Nilai)
-    const rowKey=r['GH']+'||'+r['Periode']+'||'+(r['Tanggal Ref']||'')+'||'+(r['GRADE']||'')+'||'+val;
-    if(seenRow.has(rowKey)) return;
-    seenRow.add(rowKey);
     const ym=r['Tanggal Ref'].substring(0,7);
     const mk=r['GH']+'||'+r['Periode']+'||'+ym;
     if(!monthly[mk]) monthly[mk]={premium:0,imperfect:0,outspec:0,total:0,ym,gh:r['GH'],periode:r['Periode']};
@@ -541,25 +532,11 @@ function buildDataset(rows){
   ghRecords.forEach(rec=>{
     const t=ghTotals[rec.gh+'||'+rec.periode]||{premium:0,imperfect:0,outspec:0,total:0};
     rec.premium=t.premium; rec.imperfect=t.imperfect; rec.outspec=t.outspec;
-    // total_col = kolom "Total" di sheet = total panen aktual per GH (sama di semua baris GH tsb)
-    // Gunakan total_col sebagai sumber utama "selesai" karena sudah dikalkulasi di sheet.
-    // t.total (sum DATA KEBUN) dipakai hanya untuk grade breakdown.
-    // FIX: jangan pakai t.total sebagai selesai karena bisa berbeda dari total_col.
+    // selesai_dk = sum DATA KEBUN (untuk KPI total panen)
+    // selesai = Total col from sheet (actual harvested = Premium+Imperfect+Outspec)
+    // selesai_dk = same (Total col is accurate, not sum DATA KEBUN which includes future)
     rec.selesai    = rec.total_col || rec.seg_selesai || 0;
-    rec.selesai_dk = rec.selesai;
-    // FIX grade breakdown: scale premium/imperfect/outspec agar totalnya = selesai (total_col)
-    // Ini penting agar donut chart & grade bars konsisten dengan nilai selesai
-    const tGrade = t.premium + t.imperfect + t.outspec;
-    if(tGrade > 0 && rec.selesai > 0){
-      const scale = rec.selesai / tGrade;
-      rec.premium   = t.premium   * scale;
-      rec.imperfect = t.imperfect * scale;
-      rec.outspec   = t.outspec   * scale;
-    } else {
-      rec.premium   = t.premium;
-      rec.imperfect = t.imperfect;
-      rec.outspec   = t.outspec;
-    }
+    rec.selesai_dk = rec.total_col || t.total || 0;
     rec.sisa       = rec.seg_sisa;
     rec.gap        = rec.seg_gap;
     // Belum Panen: force 0
@@ -1701,12 +1678,9 @@ function render(){
 function downloadPDF(){
   const btn = document.getElementById('btn-pdf');
   if(btn){ btn.disabled=true; btn.textContent='⏳ Menyiapkan...'; }
-  // Sembunyikan elemen non-penting untuk print, lalu trigger print dialog
   setTimeout(()=>{
     window.print();
-    setTimeout(()=>{
-      if(btn){ btn.disabled=false; btn.textContent='⬇ Download PDF'; }
-    }, 1500);
+    setTimeout(()=>{ if(btn){ btn.disabled=false; btn.textContent='⬇ Download PDF'; } }, 1500);
   }, 300);
 }
 
