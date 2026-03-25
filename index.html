@@ -168,6 +168,24 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 
 .skel{background:linear-gradient(90deg,#e8e7e1 25%,#f0efe9 50%,#e8e7e1 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;}
 @keyframes shimmer{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
+
+/* PRINT / PDF */
+@media print {
+  body{background:#fff;font-size:11px;}
+  #loading-screen,#err-screen{display:none!important;}
+  .filters,#btn-refresh,#btn-pdf,#quick-bulan-btns,#pill-bulan{display:none!important;}
+  .page{max-width:100%;padding:8px 12px;}
+  .header{margin-bottom:10px;}
+  .kpi-row{grid-template-columns:repeat(3,1fr);gap:6px;}
+  .gh-row{grid-template-columns:repeat(3,1fr);gap:6px;}
+  .chart-row{grid-template-columns:1fr 1fr;gap:8px;}
+  .bot-grid{grid-template-columns:1fr 1fr;gap:8px;}
+  .insight-grid{grid-template-columns:1fr 1fr;gap:6px;}
+  .card,.kpi,.gh-card,.ins-card{box-shadow:none;border:1px solid #ddd;break-inside:avoid;}
+  canvas{max-width:100%!important;}
+  .sec{margin-top:10px;}
+  @page{margin:12mm 10mm;size:A4 landscape;}
+}
 </style>
 </head>
 <body>
@@ -292,6 +310,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
         <button class="qbtn active" onclick="setQuickBulan('all')" title="Semua">Semua</button>
       </div>
       <button class="rbtn" id="btn-refresh">↻ Refresh Data</button>
+      <button class="rbtn" id="btn-pdf" onclick="downloadPDF()" style="color:var(--red);border-color:#f09595;">⬇ Download PDF</button>
     </div>
   </div>
 
@@ -472,6 +491,7 @@ function buildDataset(rows){
   // Step 2: Aggregate per GH+Periode+YearMonth from DATA KEBUN + Tanggal Ref
   const monthly={};
   const tglRefMap={};
+  const seenRow=new Set(); // FIX: dedup baris duplikat agar tidak double count
   rows.forEach(r=>{
     // Track first/last Tanggal Ref per GH+Periode regardless of DATA KEBUN value
     if(r['GH']&&r['Tanggal Ref']){
@@ -485,6 +505,10 @@ function buildDataset(rows){
     }
     const val=parseFloat(r['DATA KEBUN']||0);
     if(!r['GH']||!r['Tanggal Ref']||val<=0) return;
+    // FIX double-count: skip baris duplikat persis (GH+Periode+Tanggal+Grade+Nilai)
+    const rowKey=r['GH']+'||'+r['Periode']+'||'+(r['Tanggal Ref']||'')+'||'+(r['GRADE']||'')+'||'+val;
+    if(seenRow.has(rowKey)) return;
+    seenRow.add(rowKey);
     const ym=r['Tanggal Ref'].substring(0,7);
     const mk=r['GH']+'||'+r['Periode']+'||'+ym;
     if(!monthly[mk]) monthly[mk]={premium:0,imperfect:0,outspec:0,total:0,ym,gh:r['GH'],periode:r['Periode']};
@@ -508,11 +532,12 @@ function buildDataset(rows){
   ghRecords.forEach(rec=>{
     const t=ghTotals[rec.gh+'||'+rec.periode]||{premium:0,imperfect:0,outspec:0,total:0};
     rec.premium=t.premium; rec.imperfect=t.imperfect; rec.outspec=t.outspec;
-    // selesai_dk = sum DATA KEBUN (untuk KPI total panen)
-    // selesai = Total col from sheet (actual harvested = Premium+Imperfect+Outspec)
-    // selesai_dk = same (Total col is accurate, not sum DATA KEBUN which includes future)
-    rec.selesai    = rec.total_col || rec.seg_selesai || 0;
-    rec.selesai_dk = rec.total_col || t.total || 0;
+    // FIX double-count: gunakan t.total (sum DATA KEBUN per bulan, sudah dedup via key unik)
+    // sebagai sumber utama. total_col dari sheet hanya sebagai fallback jika belum ada data bulan.
+    // Jangan gabungkan total_col + t.total agar tidak double count.
+    const hasMonthlySrc = t.total > 0;
+    rec.selesai    = hasMonthlySrc ? t.total : (rec.total_col || rec.seg_selesai || 0);
+    rec.selesai_dk = rec.selesai;
     rec.sisa       = rec.seg_sisa;
     rec.gap        = rec.seg_gap;
     // Belum Panen: force 0
@@ -1648,6 +1673,19 @@ function render(){
   // ── FOOTER ────────────────────────────────────────────────────────────────
   const footerEl = document.getElementById('footer');
   if(footerEl) footerEl.textContent=`Data: ${ghList.length} GH · ${RAW?RAW.total_rows.toLocaleString():0} records · Diperbarui: ${RAW?RAW.loaded_at:''}`;
+}
+
+// ── DOWNLOAD PDF ──────────────────────────────────────────────────────────────
+function downloadPDF(){
+  const btn = document.getElementById('btn-pdf');
+  if(btn){ btn.disabled=true; btn.textContent='⏳ Menyiapkan...'; }
+  // Sembunyikan elemen non-penting untuk print, lalu trigger print dialog
+  setTimeout(()=>{
+    window.print();
+    setTimeout(()=>{
+      if(btn){ btn.disabled=false; btn.textContent='⬇ Download PDF'; }
+    }, 1500);
+  }, 300);
 }
 
 // ── STARTUP ───────────────────────────────────────────────────────────────────
