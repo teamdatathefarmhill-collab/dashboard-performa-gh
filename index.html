@@ -468,13 +468,22 @@ function buildDataset(rows){
   // Step 1: Dedup GH+Periode for meta info (est, pop, kategori, dates)
   const seen=new Set(), ghRecords=[];
   rows.forEach(r=>{
+    if(!r['GH']||!r['Periode']) return; // FIX: skip baris tanpa GH atau Periode
+    // FIX: trim whitespace dari GH & Periode agar tidak ada duplikat tersembunyi
+    r['GH']      = (r['GH']||'').trim();
+    r['Periode'] = (r['Periode']||'').trim();
     const key=r['GH']+'||'+r['Periode'];
-    if(!seen.has(key)&&r['GH']){
+    if(!seen.has(key)){
       seen.add(key);
       ghRecords.push({
         gh:r['GH'], periode:r['Periode'], klasifikasi:r['Klasifikasi GH'], varian:r['VARIAN'],
         pop:parseFloat(r['Populasi Awal Tanam']||0),
-        est:parseFloat(r['Est']||0)||parseFloat(r['Populasi Awal Tanam']||0),
+        // FIX double Est: kolom 'Est' di sheet bisa double karena terhitung per varian.
+        // Gunakan seg_Selesai + seg_Sisa sebagai estimasi yang benar per GH+Periode.
+        // Fallback ke kolom 'Est' hanya jika seg tidak tersedia.
+        est: (parseFloat(r['seg_Selesai']||0) + parseFloat(r['seg_Sisa']||0)) ||
+             parseFloat(r['Est']||0) ||
+             parseFloat(r['Populasi Awal Tanam']||0),
         kategori:r['Kategori_Chart']||'', ket_panen:r['Keterangan Panen']||'',
         tgl_mulai:(r['Tanggal Panen Awal']||'').substring(0,10),
         tgl_akhir:(r['Tanggal Panen Akhir']||'').substring(0,10),
@@ -532,12 +541,25 @@ function buildDataset(rows){
   ghRecords.forEach(rec=>{
     const t=ghTotals[rec.gh+'||'+rec.periode]||{premium:0,imperfect:0,outspec:0,total:0};
     rec.premium=t.premium; rec.imperfect=t.imperfect; rec.outspec=t.outspec;
-    // FIX double-count: gunakan t.total (sum DATA KEBUN per bulan, sudah dedup via key unik)
-    // sebagai sumber utama. total_col dari sheet hanya sebagai fallback jika belum ada data bulan.
-    // Jangan gabungkan total_col + t.total agar tidak double count.
-    const hasMonthlySrc = t.total > 0;
-    rec.selesai    = hasMonthlySrc ? t.total : (rec.total_col || rec.seg_selesai || 0);
+    // total_col = kolom "Total" di sheet = total panen aktual per GH (sama di semua baris GH tsb)
+    // Gunakan total_col sebagai sumber utama "selesai" karena sudah dikalkulasi di sheet.
+    // t.total (sum DATA KEBUN) dipakai hanya untuk grade breakdown.
+    // FIX: jangan pakai t.total sebagai selesai karena bisa berbeda dari total_col.
+    rec.selesai    = rec.total_col || rec.seg_selesai || 0;
     rec.selesai_dk = rec.selesai;
+    // FIX grade breakdown: scale premium/imperfect/outspec agar totalnya = selesai (total_col)
+    // Ini penting agar donut chart & grade bars konsisten dengan nilai selesai
+    const tGrade = t.premium + t.imperfect + t.outspec;
+    if(tGrade > 0 && rec.selesai > 0){
+      const scale = rec.selesai / tGrade;
+      rec.premium   = t.premium   * scale;
+      rec.imperfect = t.imperfect * scale;
+      rec.outspec   = t.outspec   * scale;
+    } else {
+      rec.premium   = t.premium;
+      rec.imperfect = t.imperfect;
+      rec.outspec   = t.outspec;
+    }
     rec.sisa       = rec.seg_sisa;
     rec.gap        = rec.seg_gap;
     // Belum Panen: force 0
