@@ -1031,53 +1031,71 @@ function renderInsight(ghList, kpi){
   if(!el) return;
 
   const ongoingList = ghList.filter(r=>r.kategori==='Ongoing');
+  // GH yang sudah selesai panen (bukan ongoing, bukan belum panen)
   const selesaiList = ghList.filter(r=>r.kategori!=='Ongoing'&&r.kategori!=='Belum Panen');
-  const belumList   = ghList.filter(r=>r.kategori==='Belum Panen');
 
-  // ── Card 1: Perhatian Segera (GH bermasalah) ─────────────────────────────
+  // ── Card 1: Perlu Perhatian — hanya dari GH yang sudah SELESAI ────────────
+  // Urutkan dari paling baru selesai (tgl_akhir terbesar)
+  const selesaiSorted = [...selesaiList].sort((a,b)=>(b.tgl_akhir||'').localeCompare(a.tgl_akhir||''));
+
   const perhatian = [];
-  ongoingList.forEach(r=>{
-    const pct = r.est ? (r.selesai/r.est*100) : 0;
-    // Hitung sisa hari dari tgl_akhir
-    const hariSisa = r.tgl_akhir ? Math.ceil((new Date(r.tgl_akhir)-new Date())/(1000*60*60*24)) : null;
-    // GH lambat: < 40% tercapai tapi est selesai < 14 hari
-    if(hariSisa!==null && hariSisa<=14 && pct<70){
-      perhatian.push({gh:r.gh, pct, hariSisa, sisa:r.sisa, label:'Kritis', tag:'bad'});
-    } else if(pct<40){
-      perhatian.push({gh:r.gh, pct, hariSisa, sisa:r.sisa, label:'Lambat', tag:'warn'});
+
+  selesaiSorted.forEach(r=>{
+    const pct     = r.est ? (r.selesai / r.est * 100) : 0;
+    const tot     = r.premium + r.imperfect + r.outspec;
+    const osPct   = tot > 0 ? (r.outspec / tot * 100) : 0;
+    const issues  = [];
+
+    // Target tidak tercapai (< 85%)
+    if(pct < 85){
+      const gap = r.est - r.selesai;
+      issues.push({
+        gh: r.gh, tgl: r.tgl_akhir, periode: r.periode,
+        label: pct < 60 ? 'Jauh Kurang' : 'Kurang',
+        tag:   pct < 60 ? 'bad' : 'warn',
+        sub:   `${pct.toFixed(0)}% tercapai · gap ${fmt(Math.max(gap,0))} dari est. ${fmt(r.est)}`,
+      });
     }
+
+    // Outspec tinggi (> 15%) pada GH selesai — tambahkan sebagai masalah terpisah
+    if(osPct > 15){
+      issues.push({
+        gh: r.gh, tgl: r.tgl_akhir, periode: r.periode,
+        label: 'Outspec',
+        tag:   'bad',
+        sub:   `Outspec ${osPct.toFixed(1)}% (${fmt(r.outspec)}) — di atas batas 15%`,
+      });
+    }
+
+    perhatian.push(...issues);
   });
-  // GH outspec tinggi per GH
-  const highOS = ghList.filter(r=>{
-    const tot=r.premium+r.imperfect+r.outspec;
-    return tot>0 && (r.outspec/tot*100)>15;
-  }).map(r=>({gh:r.gh, osPct:(r.outspec/(r.premium+r.imperfect+r.outspec)*100)}));
+
+  // Batasi tampilan 6 item, prioritaskan tag 'bad' dulu
+  perhatian.sort((a,b)=>{
+    const o = {bad:0,warn:1,info:2};
+    if(o[a.tag]!==o[b.tag]) return o[a.tag]-o[b.tag];
+    return (b.tgl||'').localeCompare(a.tgl||''); // terbaru dulu
+  });
 
   let c1 = `<div class="ins-card">
-    <div class="ins-ttl">⚠️ Perlu Perhatian</div>`;
-  if(!perhatian.length && !highOS.length){
-    c1 += `<div class="ins-empty">Semua GH dalam kondisi normal ✓</div>`;
+    <div class="ins-ttl">⚠️ Perlu Perhatian <span style="font-size:9px;font-weight:400;color:var(--hint);text-transform:none;letter-spacing:0;">(Panen Selesai)</span></div>`;
+
+  if(!perhatian.length){
+    c1 += `<div class="ins-empty">Semua GH yang selesai memenuhi target ✓</div>`;
   } else {
-    perhatian.forEach(x=>{
+    perhatian.slice(0,6).forEach(x=>{
       c1 += `<div class="ins-item">
         <div class="ins-dot" style="background:${x.tag==='bad'?'#e24b4a':'#ef9f27'}"></div>
         <div style="flex:1">
-          <div class="ins-main">${x.gh}</div>
-          <div class="ins-sub">${x.pct.toFixed(0)}% tercapai · sisa ${fmt(x.sisa)}${x.hariSisa!==null?' · '+x.hariSisa+'h lagi':''}</div>
+          <div class="ins-main">${x.gh} <span style="font-size:9px;font-weight:400;color:var(--hint);">${x.tgl||''}</span></div>
+          <div class="ins-sub">${x.sub}</div>
         </div>
         <div class="ins-tag tag-${x.tag}">${x.label}</div>
       </div>`;
     });
-    highOS.slice(0,3).forEach(x=>{
-      c1 += `<div class="ins-item">
-        <div class="ins-dot" style="background:#e24b4a"></div>
-        <div style="flex:1">
-          <div class="ins-main">${x.gh}</div>
-          <div class="ins-sub">Outspec ${x.osPct.toFixed(1)}% — di atas batas 15%</div>
-        </div>
-        <div class="ins-tag tag-bad">Outspec</div>
-      </div>`;
-    });
+    if(perhatian.length>6){
+      c1 += `<div style="font-size:10px;color:var(--hint);padding-top:5px;">+${perhatian.length-6} masalah lainnya</div>`;
+    }
   }
   c1 += `</div>`;
 
