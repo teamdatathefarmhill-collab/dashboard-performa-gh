@@ -472,13 +472,12 @@ function buildDataset(rows){
         pop:parseFloat(r['Populasi Awal Tanam']||0),
         est:(function(){
           const estCol = parseFloat(r['Est']||0);
-          const segSum = parseFloat(r['seg_Selesai']||0) + parseFloat(r['seg_Sisa']||0);
           const pop    = parseFloat(r['Populasi Awal Tanam']||0);
-          // FIX: jika Est dari sheet > 1.5× seg_Selesai+seg_Sisa (indikasi double-count),
-          // gunakan seg_Selesai+seg_Sisa sebagai Est yang benar.
-          // Ini menangani kasus seperti Bergas 8 di mana Est di sheet terhitung ganda.
-          if(estCol > 0 && segSum > 0 && estCol > segSum * 1.5) return segSum;
-          return estCol || segSum || pop;
+          // FIX khusus Bergas 8 Periode 26.1: Est di sheet terhitung 2x (dikali 2 secara tidak sengaja).
+          // Deteksi: Est > 1.8× Populasi (gramasi wajar max ~1.5 kg/tanaman).
+          // Solusi: bagi 2 untuk mengembalikan ke nilai yang benar.
+          if(estCol > 0 && pop > 0 && estCol > pop * 1.8) return estCol / 2;
+          return estCol || pop;
         })(),
         kategori:r['Kategori_Chart']||'', ket_panen:r['Keterangan Panen']||'',
         tgl_mulai:(r['Tanggal Panen Awal']||'').substring(0,10),
