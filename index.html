@@ -1361,7 +1361,32 @@ function render(){
 
   // ── CHART 1: STACKED BAR ──
   destroyChart('ghbar');
-    const ctx1 = document.getElementById('c-ghbar').getContext('2d');
+  const ctx1 = document.getElementById('c-ghbar').getContext('2d');
+
+  // Adaptif berdasarkan jumlah GH
+  const ghCount    = ghList.length;
+  const isFew      = ghCount <= 8;
+  const isMedium   = ghCount > 8  && ghCount <= 16;
+  const isMany     = ghCount > 16;
+
+  // Tinggi chart: makin banyak GH makin tinggi agar label tidak tumpuk
+  const chartHeight = isFew ? 230 : isMedium ? 270 : 310;
+  const cvs = document.getElementById('c-ghbar');
+  if(cvs) cvs.parentElement.style.height = chartHeight + 'px';
+
+  // Ukuran font & rotasi label x-axis
+  const xFontSize  = isFew ? 9 : isMedium ? 8 : 7;
+  const xRotation  = isFew ? 45 : 90;
+
+  // Label: jika banyak GH, hanya tampilkan nama GH saja (tanpa periode)
+  // Jika perlu, potong nama GH jika terlalu panjang
+  const MAX_LBL = isFew ? 99 : isMedium ? 12 : 9; // max chars
+  const makeLabel = r => {
+    const base = isFew
+      ? (pFilter ? r.gh : r.gh + ' (' + r.periode + ')')
+      : r.gh; // banyak GH: cukup nama GH saja
+    return base.length > MAX_LBL ? base.substring(0, MAX_LBL) + '…' : base;
+  };
 
   // Build 100% stacked data
   const ghBarData = ghList.map(r=>{
@@ -1380,17 +1405,20 @@ function render(){
     afterDatasetsDraw(chart){
       const {ctx, scales:{x,y}} = chart;
       ctx.save();
-      // Total est label on top of each bar
-      ctx.font='700 10px Segoe UI,system-ui,sans-serif';
-      ctx.fillStyle='#1a1a18';
-      ctx.textAlign='center';
-      ctx.textBaseline='bottom';
-      ghList.forEach((r,i)=>{
-        const meta = chart.getDatasetMeta(0);
-        const bar  = meta.data[i];
-        if(!bar) return;
-        ctx.fillText(fmt(r.est||0), bar.x, y.getPixelForValue(100)-4);
-      });
+      // Label est di atas bar — sembunyikan jika terlalu padat
+      if(!isMany){
+        ctx.font = `700 ${isFew?10:8}px Segoe UI,system-ui,sans-serif`;
+        ctx.fillStyle='#1a1a18';
+        ctx.textAlign='center';
+        ctx.textBaseline='bottom';
+        ghList.forEach((r,i)=>{
+          const meta = chart.getDatasetMeta(0);
+          const bar  = meta.data[i];
+          if(!bar) return;
+          const lbl = isFew ? fmt(r.est||0) : fmt(r.est||0).replace(' Ton','T').replace(' Kg','K');
+          ctx.fillText(lbl, bar.x, y.getPixelForValue(100)-3);
+        });
+      }
       // 85% reference line
       const y85 = y.getPixelForValue(85);
       ctx.beginPath();
@@ -1413,7 +1441,7 @@ function render(){
   charts['ghbar'] = new Chart(ctx1,{
     type:'bar',
     data:{
-      labels: ghList.map(r=> pFilter ? r.gh : r.gh+' ('+r.periode+')'),
+      labels: ghList.map(makeLabel),
       datasets:[
         {label:'Selesai', data:ghBarData.map(d=>d.selesaiPct), backgroundColor:'#5aac1a', stack:'a', borderRadius:2},
         {label:'Sisa',    data:ghBarData.map(d=>d.sisaPct),    backgroundColor:'#f5c842', stack:'a'},
@@ -1422,17 +1450,33 @@ function render(){
     },
     options:{
       responsive:true, maintainAspectRatio:false,
-      layout:{padding:{top:22}},
+      layout:{padding:{top: isMany ? 8 : 22}},
       plugins:{
         legend:{display:false},
-        tooltip:{callbacks:{label:c=>{
-          const r   = ghList[c.dataIndex];
-          const val = c.dataset.label==='Selesai' ? r.selesai : c.dataset.label==='Sisa' ? r.sisa : r.gap;
-          return ` ${c.dataset.label}: ${fmtKg(val)} (${c.raw.toFixed(1)}%)`;
-        }}}
+        tooltip:{callbacks:{
+          title: c => {
+            // Tooltip title: selalu nama lengkap + periode
+            const r = ghList[c[0].dataIndex];
+            return r.gh + (r.periode ? ' · Periode '+r.periode : '');
+          },
+          label:c=>{
+            const r   = ghList[c.dataIndex];
+            const val = c.dataset.label==='Selesai' ? r.selesai : c.dataset.label==='Sisa' ? r.sisa : r.gap;
+            return ` ${c.dataset.label}: ${fmtKg(val)} (${c.raw.toFixed(1)}%)`;
+          }
+        }}
       },
       scales:{
-        x:{stacked:true, ticks:{font:{size:9},color:'#9c9a92',maxRotation:45}, grid:{display:false}, border:{display:false}},
+        x:{
+          stacked:true,
+          ticks:{
+            font:{size: xFontSize},
+            color:'#9c9a92',
+            maxRotation: xRotation,
+            minRotation: xRotation,
+          },
+          grid:{display:false}, border:{display:false}
+        },
         y:{stacked:true, min:0, max:100,
           ticks:{font:{size:9},color:'#9c9a92',callback:v=>v+'%'},
           grid:{color:'rgba(0,0,0,0.04)'}, border:{display:false}}
