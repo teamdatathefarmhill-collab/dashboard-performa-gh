@@ -292,6 +292,13 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
       <div class="fpill"><label>Periode</label><select id="f-periode"><option value="">Semua</option></select></div>
       <div class="fpill"><label>Klasifikasi GH</label><select id="f-klas"><option value="">Semua</option></select></div>
       <div class="fpill"><label>GH</label><select id="f-gh"><option value="">Semua</option></select></div>
+      <div class="fpill"><label>Status</label><select id="f-kategori" onchange="render()">
+        <option value="">Semua</option>
+        <option value="Ongoing">Ongoing</option>
+        <option value="Belum Panen">Belum Panen</option>
+        <option value="Terpenuhi">Selesai ✓</option>
+        <option value="Tidak Terpenuhi">Tidak Terpenuhi</option>
+      </select></div>
       <div class="fpill" id="pill-bulan" style="gap:5px;">
         <label>Bulan</label>
         <select id="f-bulan-dari" style="max-width:110px"><option value="">Awal</option></select>
@@ -302,7 +309,6 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
         <button class="qbtn" onclick="setQuickBulan('prev')" title="Bulan lalu">← Lalu</button>
         <button class="qbtn" onclick="setQuickBulan('this')" title="Bulan ini">Ini</button>
         <button class="qbtn" onclick="setQuickBulan('next')" title="Bulan depan">Depan →</button>
-        <button class="qbtn" onclick="setQuickBulan('3m')" title="3 bulan terakhir">3 Bln</button>
         <button class="qbtn active" onclick="setQuickBulan('all')" title="Semua">Semua</button>
       </div>
       <button class="rbtn" id="btn-refresh">↻ Refresh Data</button>
@@ -334,7 +340,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
   </div>
 
   <div class="sec" id="sec-insight" style="cursor:pointer;user-select:none;" onclick="toggleInsight()">
-    Insight Manager <span class="bnew">AI</span>
+    Ringkasan Insight <span class="bnew">AI</span>
     <span id="insight-toggle" style="margin-left:auto;font-size:10px;color:var(--hint);">▲ Sembunyikan</span>
   </div>
   <div id="insight-section">
@@ -874,12 +880,23 @@ function getFiltered(){
   const p       = document.getElementById('f-periode').value;
   const k       = document.getElementById('f-klas').value;
   const g       = document.getElementById('f-gh').value;
+  const kat     = document.getElementById('f-kategori') ? document.getElementById('f-kategori').value : '';
   const blnDari   = document.getElementById('f-bulan-dari')   ? document.getElementById('f-bulan-dari').value   : '';
   const blnSampai = document.getElementById('f-bulan-sampai') ? document.getElementById('f-bulan-sampai').value : '';
   let rows  = RAW ? RAW.gh_records : [];
   if(p) rows = rows.filter(r => r.periode     === p);
   if(k) rows = rows.filter(r => r.klasifikasi === k);
   if(g) rows = rows.filter(r => r.gh          === g);
+
+  // Filter status/kategori
+  if(kat){
+    rows = rows.filter(r => {
+      const isSelesai = r.kategori !== 'Ongoing' && r.kategori !== 'Belum Panen';
+      if(kat === 'Terpenuhi')        return isSelesai && (r.selesai / (r.est||1)) >= 0.85;
+      if(kat === 'Tidak Terpenuhi')  return isSelesai && (r.selesai / (r.est||1)) <  0.85;
+      return r.kategori === kat;
+    });
+  }
 
   // Terapkan filter range bulan jika ada
   const hasRange = blnDari || blnSampai;
