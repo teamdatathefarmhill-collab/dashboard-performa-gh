@@ -1031,8 +1031,14 @@ function renderInsight(ghList, kpi){
   if(!el) return;
 
   const ongoingList = ghList.filter(r=>r.kategori==='Ongoing');
-  // GH yang sudah selesai panen (bukan ongoing, bukan belum panen)
-  const selesaiList = ghList.filter(r=>r.kategori!=='Ongoing'&&r.kategori!=='Belum Panen');
+  // GH yang sudah selesai panen: bukan ongoing, bukan belum panen,
+  // DAN tgl_akhir sudah lewat (≤ hari ini) — exclude GH yang end date masih di masa depan
+  const todayStr = new Date().toISOString().substring(0,10);
+  const selesaiList = ghList.filter(r=>
+    r.kategori!=='Ongoing' &&
+    r.kategori!=='Belum Panen' &&
+    r.tgl_akhir && r.tgl_akhir <= todayStr
+  );
 
   // ── Card 1: Perlu Perhatian — hanya dari GH yang sudah SELESAI ────────────
   // Urutkan dari paling baru selesai (tgl_akhir terbesar)
