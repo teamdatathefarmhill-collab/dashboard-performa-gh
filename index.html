@@ -135,6 +135,29 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 /* NO DATA */
 .no-data{text-align:center;padding:24px;color:var(--hint);font-size:12px;}
 
+/* QUICK BULAN BUTTONS */
+.qbtn{font-size:10px;padding:4px 9px;border-radius:12px;border:1px solid var(--border-med);background:var(--surface);color:var(--muted);font-weight:600;cursor:pointer;white-space:nowrap;transition:all .15s;}
+.qbtn:hover{background:var(--blue-bg);color:var(--blue);border-color:#85b7eb;}
+.qbtn.active{background:var(--blue-bg);color:var(--blue);border-color:#85b7eb;}
+
+/* INSIGHT MANAGER */
+.insight-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;}
+@media(max-width:900px){.insight-grid{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:600px){.insight-grid{grid-template-columns:1fr;}}
+.ins-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:11px 13px;box-shadow:var(--shadow);}
+.ins-ttl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;display:flex;align-items:center;gap:5px;}
+.ins-item{display:flex;align-items:flex-start;gap:7px;padding:5px 0;border-bottom:1px solid var(--border);font-size:11px;}
+.ins-item:last-child{border-bottom:none;}
+.ins-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:3px;}
+.ins-main{font-weight:600;color:var(--text);}
+.ins-sub{font-size:10px;color:var(--hint);margin-top:1px;}
+.ins-tag{font-size:9px;font-weight:700;padding:1px 6px;border-radius:4px;margin-left:auto;flex-shrink:0;align-self:center;}
+.tag-ok{background:var(--green-bg);color:var(--green);}
+.tag-warn{background:var(--amber-bg);color:var(--amber);}
+.tag-bad{background:var(--red-bg);color:var(--red);}
+.tag-info{background:var(--blue-bg);color:var(--blue);}
+.ins-empty{font-size:11px;color:var(--hint);font-style:italic;padding:4px 0;}
+
 
 @keyframes spin{to{transform:rotate(360deg);}}
 @keyframes livepulse{0%,100%{opacity:1;}50%{opacity:.4;}}
@@ -255,9 +278,19 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
       <div class="fpill"><label>Periode</label><select id="f-periode"><option value="">Semua</option></select></div>
       <div class="fpill"><label>Klasifikasi GH</label><select id="f-klas"><option value="">Semua</option></select></div>
       <div class="fpill"><label>GH</label><select id="f-gh"><option value="">Semua</option></select></div>
-      <div class="fpill"><label>Bulan</label><select id="f-bulan">
-        <option value="">Semua Bulan</option>
-      </select></div>
+      <div class="fpill" id="pill-bulan" style="gap:5px;">
+        <label>Bulan</label>
+        <select id="f-bulan-dari" style="max-width:110px"><option value="">Awal</option></select>
+        <span style="color:var(--hint);font-size:10px;">s/d</span>
+        <select id="f-bulan-sampai" style="max-width:110px"><option value="">Akhir</option></select>
+      </div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;" id="quick-bulan-btns">
+        <button class="qbtn" onclick="setQuickBulan('prev')" title="Bulan lalu">← Lalu</button>
+        <button class="qbtn" onclick="setQuickBulan('this')" title="Bulan ini">Ini</button>
+        <button class="qbtn" onclick="setQuickBulan('next')" title="Bulan depan">Depan →</button>
+        <button class="qbtn" onclick="setQuickBulan('3m')" title="3 bulan terakhir">3 Bln</button>
+        <button class="qbtn active" onclick="setQuickBulan('all')" title="Semua">Semua</button>
+      </div>
       <button class="rbtn" id="btn-refresh">↻ Refresh Data</button>
     </div>
   </div>
@@ -283,6 +316,14 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
       <span>Progress: <strong id="op2">—</strong></span>
       <span>Est: <strong id="op3">—</strong></span>
     </div>
+  </div>
+
+  <div class="sec" id="sec-insight" style="cursor:pointer;user-select:none;" onclick="toggleInsight()">
+    Insight Manager <span class="bnew">AI</span>
+    <span id="insight-toggle" style="margin-left:auto;font-size:10px;color:var(--hint);">▲ Sembunyikan</span>
+  </div>
+  <div id="insight-section">
+    <div class="insight-grid" id="insight-grid"></div>
   </div>
 
   <div class="sec">Status per Greenhouse <span class="blive">&#x25CF; LIVE</span></div>
@@ -647,6 +688,11 @@ function getYearMonth(dateStr){
   return dateStr.substring(0,7);
 }
 
+// FIX: gunakan local date bukan toISOString() agar tidak geser karena UTC
+function localYM(date){
+  return date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0');
+}
+
 function getBulanLabel(ym){
   if(!ym) return '';
   const [y,m] = ym.split('-');
@@ -654,18 +700,13 @@ function getBulanLabel(ym){
   return months[parseInt(m)-1]+' '+y;
 }
 
+// Isi kedua dropdown bulan (dari & sampai)
 function populateBulanFilter(){
-  const sel = document.getElementById('f-bulan');
-  if(!sel || !RAW) return;
+  const selDari   = document.getElementById('f-bulan-dari');
+  const selSampai = document.getElementById('f-bulan-sampai');
+  if(!selDari || !selSampai || !RAW) return;
 
-  const now    = new Date();
-  const thisYM = now.toISOString().substring(0,7);
-  const prevDate = new Date(now.getFullYear(), now.getMonth()-1, 1);
-  const nextDate = new Date(now.getFullYear(), now.getMonth()+1, 1);
-  const prevYM = prevDate.toISOString().substring(0,7);
-  const nextYM = nextDate.toISOString().substring(0,7);
-
-  // Collect all year-months from actual Tanggal Ref data
+  // Kumpulkan semua YM dari data aktual
   const ymSet = new Set();
   if(RAW.monthly){
     Object.keys(RAW.monthly).forEach(mk=>{
@@ -673,43 +714,60 @@ function populateBulanFilter(){
       if(parts[2]) ymSet.add(parts[2]);
     });
   }
-  // Also add tgl_mulai for upcoming GH (Belum Panen)
   RAW.gh_records.forEach(r=>{
-    if((r.kategori==='Belum Panen') && r.tgl_mulai) ymSet.add(r.tgl_mulai.substring(0,7));
+    if(r.kategori==='Belum Panen' && r.tgl_mulai) ymSet.add(r.tgl_mulai.substring(0,7));
   });
   const allYMs = [...ymSet].filter(Boolean).sort();
 
-  const curVal = sel.value;
-  sel.innerHTML = '<option value="">Semua Bulan</option>';
+  const curDari   = selDari.value;
+  const curSampai = selSampai.value;
 
-  // Add shortcuts for prev/this/next month
-  const shortcuts = [
-    {val: prevYM, label: '← Bln Lalu ('+getBulanLabel(prevYM)+')'},
-    {val: thisYM, label: '● Bln Ini ('+getBulanLabel(thisYM)+')'},
-    {val: nextYM, label: '→ Bln Depan ('+getBulanLabel(nextYM)+')'},
-  ];
-  shortcuts.forEach(s=>{
-    if(allYMs.includes(s.val)){
-      const o = document.createElement('option');
-      o.value = s.val; o.textContent = s.label;
-      sel.appendChild(o);
-    }
-  });
-
-  // Add separator + all months
-  if(allYMs.length){
-    const sep = document.createElement('option');
-    sep.disabled = true; sep.textContent = '──────────';
-    sel.appendChild(sep);
+  const buildOptions = (sel, cur, emptyLabel) => {
+    sel.innerHTML = `<option value="">${emptyLabel}</option>`;
     allYMs.forEach(ym=>{
-      const o = document.createElement('option');
-      o.value = ym; o.textContent = getBulanLabel(ym);
+      const o=document.createElement('option');
+      o.value=ym; o.textContent=getBulanLabel(ym);
       sel.appendChild(o);
     });
-  }
+    if(cur && allYMs.includes(cur)) sel.value=cur;
+  };
+  buildOptions(selDari,   curDari,   '← Awal');
+  buildOptions(selSampai, curSampai, 'Akhir →');
+}
 
-  // Restore selection
-  if(curVal) sel.value = curVal;
+// Quick filter preset buttons
+let activeQuick = 'all';
+function setQuickBulan(mode){
+  activeQuick = mode;
+  // Update button highlight
+  document.querySelectorAll('.qbtn').forEach(b=>{
+    b.classList.toggle('active', b.getAttribute('onclick')===`setQuickBulan('${mode}')`);
+  });
+
+  const now    = new Date();
+  const selDari   = document.getElementById('f-bulan-dari');
+  const selSampai = document.getElementById('f-bulan-sampai');
+  if(!selDari||!selSampai) return;
+
+  if(mode==='all'){
+    selDari.value=''; selSampai.value='';
+  } else if(mode==='this'){
+    const ym = localYM(now);
+    selDari.value=ym; selSampai.value=ym;
+  } else if(mode==='prev'){
+    const d = new Date(now.getFullYear(), now.getMonth()-1, 1);
+    const ym = localYM(d);
+    selDari.value=ym; selSampai.value=ym;
+  } else if(mode==='next'){
+    const d = new Date(now.getFullYear(), now.getMonth()+1, 1);
+    const ym = localYM(d);
+    selDari.value=ym; selSampai.value=ym;
+  } else if(mode==='3m'){
+    const dDari = new Date(now.getFullYear(), now.getMonth()-2, 1);
+    selDari.value   = localYM(dDari);
+    selSampai.value = localYM(now);
+  }
+  render();
 }
 
 function initFilters(){
@@ -736,9 +794,11 @@ function initFilters(){
   ['f-periode','f-klas','f-gh'].forEach(id=>{
     document.getElementById(id).addEventListener('change', ()=>cascadeFilters(id));
   });
-  // Bulan filter triggers render directly (not cascade)
-  const bulanSel = document.getElementById('f-bulan');
-  if(bulanSel) bulanSel.addEventListener('change', render);
+  // Date range filter: kedua select trigger render langsung
+  const selDari   = document.getElementById('f-bulan-dari');
+  const selSampai = document.getElementById('f-bulan-sampai');
+  if(selDari)   selDari.addEventListener('change',   ()=>{ activeQuick=''; document.querySelectorAll('.qbtn').forEach(b=>b.classList.remove('active')); render(); });
+  if(selSampai) selSampai.addEventListener('change', ()=>{ activeQuick=''; document.querySelectorAll('.qbtn').forEach(b=>b.classList.remove('active')); render(); });
 
   // Run initial cascade from periode
   cascadeFilters('f-periode');
@@ -788,28 +848,37 @@ function cascadeFilters(changedId){
 
 
 function getFiltered(){
-  const p   = document.getElementById('f-periode').value;
-  const k   = document.getElementById('f-klas').value;
-  const g   = document.getElementById('f-gh').value;
-  const bln = document.getElementById('f-bulan') ? document.getElementById('f-bulan').value : '';
+  const p       = document.getElementById('f-periode').value;
+  const k       = document.getElementById('f-klas').value;
+  const g       = document.getElementById('f-gh').value;
+  const blnDari   = document.getElementById('f-bulan-dari')   ? document.getElementById('f-bulan-dari').value   : '';
+  const blnSampai = document.getElementById('f-bulan-sampai') ? document.getElementById('f-bulan-sampai').value : '';
   let rows  = RAW ? RAW.gh_records : [];
-  if(p)   rows = rows.filter(r => r.periode     === p);
-  if(k)   rows = rows.filter(r => r.klasifikasi === k);
-  if(g)   rows = rows.filter(r => r.gh          === g);
-  if(bln && RAW){
-    // Filter by Tanggal Ref month - GH has data in that month
+  if(p) rows = rows.filter(r => r.periode     === p);
+  if(k) rows = rows.filter(r => r.klasifikasi === k);
+  if(g) rows = rows.filter(r => r.gh          === g);
+
+  // Terapkan filter range bulan jika ada
+  const hasRange = blnDari || blnSampai;
+  if(hasRange && RAW){
+    const dari   = blnDari   || '0000-00';
+    const sampai = blnSampai || '9999-99';
+    // GH yang punya data aktual di bulan mana pun dalam range
     const hasActivity = new Set(
       Object.keys(RAW.monthly||{})
-        .filter(mk=>mk.endsWith('||'+bln))
+        .filter(mk=>{
+          const ym = mk.split('||')[2]||'';
+          return ym >= dari && ym <= sampai;
+        })
         .map(mk=>mk.split('||')[0]+'||'+mk.split('||')[1])
     );
-    // Also include GH that haven't started yet but will start in that month
     rows = rows.filter(r=>{
       const gpk = r.gh+'||'+r.periode;
       if(hasActivity.has(gpk)) return true;
-      // Include Belum Panen GH if tgl_mulai is in selected month
+      // Sertakan Belum Panen jika tgl_mulai dalam range
       if((r.kategori==='Belum Panen'||r.kat_panen==='BELUM PANEN') && r.tgl_mulai){
-        return r.tgl_mulai.substring(0,7) === bln;
+        const ym = r.tgl_mulai.substring(0,7);
+        return ym >= dari && ym <= sampai;
       }
       return false;
     });
@@ -947,11 +1016,157 @@ function showOsSubDetail(kat, color){
   }).join('');
 }
 
+// ── INSIGHT MANAGER ──────────────────────────────────────────────────────────
+let insightVisible = true;
+function toggleInsight(){
+  insightVisible = !insightVisible;
+  const sec = document.getElementById('insight-section');
+  const tog = document.getElementById('insight-toggle');
+  if(sec) sec.style.display = insightVisible ? '' : 'none';
+  if(tog) tog.textContent   = insightVisible ? '▲ Sembunyikan' : '▼ Tampilkan';
+}
+
+function renderInsight(ghList, kpi){
+  const el = document.getElementById('insight-grid');
+  if(!el) return;
+
+  const ongoingList = ghList.filter(r=>r.kategori==='Ongoing');
+  const selesaiList = ghList.filter(r=>r.kategori!=='Ongoing'&&r.kategori!=='Belum Panen');
+  const belumList   = ghList.filter(r=>r.kategori==='Belum Panen');
+
+  // ── Card 1: Perhatian Segera (GH bermasalah) ─────────────────────────────
+  const perhatian = [];
+  ongoingList.forEach(r=>{
+    const pct = r.est ? (r.selesai/r.est*100) : 0;
+    // Hitung sisa hari dari tgl_akhir
+    const hariSisa = r.tgl_akhir ? Math.ceil((new Date(r.tgl_akhir)-new Date())/(1000*60*60*24)) : null;
+    // GH lambat: < 40% tercapai tapi est selesai < 14 hari
+    if(hariSisa!==null && hariSisa<=14 && pct<70){
+      perhatian.push({gh:r.gh, pct, hariSisa, sisa:r.sisa, label:'Kritis', tag:'bad'});
+    } else if(pct<40){
+      perhatian.push({gh:r.gh, pct, hariSisa, sisa:r.sisa, label:'Lambat', tag:'warn'});
+    }
+  });
+  // GH outspec tinggi per GH
+  const highOS = ghList.filter(r=>{
+    const tot=r.premium+r.imperfect+r.outspec;
+    return tot>0 && (r.outspec/tot*100)>15;
+  }).map(r=>({gh:r.gh, osPct:(r.outspec/(r.premium+r.imperfect+r.outspec)*100)}));
+
+  let c1 = `<div class="ins-card">
+    <div class="ins-ttl">⚠️ Perlu Perhatian</div>`;
+  if(!perhatian.length && !highOS.length){
+    c1 += `<div class="ins-empty">Semua GH dalam kondisi normal ✓</div>`;
+  } else {
+    perhatian.forEach(x=>{
+      c1 += `<div class="ins-item">
+        <div class="ins-dot" style="background:${x.tag==='bad'?'#e24b4a':'#ef9f27'}"></div>
+        <div style="flex:1">
+          <div class="ins-main">${x.gh}</div>
+          <div class="ins-sub">${x.pct.toFixed(0)}% tercapai · sisa ${fmt(x.sisa)}${x.hariSisa!==null?' · '+x.hariSisa+'h lagi':''}</div>
+        </div>
+        <div class="ins-tag tag-${x.tag}">${x.label}</div>
+      </div>`;
+    });
+    highOS.slice(0,3).forEach(x=>{
+      c1 += `<div class="ins-item">
+        <div class="ins-dot" style="background:#e24b4a"></div>
+        <div style="flex:1">
+          <div class="ins-main">${x.gh}</div>
+          <div class="ins-sub">Outspec ${x.osPct.toFixed(1)}% — di atas batas 15%</div>
+        </div>
+        <div class="ins-tag tag-bad">Outspec</div>
+      </div>`;
+    });
+  }
+  c1 += `</div>`;
+
+  // ── Card 2: Proyeksi & Kecepatan Panen ────────────────────────────────────
+  // Hitung avg kg/hari dari ongoing GH berdasarkan data aktual
+  const now = new Date();
+  const velocities = ongoingList.filter(r=>r.tgl_mulai&&r.selesai>0).map(r=>{
+    const hariJalan = Math.max(1, Math.ceil((now-new Date(r.tgl_mulai))/(1000*60*60*24)));
+    const kgPerHari = r.selesai / hariJalan;
+    const hariSisa  = kgPerHari>0 ? Math.ceil(r.sisa/kgPerHari) : null;
+    const estSelesai = hariSisa ? new Date(now.getTime()+hariSisa*86400000).toISOString().substring(0,10) : null;
+    return {gh:r.gh, kgPerHari, hariSisa, estSelesai, pct: r.est?(r.selesai/r.est*100):0};
+  }).sort((a,b)=>b.kgPerHari-a.kgPerHari);
+
+  let c2 = `<div class="ins-card">
+    <div class="ins-ttl">📈 Proyeksi Selesai (Rate Aktual)</div>`;
+  if(!velocities.length){
+    c2 += `<div class="ins-empty">Tidak ada GH ongoing dengan data</div>`;
+  } else {
+    velocities.forEach(v=>{
+      const tagClass = v.pct>=70 ? 'ok' : v.pct>=40 ? 'warn' : 'bad';
+      c2 += `<div class="ins-item">
+        <div class="ins-dot" style="background:${tagClass==='ok'?'#5aac1a':tagClass==='warn'?'#ef9f27':'#e24b4a'}"></div>
+        <div style="flex:1">
+          <div class="ins-main">${v.gh} — ${v.kgPerHari.toFixed(1)} kg/hari</div>
+          <div class="ins-sub">Est selesai: ${v.estSelesai||'—'} (${v.hariSisa||'?'} hari lagi)</div>
+        </div>
+        <div class="ins-tag tag-${tagClass}">${v.pct.toFixed(0)}%</div>
+      </div>`;
+    });
+  }
+  c2 += `</div>`;
+
+  // ── Card 3: Ringkasan Kualitas ─────────────────────────────────────────────
+  // Top GH by premium %, bottom by outspec %
+  const qualityGH = ghList.filter(r=>{
+    const tot=r.premium+r.imperfect+r.outspec;
+    return tot>100; // minimal 100 kg data
+  }).map(r=>{
+    const tot=r.premium+r.imperfect+r.outspec||1;
+    return {gh:r.gh, premPct:r.premium/tot*100, osPct:r.outspec/tot*100, tot};
+  }).sort((a,b)=>b.premPct-a.premPct);
+
+  const avgPremPct = kpi.totPanen>0 ? kpi.totPrem/kpi.totPanen*100 : 0;
+  const totalOsTon = kpi.totOS;
+  const topPrem    = qualityGH.slice(0,2);
+  const bottomPrem = [...qualityGH].sort((a,b)=>a.premPct-b.premPct).slice(0,2);
+
+  let c3 = `<div class="ins-card">
+    <div class="ins-ttl">🏆 Analisis Kualitas</div>
+    <div class="ins-item" style="border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:4px;">
+      <div class="ins-dot" style="background:#639922"></div>
+      <div style="flex:1">
+        <div class="ins-main">Rata-rata Premium: ${avgPremPct.toFixed(1)}%</div>
+        <div class="ins-sub">Total outspec: ${fmt(totalOsTon)} (${kpi.pctOS.toFixed(1)}%)</div>
+      </div>
+      <div class="ins-tag ${kpi.pctOS<5?'tag-ok':kpi.pctOS<10?'tag-warn':'tag-bad'}">${kpi.pctOS<5?'Bagus':kpi.pctOS<10?'Sedang':'Tinggi'}</div>
+    </div>`;
+  if(topPrem.length){
+    c3 += `<div style="font-size:9px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.04em;margin:5px 0 3px;">Terbaik</div>`;
+    topPrem.forEach(x=>{
+      c3 += `<div class="ins-item"><div class="ins-dot" style="background:#639922"></div>
+        <div style="flex:1"><div class="ins-main">${x.gh}</div>
+        <div class="ins-sub">Premium ${x.premPct.toFixed(1)}% · Outspec ${x.osPct.toFixed(1)}%</div></div>
+        <div class="ins-tag tag-ok">★</div></div>`;
+    });
+  }
+  if(bottomPrem.length&&qualityGH.length>2){
+    c3 += `<div style="font-size:9px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.04em;margin:5px 0 3px;">Perlu Peningkatan</div>`;
+    bottomPrem.forEach(x=>{
+      const tag = x.osPct>15?'bad':x.premPct<60?'warn':'info';
+      c3 += `<div class="ins-item"><div class="ins-dot" style="background:#ef9f27"></div>
+        <div style="flex:1"><div class="ins-main">${x.gh}</div>
+        <div class="ins-sub">Premium ${x.premPct.toFixed(1)}% · Outspec ${x.osPct.toFixed(1)}%</div></div>
+        <div class="ins-tag tag-${tag}">${x.osPct>15?'Outspec↑':'Low Prem'}</div></div>`;
+    });
+  }
+  c3 += `</div>`;
+
+  el.innerHTML = c1 + c2 + c3;
+}
+
 function render(){
   if(!RAW) return;
   const rows = getFiltered();
-  const pFilter = document.getElementById('f-periode').value;
-  const bFilter = document.getElementById('f-bulan') ? document.getElementById('f-bulan').value : '';
+  const pFilter   = document.getElementById('f-periode').value;
+  const blnDari   = document.getElementById('f-bulan-dari')   ? document.getElementById('f-bulan-dari').value   : '';
+  const blnSampai = document.getElementById('f-bulan-sampai') ? document.getElementById('f-bulan-sampai').value : '';
+  const hasRangeFilter = blnDari || blnSampai;
   if(!rows.length){ document.getElementById('gh-cards').innerHTML='<div class="no-data">Tidak ada data untuk filter yang dipilih.</div>'; return; }
 
   // Aggregate GH-level (deduplicate by GH since varian filter may produce multiple rows per GH)
@@ -981,18 +1196,26 @@ function render(){
   const totSisa    = ghList.reduce((a,r)=>a+r.sisa,0);
   const totEst     = ghList.reduce((a,r)=>a+r.est,0);
   const totPop     = ghList.reduce((a,r)=>a+r.pop,0);
-  // When bulan filter active: use monthly Tanggal Ref data for accurate totals
-  function getMonthlyTotals(ghList, bln){
-    if(!bln||!RAW||!RAW.monthly) return null;
+
+  // Agregasi grade dari range bulan (atau semua jika tidak ada filter)
+  function getRangeTotals(ghList, dari, sampai){
+    if((!dari && !sampai)||!RAW||!RAW.monthly) return null;
+    const d = dari   || '0000-00';
+    const s = sampai || '9999-99';
     let prem=0,imp=0,os=0,total=0;
     ghList.forEach(r=>{
-      const mk=r.gh+'||'+r.periode+'||'+bln;
-      const m=RAW.monthly[mk];
-      if(m){ prem+=m.premium; imp+=m.imperfect; os+=m.outspec; total+=m.total; }
+      Object.keys(RAW.monthly).forEach(mk=>{
+        const parts=mk.split('||');
+        if(parts[0]!==r.gh||parts[1]!==r.periode) return;
+        const ym=parts[2]||'';
+        if(ym<d||ym>s) return;
+        const m=RAW.monthly[mk];
+        if(m){ prem+=m.premium; imp+=m.imperfect; os+=m.outspec; total+=m.total; }
+      });
     });
     return {prem,imp,os,total};
   }
-  const mTotals  = getMonthlyTotals(ghList, bFilter);
+  const mTotals  = getRangeTotals(ghList, blnDari, blnSampai);
   const totPrem  = mTotals ? mTotals.prem  : ghList.reduce((a,r)=>a+r.premium,0);
   const totImp   = mTotals ? mTotals.imp   : ghList.reduce((a,r)=>a+r.imperfect,0);
   const totOS    = mTotals ? mTotals.os    : ghList.reduce((a,r)=>a+r.outspec,0);
@@ -1044,6 +1267,9 @@ function render(){
   document.getElementById('op1').textContent = fmt(totPanen);
   document.getElementById('op2').textContent = op.toFixed(1)+'% dari estimasi';
   document.getElementById('op3').textContent = fmt(totEst);
+
+  // ── INSIGHT MANAGER ──
+  renderInsight(ghList, {totSelesai, totSisa, totEst, totPanen, totOS, totPrem, pctOS, pctTercapai, ongoingCount});
 
   // DONUT labels
   document.getElementById('lp').textContent = pctPrem.toFixed(1)+'%';
