@@ -1240,7 +1240,7 @@ function render(){
   const totOS      = mt.os;
   const totPanen   = mt.total;                              // premium+imperfect+outspec
   const totSelesai = mt.prem + mt.imp;                      // panen aktual (tanpa outspec)
-  const totSisa    = Math.max(0, totEst - totSelesai);      // sisa = Est - sudah panen
+  const totSisa    = ghList.filter(r=>r.kategori==='Ongoing').reduce((a,r)=>a+r.sisa,0); // sisa dari GH Ongoing saja
   const pctPrem    = totPanen ? totPrem/totPanen*100 : 0;
   const pctImp     = totPanen ? totImp/totPanen*100 : 0;
   const pctOS      = totPanen ? totOS/totPanen*100 : 0;
