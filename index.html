@@ -501,6 +501,9 @@ function buildDataset(rows){
   // Step 2: Aggregate per GH+Periode+YearMonth from DATA KEBUN + Tanggal Ref
   const monthly={};
   const tglRefMap={};
+  // Track first ACTUAL panen date (PERFECT or IMPERFECT only, NOT outspec)
+  // This is used to determine if a GH has truly started harvesting
+  const firstActualPanenMap={}; // gpk -> first tgl with PERFECT or IMPERFECT
   rows.forEach(r=>{
     // Track first/last Tanggal Ref per GH+Periode regardless of DATA KEBUN value
     if(r['GH']&&r['Tanggal Ref']){
@@ -510,6 +513,13 @@ function buildDataset(rows){
       else{
         if(tgl<tglRefMap[gpk].first) tglRefMap[gpk].first=tgl;
         if(tgl>tglRefMap[gpk].last)  tglRefMap[gpk].last=tgl;
+      }
+      // Track first actual panen (PERFECT/IMPERFECT only, skip OUTSPEC)
+      const grade=(r['GRADE']||'').toUpperCase();
+      const val=parseFloat(r['DATA KEBUN']||0);
+      if((grade==='PERFECT'||grade==='IMPERFECT')&&val>0){
+        if(!firstActualPanenMap[gpk]||tgl<firstActualPanenMap[gpk])
+          firstActualPanenMap[gpk]=tgl;
       }
     }
     const val=parseFloat(r['DATA KEBUN']||0);
@@ -537,22 +547,37 @@ function buildDataset(rows){
   ghRecords.forEach(rec=>{
     const t=ghTotals[rec.gh+'||'+rec.periode]||{premium:0,imperfect:0,outspec:0,total:0};
     rec.premium=t.premium; rec.imperfect=t.imperfect; rec.outspec=t.outspec;
-    // selesai_dk = sum DATA KEBUN (untuk KPI total panen)
-    // selesai = Total col from sheet (actual harvested = Premium+Imperfect+Outspec)
-    // selesai_dk = same (Total col is accurate, not sum DATA KEBUN which includes future)
-    rec.selesai    = rec.total_col || rec.seg_selesai || 0;
-    rec.selesai_dk = rec.total_col || t.total || 0;
+
+    // FIX: selesai = premium + imperfect only (actual harvest, not outspec)
+    // Use total_col from sheet if available, else sum from monthly (premium+imperfect)
+    const panenAktual = t.premium + t.imperfect;
+    rec.selesai    = rec.total_col > 0 ? rec.total_col : (rec.seg_selesai || panenAktual || 0);
+    rec.selesai_dk = rec.total_col > 0 ? rec.total_col : (panenAktual || 0);
     rec.sisa       = rec.seg_sisa;
     rec.gap        = rec.seg_gap;
-    // Belum Panen: force 0
-    if(rec.kategori==='Belum Panen'||rec.ket_panen==='BELUM PANEN'){
+
+    // FIX: Belum Panen determination
+    // A GH is "Belum Panen" if:
+    //   - kategori says so AND there is NO actual panen (PERFECT/IMPERFECT) data yet
+    // If outspec exists but no PERFECT/IMPERFECT → still Belum Panen
+    const gpk = rec.gh+'||'+rec.periode;
+    const hasActualPanen = !!firstActualPanenMap[gpk];
+    const isBelumByKategori = rec.kategori==='Belum Panen'||rec.ket_panen==='BELUM PANEN';
+    if(isBelumByKategori && !hasActualPanen){
+      // Truly belum panen — zero out harvest numbers
       rec.selesai=0; rec.selesai_dk=0; rec.sisa=0;
+    } else if(isBelumByKategori && hasActualPanen){
+      // Kategori says belum but actual data exists → override kategori to Ongoing
+      rec.kategori = 'Ongoing';
     }
-    // Overwrite tgl_mulai/tgl_akhir with first/last Tanggal Ref (more accurate)
-    const tglRef=tglRefMap[rec.gh+'||'+rec.periode];
+
+    // Overwrite tgl_mulai with first actual panen date if available,
+    // else keep original. tgl_akhir stays as last Tanggal Ref.
+    const tglRef=tglRefMap[gpk];
     if(tglRef){
-      rec.tgl_mulai=tglRef.first;
-      rec.tgl_akhir=tglRef.last;
+      // tgl_mulai: prefer first ACTUAL panen date (PERFECT/IMPERFECT)
+      rec.tgl_mulai = firstActualPanenMap[gpk] || tglRef.first;
+      rec.tgl_akhir = tglRef.last;
     }
   });
 
@@ -1211,7 +1236,10 @@ function render(){
   });
 
   // Totals
-  const totSelesai = ghList.reduce((a,r)=>a+(r.selesai_dk||r.selesai||0),0);
+  // FIX: when date range active, total panen (selesai) must also be range-filtered
+  const totSelesai = mTotals
+    ? (mTotals.prem + mTotals.imp)   // only PERFECT+IMPERFECT as "panen selesai" within range
+    : ghList.reduce((a,r)=>a+(r.selesai_dk||r.selesai||0),0);
   const totSisa    = ghList.reduce((a,r)=>a+r.sisa,0);
   const totEst     = ghList.reduce((a,r)=>a+r.est,0);
   const totPop     = ghList.reduce((a,r)=>a+r.pop,0);
