@@ -1296,25 +1296,34 @@ function render(){
   else alertEl.style.display='none';
 
   // ── Est. Akhir Bulan Ini ──────────────────────────────────────────────────
-  // Proyeksi: berapa total panen sampai akhir bulan ini, berdasarkan rate kg/hari aktual
-  // Hanya dari GH Ongoing yang sudah mulai panen bulan ini
-  const nowEst    = new Date();
+  // Est. Akhir Bulan = DATA KEBUN (sudah terjadi) + DATA KEBUN future (sisa terjadwal)
+  // Keduanya difilter hanya dari bulan yang aktif (filter Lalu/Ini/Depan/Semua)
+  // Jika filter "Semua", gunakan bulan ini (YM saat ini) sebagai default
+  const nowEst      = new Date();
   const ymThisMonth = `${nowEst.getFullYear()}-${String(nowEst.getMonth()+1).padStart(2,'0')}`;
-  const lastDayOfMonth = new Date(nowEst.getFullYear(), nowEst.getMonth()+1, 0).getDate();
-  const hariSudah = nowEst.getDate();            // hari ke-N bulan ini
-  const hariSisa  = lastDayOfMonth - hariSudah;  // sisa hari sampai akhir bulan
 
-  // Ambil total panen bulan ini (sudah terjadi) dari monthly data
-  const panenBulanIni = sumMonthly(ghList, ymThisMonth, ymThisMonth);
-  const panenSdHariIni = panenBulanIni.prem + panenBulanIni.imp; // tanpa outspec
+  // Tentukan YM bulan yang dipakai untuk Est. Akhir Bulan
+  // Jika ada filter aktif (Lalu/Ini/Depan), pakai ymDari dari filter tersebut
+  // Jika "Semua", pakai bulan ini
+  const ymEst = ymD || ymThisMonth;
 
-  // Est. Akhir Panen = panen aktual dari kolom Total sheet (selesai_dk = premium+imperfect only,
-  // bukan mt.prem+mt.imp agar outspec tidak ikut) + sisa terjadwal dari DATA KEBUN future
-  const totSelesaiGH  = ghList.reduce((a,r) => a + (r.selesai_dk || r.selesai || 0), 0);
-  const estAkhirBulan = totSelesaiGH + totSisa;
+  // Panen sudah terjadi di bulan tsb (dari RAW.monthly, hanya premium+imperfect)
+  const panenSudah = sumMonthly(ghList, ymEst, ymEst);
+  const totSelesaiBulan = panenSudah.prem + panenSudah.imp;
+
+  // Sisa terjadwal di bulan tsb (dari RAW.future, hanya premium+imperfect)
+  const ftSisaBulan  = sumFuture(ghList, ymEst, ymEst);
+  const totSisaBulan = Math.max(0, ftSisaBulan.prem + ftSisaBulan.imp);
+
+  const estAkhirBulan = totSelesaiBulan + totSisaBulan;
 
   // Kelas warna: bandingkan vs estimasi total
   const estBulanPct = totEst > 0 ? (estAkhirBulan / totEst * 100) : 0;
+
+  // Label bulan untuk subtitle KPI
+  const MONTH_LABELS_ID = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+  const [ymEstY, ymEstM] = ymEst.split('-').map(Number);
+  const labelBulanEst = MONTH_LABELS_ID[ymEstM-1] + ' ' + ymEstY;
 
   // KPI
   document.getElementById('k-pop').textContent   = totPop.toLocaleString('id-ID');
@@ -1334,7 +1343,7 @@ function render(){
   const estBlnCard = document.getElementById('k-estbln-card');
   if(estBlnEl){
     estBlnEl.textContent  = fmt(estAkhirBulan);
-    estBlnSEl.textContent = `sudah: ${fmt(totSelesaiGH)} + sisa: ${fmt(totSisa)}`;
+    estBlnSEl.textContent = `sudah: ${fmt(totSelesaiBulan)} + sisa: ${fmt(totSisaBulan)} (${labelBulanEst})`;
     estBlnCard.className  = 'kpi ' + (estBulanPct>=80 ? 'ok' : estBulanPct>=50 ? '' : 'warn');
   }
 
