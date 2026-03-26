@@ -1235,19 +1235,10 @@ function render(){
     return a.gh.localeCompare(b.gh);
   });
 
-  // Totals
-  // FIX: when date range active, total panen (selesai) must also be range-filtered
-  const totSelesai = mTotals
-    ? (mTotals.prem + mTotals.imp)   // only PERFECT+IMPERFECT as "panen selesai" within range
-    : ghList.reduce((a,r)=>a+(r.selesai_dk||r.selesai||0),0);
-  const totSisa    = ghList.reduce((a,r)=>a+r.sisa,0);
-  const totEst     = ghList.reduce((a,r)=>a+r.est,0);
-  const totPop     = ghList.reduce((a,r)=>a+r.pop,0);
-
   // Agregasi grade dari range tanggal (atau semua jika tidak ada filter)
+  // HARUS dideklarasikan sebelum totSelesai yang bergantung pada mTotals
   function getRangeTotals(ghList, dari, sampai){
     if((!dari && !sampai)||!RAW||!RAW.monthly) return null;
-    // Konversi tanggal ke YM untuk dibandingkan dengan monthly key
     const ymD = dari   ? dari.substring(0,7)   : '0000-00';
     const ymS = sampai ? sampai.substring(0,7) : '9999-99';
     let prem=0,imp=0,os=0,total=0;
@@ -1268,6 +1259,15 @@ function render(){
   const totImp   = mTotals ? mTotals.imp   : ghList.reduce((a,r)=>a+r.imperfect,0);
   const totOS    = mTotals ? mTotals.os    : ghList.reduce((a,r)=>a+r.outspec,0);
   const totPanen = mTotals ? mTotals.total : totPrem+totImp+totOS;
+
+  // Totals
+  // FIX: when date range active, total panen (selesai) must also be range-filtered
+  const totSelesai = mTotals
+    ? (mTotals.prem + mTotals.imp)   // only PERFECT+IMPERFECT as "panen selesai" within range
+    : ghList.reduce((a,r)=>a+(r.selesai_dk||r.selesai||0),0);
+  const totSisa    = ghList.reduce((a,r)=>a+r.sisa,0);
+  const totEst     = ghList.reduce((a,r)=>a+r.est,0);
+  const totPop     = ghList.reduce((a,r)=>a+r.pop,0);
   const pctPrem    = totPanen ? totPrem/totPanen*100 : 0;
   const pctImp     = totPanen ? totImp/totPanen*100 : 0;
   const pctOS      = totPanen ? totOS/totPanen*100 : 0;
