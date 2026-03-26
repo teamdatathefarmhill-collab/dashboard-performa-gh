@@ -1435,19 +1435,19 @@ function renderInsight(ghList, kpi){
       <div class="ins-tag ${kpi.pctOS<5?'tag-ok':kpi.pctOS<10?'tag-warn':'tag-bad'}">${kpi.pctOS<5?'Bagus':kpi.pctOS<10?'Sedang':'Tinggi'}</div>
     </div>`;
   if(topPrem.length){
-    c3 += `<div style="font-size:9px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.04em;margin:5px 0 3px;">Terbaik</div>`;
+    c2 += `<div style="font-size:9px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.04em;margin:5px 0 3px;">Terbaik</div>`;
     topPrem.forEach(x=>{
-      c3 += `<div class="ins-item"><div class="ins-dot" style="background:#639922"></div>
+      c2 += `<div class="ins-item"><div class="ins-dot" style="background:#639922"></div>
         <div style="flex:1"><div class="ins-main">${x.gh}</div>
         <div class="ins-sub">Premium ${x.premPct.toFixed(1)}% · Outspec ${x.osPct.toFixed(1)}%</div></div>
         <div class="ins-tag tag-ok">★</div></div>`;
     });
   }
   if(bottomPrem.length&&qualityGH.length>2){
-    c3 += `<div style="font-size:9px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.04em;margin:5px 0 3px;">Perlu Peningkatan</div>`;
+    c2 += `<div style="font-size:9px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.04em;margin:5px 0 3px;">Perlu Peningkatan</div>`;
     bottomPrem.forEach(x=>{
       const tag = x.osPct>15?'bad':x.premPct<60?'warn':'info';
-      c3 += `<div class="ins-item"><div class="ins-dot" style="background:#ef9f27"></div>
+      c2 += `<div class="ins-item"><div class="ins-dot" style="background:#ef9f27"></div>
         <div style="flex:1"><div class="ins-main">${x.gh}</div>
         <div class="ins-sub">Premium ${x.premPct.toFixed(1)}% · Outspec ${x.osPct.toFixed(1)}%</div></div>
         <div class="ins-tag tag-${tag}">${x.osPct>15?'Outspec↑':'Low Prem'}</div></div>`;
