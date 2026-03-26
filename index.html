@@ -153,8 +153,8 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 .qbtn.active{background:var(--blue-bg);color:var(--blue);border-color:#85b7eb;}
 
 /* INSIGHT MANAGER */
-.insight-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;}
-@media(max-width:900px){.insight-grid{grid-template-columns:repeat(2,1fr);}}
+.insight-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px;}
+@media(max-width:900px){.insight-grid{grid-template-columns:1fr;}}
 @media(max-width:600px){.insight-grid{grid-template-columns:1fr;}}
 .ins-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:11px 13px;box-shadow:var(--shadow);}
 .ins-ttl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;display:flex;align-items:center;gap:5px;}
@@ -1409,37 +1409,7 @@ function renderInsight(ghList, kpi){
   }
   c1 += `</div>`;
 
-  // ── Card 2: Proyeksi & Kecepatan Panen ────────────────────────────────────
-  // Hitung avg kg/hari dari ongoing GH berdasarkan data aktual
-  const now = new Date();
-  const velocities = ongoingList.filter(r=>r.tgl_mulai&&r.selesai>0).map(r=>{
-    const hariJalan = Math.max(1, Math.ceil((now-new Date(r.tgl_mulai))/(1000*60*60*24)));
-    const kgPerHari = r.selesai / hariJalan;
-    const hariSisa  = kgPerHari>0 ? Math.ceil(r.sisa/kgPerHari) : null;
-    const estSelesai = hariSisa ? new Date(now.getTime()+hariSisa*86400000).toISOString().substring(0,10) : null;
-    return {gh:r.gh, kgPerHari, hariSisa, estSelesai, pct: r.est?(r.selesai/r.est*100):0};
-  }).sort((a,b)=>b.kgPerHari-a.kgPerHari);
-
-  let c2 = `<div class="ins-card">
-    <div class="ins-ttl">📈 Proyeksi Selesai (Rate Aktual)</div>`;
-  if(!velocities.length){
-    c2 += `<div class="ins-empty">Tidak ada GH ongoing dengan data</div>`;
-  } else {
-    velocities.forEach(v=>{
-      const tagClass = v.pct>=70 ? 'ok' : v.pct>=40 ? 'warn' : 'bad';
-      c2 += `<div class="ins-item">
-        <div class="ins-dot" style="background:${tagClass==='ok'?'#5aac1a':tagClass==='warn'?'#ef9f27':'#e24b4a'}"></div>
-        <div style="flex:1">
-          <div class="ins-main">${v.gh} — ${v.kgPerHari.toFixed(1)} kg/hari</div>
-          <div class="ins-sub">Est selesai: ${v.estSelesai||'—'} (${v.hariSisa||'?'} hari lagi)</div>
-        </div>
-        <div class="ins-tag tag-${tagClass}">${v.pct.toFixed(0)}%</div>
-      </div>`;
-    });
-  }
-  c2 += `</div>`;
-
-  // ── Card 3: Ringkasan Kualitas ─────────────────────────────────────────────
+  // ── Card 2: Ringkasan Kualitas ─────────────────────────────────────────────
   // Top GH by premium %, bottom by outspec %
   const qualityGH = ghList.filter(r=>{
     const tot=r.premium+r.imperfect+r.outspec;
@@ -1454,7 +1424,7 @@ function renderInsight(ghList, kpi){
   const topPrem    = qualityGH.slice(0,2);
   const bottomPrem = [...qualityGH].sort((a,b)=>a.premPct-b.premPct).slice(0,2);
 
-  let c3 = `<div class="ins-card">
+  let c2 = `<div class="ins-card">
     <div class="ins-ttl">🏆 Analisis Kualitas</div>
     <div class="ins-item" style="border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:4px;">
       <div class="ins-dot" style="background:#639922"></div>
@@ -1483,9 +1453,9 @@ function renderInsight(ghList, kpi){
         <div class="ins-tag tag-${tag}">${x.osPct>15?'Outspec↑':'Low Prem'}</div></div>`;
     });
   }
-  c3 += `</div>`;
+  c2 += `</div>`;
 
-  el.innerHTML = c1 + c2 + c3;
+  el.innerHTML = c1 + c2;
 }
 
 function render(){
