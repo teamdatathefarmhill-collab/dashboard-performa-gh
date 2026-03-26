@@ -429,6 +429,8 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
           <th style="padding:6px 9px;font-weight:700;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;border-bottom:1px solid var(--border-med);">GH</th>
           <th style="padding:6px 9px;font-weight:700;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;border-bottom:1px solid var(--border-med);">Periode Sblm</th>
           <th style="padding:6px 9px;font-weight:700;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;border-bottom:1px solid var(--border-med);">Periode Skrg</th>
+          <th style="padding:6px 9px;font-weight:700;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;border-bottom:1px solid var(--border-med);text-align:right;">Populasi</th>
+          <th style="padding:6px 9px;font-weight:700;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;border-bottom:1px solid var(--border-med);text-align:right;">Panen Sblm</th>
           <th style="padding:6px 9px;font-weight:700;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;border-bottom:1px solid var(--border-med);text-align:right;">Total Panen</th>
           <th style="padding:6px 9px;font-weight:700;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;border-bottom:1px solid var(--border-med);text-align:right;">Trend</th>
           <th style="padding:6px 9px;font-weight:700;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;border-bottom:1px solid var(--border-med);text-align:right;">% Premium</th>
@@ -438,7 +440,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
         </tr>
       </thead>
       <tbody id="tbl-periode-body">
-        <tr><td colspan="9" style="text-align:center;padding:20px;color:var(--hint);font-size:11px;">Memuat data...</td></tr>
+        <tr><td colspan="11" style="text-align:center;padding:20px;color:var(--hint);font-size:11px;">Memuat data...</td></tr>
       </tbody>
     </table>
   </div>
@@ -820,6 +822,9 @@ function getActiveYMRange(){
 }
 
 function initFilters(){
+  const GH_WHITELIST = ['tohudan','sawahan','colomadu','bergas'];
+  const isWhitelistedGH = v => GH_WHITELIST.some(w => (v||'').toLowerCase().includes(w));
+
   // Populate all filters with full options on first load
   const fill = (id, vals, keepVal) => {
     const sel = document.getElementById(id);
@@ -830,7 +835,9 @@ function initFilters(){
   };
   fill('f-periode',  RAW.filters.periodes);
   fill('f-klas',     RAW.filters.klasifikasis);
-  fill('f-gh',       RAW.filters.ghs);
+  // Filter GH dropdown: hanya tampilkan Tohudan, Sawahan, Colomadu, Bergas
+  const filteredGHs = RAW.filters.ghs.filter(isWhitelistedGH);
+  fill('f-gh', filteredGHs);
 
   // Default: semua filter kosong (Semua)
   // Tidak set default periode agar semua data tampil saat pertama buka
@@ -867,7 +874,12 @@ function cascadeFilters(changedId){
     });
 
     // Get valid options for targetId from the filtered rows
-    const validVals = unique(rows, fields[targetId]);
+    let validVals = unique(rows, fields[targetId]);
+    // Untuk filter GH: hanya tampilkan Tohudan, Sawahan, Colomadu, Bergas
+    if(targetId === 'f-gh'){
+      const WL = ['tohudan','sawahan','colomadu','bergas'];
+      validVals = validVals.filter(v => WL.some(w => (v||'').toLowerCase().includes(w)));
+    }
 
     // Rebuild the select, preserving current value if still valid
     const sel = document.getElementById(targetId);
@@ -1203,6 +1215,7 @@ function renderPeriodeTable(){
       cPanen, pPanen, trendVal,
       cPremPct, cImpPct, cOsPct, cPctEst,
       pPremPct, pImpPct, pOsPct,
+      pop: curr.pop || 0,
     });
   });
 
@@ -1214,7 +1227,7 @@ function renderPeriodeTable(){
   });
 
   if(!rows.length){
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--hint);font-size:11px;">Tidak ada data GH selesai untuk filter yang dipilih.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:20px;color:var(--hint);font-size:11px;">Tidak ada data GH selesai untuk filter yang dipilih.</td></tr>';
     return;
   }
 
@@ -1295,6 +1308,8 @@ function renderPeriodeTable(){
       <td style="font-weight:600;white-space:nowrap;">${r.gh}</td>
       <td style="color:var(--hint);white-space:nowrap;">${r.prev ? r.prev.periode : '—'}</td>
       <td style="font-weight:600;white-space:nowrap;">${r.curr.periode}</td>
+      <td style="text-align:right;color:var(--muted);white-space:nowrap;">${r.pop > 0 ? r.pop.toLocaleString('id-ID') : '—'}</td>
+      <td style="text-align:right;color:var(--muted);white-space:nowrap;">${r.pPanen !== null && r.pPanen > 0 ? fmt(r.pPanen) : '—'}</td>
       <td style="text-align:right;font-weight:700;white-space:nowrap;">${fmt(r.cPanen)}</td>
       <td style="text-align:right;white-space:nowrap;">${trendHtml}</td>
       <td style="padding:4px 9px;">${premCell}</td>
