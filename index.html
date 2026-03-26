@@ -1240,7 +1240,12 @@ function render(){
   const totOS      = mt.os;
   const totPanen   = mt.total;                              // premium+imperfect+outspec
   const totSelesai = mt.prem + mt.imp;                      // panen aktual (tanpa outspec)
-  const totSisa    = ghList.filter(r=>r.kategori==='Ongoing').reduce((a,r)=>a+r.sisa,0); // sisa dari GH Ongoing saja
+  // totSisa: hitung dari Est GH Ongoing dikurangi panen aktual all-time GH Ongoing
+  // Ini lebih akurat daripada seg_Sisa yang statis di sheet
+  const totEstOngoing = ghList.filter(r=>r.kategori==='Ongoing').reduce((a,r)=>a+r.est,0);
+  const mtAllOngoing  = sumMonthly(ghList.filter(r=>r.kategori==='Ongoing'), null, null);
+  const totSelesaiOngoing = mtAllOngoing.prem + mtAllOngoing.imp;
+  const totSisa    = Math.max(0, totEstOngoing - totSelesaiOngoing);
   const pctPrem    = totPanen ? totPrem/totPanen*100 : 0;
   const pctImp     = totPanen ? totImp/totPanen*100 : 0;
   const pctOS      = totPanen ? totOS/totPanen*100 : 0;
@@ -1280,7 +1285,7 @@ function render(){
   const panenSdHariIni = panenBulanIni.prem + panenBulanIni.imp; // tanpa outspec
 
   // Est. Akhir Bulan = Total panen sudah terjadi + sisa panen yang masih ada
-  const estAkhirBulan = totSelesai + totSisa;
+  const estAkhirBulan = totPanen + totSisa;
 
   // Kelas warna: bandingkan vs estimasi total
   const estBulanPct = totEst > 0 ? (estAkhirBulan / totEst * 100) : 0;
@@ -1303,7 +1308,7 @@ function render(){
   const estBlnCard = document.getElementById('k-estbln-card');
   if(estBlnEl){
     estBlnEl.textContent  = fmt(estAkhirBulan);
-    estBlnSEl.textContent = `sudah: ${fmt(totSelesai)} + sisa: ${fmt(totSisa)}`;
+    estBlnSEl.textContent = `sudah: ${fmt(totPanen)} + sisa: ${fmt(totSisa)}`;
     estBlnCard.className  = 'kpi ' + (estBulanPct>=80 ? 'ok' : estBulanPct>=50 ? '' : 'warn');
   }
 
