@@ -1308,8 +1308,10 @@ function render(){
   const panenBulanIni = sumMonthly(ghList, ymThisMonth, ymThisMonth);
   const panenSdHariIni = panenBulanIni.prem + panenBulanIni.imp; // tanpa outspec
 
-  // Est. Akhir Panen = panen aktual (premium+imperfect, tanpa outspec) + sisa terjadwal
-  const estAkhirBulan = totSelesai + totSisa;
+  // Est. Akhir Panen = panen aktual dari kolom Total sheet (selesai_dk = premium+imperfect only,
+  // bukan mt.prem+mt.imp agar outspec tidak ikut) + sisa terjadwal dari DATA KEBUN future
+  const totSelesaiGH  = ghList.reduce((a,r) => a + (r.selesai_dk || r.selesai || 0), 0);
+  const estAkhirBulan = totSelesaiGH + totSisa;
 
   // Kelas warna: bandingkan vs estimasi total
   const estBulanPct = totEst > 0 ? (estAkhirBulan / totEst * 100) : 0;
@@ -1332,7 +1334,7 @@ function render(){
   const estBlnCard = document.getElementById('k-estbln-card');
   if(estBlnEl){
     estBlnEl.textContent  = fmt(estAkhirBulan);
-    estBlnSEl.textContent = `sudah: ${fmt(totSelesai)} + sisa: ${fmt(totSisa)}`;
+    estBlnSEl.textContent = `sudah: ${fmt(totSelesaiGH)} + sisa: ${fmt(totSisa)}`;
     estBlnCard.className  = 'kpi ' + (estBulanPct>=80 ? 'ok' : estBulanPct>=50 ? '' : 'warn');
   }
 
