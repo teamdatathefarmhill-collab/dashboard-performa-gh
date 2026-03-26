@@ -1307,13 +1307,13 @@ function render(){
   // Jika "Semua", pakai bulan ini
   const ymEst = ymD || ymThisMonth;
 
-  // Panen sudah terjadi di bulan tsb (dari RAW.monthly, hanya premium+imperfect)
+  // Panen sudah terjadi di bulan tsb (dari RAW.monthly, termasuk outspec)
   const panenSudah = sumMonthly(ghList, ymEst, ymEst);
-  const totSelesaiBulan = panenSudah.prem + panenSudah.imp;
+  const totSelesaiBulan = panenSudah.prem + panenSudah.imp + panenSudah.os;
 
-  // Sisa terjadwal di bulan tsb (dari RAW.future, hanya premium+imperfect)
+  // Sisa terjadwal di bulan tsb (dari RAW.future, termasuk outspec)
   const ftSisaBulan  = sumFuture(ghList, ymEst, ymEst);
-  const totSisaBulan = Math.max(0, ftSisaBulan.prem + ftSisaBulan.imp);
+  const totSisaBulan = Math.max(0, ftSisaBulan.prem + ftSisaBulan.imp + ftSisaBulan.os);
 
   const estAkhirBulan = totSelesaiBulan + totSisaBulan;
 
