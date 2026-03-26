@@ -354,6 +354,27 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
     <div class="insight-grid" id="insight-grid"></div>
   </div>
 
+  <div class="sec" style="margin-top:4px;">
+    Evaluasi &amp; Rekomendasi AI <span class="bnew">AI</span>
+  </div>
+  <div class="card" id="ai-eval-card" style="margin-bottom:14px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+      <div style="font-size:11px;color:var(--hint);line-height:1.6;max-width:680px;">
+        Analisis otomatis dari data panen yang sedang ditampilkan — mencakup pencapaian target, kualitas, dan trend antar periode. Ditujukan untuk Management & Tim Lapangan.
+      </div>
+      <button id="btn-ai-eval" onclick="generateAIEval()"
+        style="display:flex;align-items:center;gap:6px;padding:7px 15px;border-radius:20px;border:1px solid #85b7eb;background:var(--blue-bg);color:var(--blue);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;">
+        ✨ Generate Evaluasi
+      </button>
+    </div>
+    <div id="ai-eval-output" style="display:none;">
+      <div style="border-top:1px solid var(--border);padding-top:12px;" id="ai-eval-content"></div>
+    </div>
+    <div id="ai-eval-placeholder" style="text-align:center;padding:20px 0;color:var(--hint);font-size:12px;font-style:italic;">
+      Klik <strong style="color:var(--blue);">✨ Generate Evaluasi</strong> untuk mendapatkan analisis & rekomendasi dari AI berdasarkan data yang sedang ditampilkan.
+    </div>
+  </div>
+
   <div class="sec">Status per Greenhouse <span class="blive">&#x25CF; LIVE</span></div>
   <div class="gh-row" id="gh-cards"></div>
 
@@ -1960,6 +1981,147 @@ function downloadPDF(){
     window.print();
     setTimeout(()=>{ if(btn){ btn.disabled=false; btn.textContent='⬇ Download PDF'; } }, 1500);
   }, 300);
+}
+
+// ── AI EVALUASI & REKOMENDASI ─────────────────────────────────────────────────
+async function generateAIEval(){
+  if(!RAW) return;
+  const btn = document.getElementById('btn-ai-eval');
+  const output  = document.getElementById('ai-eval-output');
+  const content = document.getElementById('ai-eval-content');
+  const placeholder = document.getElementById('ai-eval-placeholder');
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Menganalisis...';
+  placeholder.style.display = 'none';
+  output.style.display = 'block';
+  content.innerHTML = `<div style="display:flex;align-items:center;gap:8px;color:var(--hint);font-size:12px;padding:8px 0;">
+    <div style="width:14px;height:14px;border:2px solid var(--blue-mid);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0;"></div>
+    AI sedang membaca data panen dan menyusun evaluasi...
+  </div>`;
+
+  try {
+    // ── Kumpulkan data snapshot dari filter aktif ──
+    const rows   = getFiltered();
+    const ghMap  = {};
+    rows.forEach(r=>{ const k=r.gh+'||'+r.periode; if(!ghMap[k]) ghMap[k]={...r}; });
+    const ghList = Object.values(ghMap);
+
+    // Ringkasan KPI
+    const totPanen   = ghList.reduce((a,r)=>a+(r.premium+r.imperfect+r.outspec),0);
+    const totPrem    = ghList.reduce((a,r)=>a+r.premium,0);
+    const totImp     = ghList.reduce((a,r)=>a+r.imperfect,0);
+    const totOS      = ghList.reduce((a,r)=>a+r.outspec,0);
+    const totEst     = ghList.reduce((a,r)=>a+r.est,0);
+    const totPop     = ghList.reduce((a,r)=>a+r.pop,0);
+    const pctTercapai = totEst>0 ? (totPanen/totEst*100).toFixed(1) : '—';
+    const pctPrem    = totPanen>0 ? (totPrem/totPanen*100).toFixed(1) : '—';
+    const pctImp     = totPanen>0 ? (totImp/totPanen*100).toFixed(1) : '—';
+    const pctOS      = totPanen>0 ? (totOS/totPanen*100).toFixed(1) : '—';
+
+    const ongoingList  = ghList.filter(r=>r.kategori==='Ongoing');
+    const selesaiList  = ghList.filter(r=>r.kategori!=='Ongoing'&&r.kategori!=='Belum Panen');
+    const belumList    = ghList.filter(r=>r.kategori==='Belum Panen');
+
+    // Per-GH detail (top 20 saja agar prompt tidak terlalu panjang)
+    const ghDetail = ghList.slice(0,20).map(r=>{
+      const tot = r.premium+r.imperfect+r.outspec||1;
+      const pPct = (r.premium/tot*100).toFixed(1);
+      const iPct = (r.imperfect/tot*100).toFixed(1);
+      const oPct = (r.outspec/tot*100).toFixed(1);
+      const tPct = r.est>0 ? (((r.premium+r.imperfect+r.outspec)/r.est)*100).toFixed(1) : '—';
+      return `${r.gh} (Periode ${r.periode}): Panen ${fmt(r.premium+r.imperfect+r.outspec)}, Est ${fmt(r.est)}, Tercapai ${tPct}%, Premium ${pPct}%, Imperfect ${iPct}%, Outspec ${oPct}%, Status: ${r.kategori}`;
+    }).join('\n');
+
+    // Top outspec issues
+    const topOS = [...ghList].filter(r=>{
+      const tot=r.premium+r.imperfect+r.outspec;
+      return tot>0 && (r.outspec/tot*100)>10;
+    }).sort((a,b)=>(b.outspec/(b.premium+b.imperfect+b.outspec))-(a.outspec/(a.premium+a.imperfect+a.outspec)))
+    .slice(0,5).map(r=>{
+      const tot=r.premium+r.imperfect+r.outspec;
+      return `${r.gh}: Outspec ${(r.outspec/tot*100).toFixed(1)}%`;
+    }).join(', ');
+
+    // GH tidak tercapai
+    const tidakTercapai = selesaiList.filter(r=>r.est>0&&((r.premium+r.imperfect+r.outspec)/r.est)<0.85)
+      .map(r=>`${r.gh} (${((r.premium+r.imperfect+r.outspec)/r.est*100).toFixed(0)}%)`)
+      .join(', ') || 'Tidak ada';
+
+    const fPeriode = document.getElementById('f-periode').value || 'Semua';
+    const fKlas    = document.getElementById('f-klas').value    || 'Semua';
+
+    const prompt = `Kamu adalah konsultan agrikultur yang menganalisis data panen greenhouse melon. Berikan evaluasi mendalam dan rekomendasi actionable dalam Bahasa Indonesia.
+
+DATA PANEN GREENHOUSE:
+Filter aktif: Periode=${fPeriode}, Klasifikasi=${fKlas}
+Total GH dianalisis: ${ghList.length} (Ongoing: ${ongoingList.length}, Selesai: ${selesaiList.length}, Belum Panen: ${belumList.length})
+Populasi tanam total: ${totPop.toLocaleString()} tanaman
+Total panen aktual: ${fmt(totPanen)} dari estimasi ${fmt(totEst)} → ${pctTercapai}% tercapai
+Komposisi grade: Premium ${pctPrem}% | Imperfect ${pctImp}% | Outspec ${pctOS}%
+
+DETAIL PER GH:
+${ghDetail}
+
+GH dengan outspec tinggi (>10%): ${topOS || 'Tidak ada'}
+GH selesai tidak mencapai target (<85%): ${tidakTercapai}
+
+Tulis evaluasi dengan format berikut (gunakan markdown):
+
+## 📊 Ringkasan Eksekutif
+[2-3 kalimat ringkasan kondisi panen secara keseluruhan untuk management]
+
+## ✅ Pencapaian & Kekuatan
+[Poin-poin positif: GH yang perform baik, target tercapai, kualitas premium tinggi]
+
+## ⚠️ Masalah & Temuan
+[Poin-poin masalah: GH yang tidak tercapai, outspec tinggi, anomali]
+
+## 🔧 Rekomendasi Tim Lapangan
+[Langkah teknis konkret per isu yang ditemukan, spesifik dan actionable]
+
+## 📈 Rekomendasi Management
+[Keputusan strategis: alokasi sumber daya, target periode berikutnya, prioritas]
+
+Gunakan data aktual yang diberikan, sebutkan nama GH spesifik, dan beri angka nyata dalam rekomendasi.`;
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1500,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    const data = await response.json();
+    if(!response.ok) throw new Error(data.error?.message || 'API error');
+
+    const text = data.content?.[0]?.text || '';
+
+    // Render markdown sederhana
+    const html = text
+      .replace(/^## (.+)$/gm, '<h3 style="font-size:12px;font-weight:700;color:var(--text);margin:14px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--border);">$1</h3>')
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/^- (.+)$/gm, '<div style="display:flex;gap:7px;margin-bottom:5px;font-size:11px;line-height:1.6;"><span style="color:var(--green-mid);flex-shrink:0;margin-top:1px;">•</span><span>$1</span></div>')
+      .replace(/\n\n/g, '<div style="margin-bottom:6px;"></div>')
+      .replace(/\n/g, ' ');
+
+    const now = new Date().toLocaleString('id-ID');
+    content.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:6px;">
+        <div style="font-size:10px;color:var(--hint);">🤖 Dibuat oleh Claude AI · ${now} · Filter: Periode ${fPeriode}, Klasifikasi ${fKlas}</div>
+        <button onclick="generateAIEval()" style="font-size:10px;padding:3px 10px;border-radius:10px;border:1px solid var(--border-med);background:var(--surface2);color:var(--muted);cursor:pointer;font-weight:600;">↻ Refresh</button>
+      </div>
+      <div style="font-size:11px;line-height:1.7;color:var(--text);">${html}</div>`;
+
+  } catch(e) {
+    content.innerHTML = `<div style="color:var(--red);font-size:11px;padding:6px 0;">Gagal generate evaluasi: ${e.message}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '✨ Generate Evaluasi';
+  }
 }
 
 // ── STARTUP ───────────────────────────────────────────────────────────────────
