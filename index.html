@@ -1100,10 +1100,21 @@ function renderPeriodeTable(){
   const tbody = document.getElementById('tbl-periode-body');
   if(!tbody) return;
 
-  // Ambil semua GH records, lalu kelompokkan per nama GH
-  const allRecs = RAW.gh_records;
+  // ── Ambil filter aktif dari UI ───────────────────────────────────────────
+  const fPeriode = document.getElementById('f-periode').value;
+  const fKlas    = document.getElementById('f-klas').value;
+  const fGH      = document.getElementById('f-gh').value;
 
-  // Hitung totals per GH+Periode dari monthly data
+  // ── Whitelist nama GH yang ditampilkan (fix #2) ──────────────────────────
+  const GH_WHITELIST = ['tohudan','sawahan','colomadu','bergas'];
+  function isWhitelisted(ghName){
+    const lower = (ghName||'').toLowerCase();
+    return GH_WHITELIST.some(w => lower.includes(w));
+  }
+
+  // ── Hitung totals per GH+Periode dari monthly saja (exclude future) ──────
+  // Fix #4: hanya GH yang sudah selesai → hanya ambil dari RAW.monthly (data real)
+  // RAW.future adalah data Tanggal Ref > hari ini (ongoing/belum selesai) → tidak ikut
   function getGHTotals(gh, periode){
     let prem=0, imp=0, os=0, total=0;
     Object.keys(RAW.monthly||{}).forEach(mk=>{
@@ -1112,35 +1123,57 @@ function renderPeriodeTable(){
       const m = RAW.monthly[mk];
       if(m){ prem+=m.premium; imp+=m.imperfect; os+=m.outspec; total+=m.total; }
     });
-    // Tambah future juga
-    Object.keys(RAW.future||{}).forEach(mk=>{
-      const parts = mk.split('||');
-      if(parts[0]!==gh || parts[1]!==periode) return;
-      const m = RAW.future[mk];
-      if(m){ prem+=m.premium; imp+=m.imperfect; os+=m.outspec; total+=m.total; }
-    });
     return {prem, imp, os, total};
   }
 
-  // Kelompokkan records per nama GH, urutkan periode secara numerik
+  // ── Filter gh_records sesuai filter UI (fix #1) ──────────────────────────
+  let filteredRecs = RAW.gh_records.filter(r=>{
+    if(fKlas && r.klasifikasi !== fKlas) return false;
+    if(fGH   && r.gh          !== fGH)  return false;
+    if(!isWhitelisted(r.gh))            return false;
+    // Fix #4: hanya GH yang sudah selesai (bukan Ongoing / Belum Panen)
+    const selesai = r.kategori !== 'Ongoing' && r.kategori !== 'Belum Panen';
+    if(!selesai) return false;
+    return true;
+  });
+
+  // Filter periode: jika ada filter aktif, tetap ikutkan semua periode milik GH
+  // agar periode sebelumnya masih bisa dibandingkan. Tapi tampilkan hanya baris
+  // yang "periode saat ini" sesuai filter periode.
+  // Kelompokkan per nama GH — ambil semua periode per GH dari RAW tanpa filter periode
+  const allSelesaiRecs = RAW.gh_records.filter(r=>{
+    if(fKlas && r.klasifikasi !== fKlas) return false;
+    if(fGH   && r.gh          !== fGH)  return false;
+    if(!isWhitelisted(r.gh))            return false;
+    const selesai = r.kategori !== 'Ongoing' && r.kategori !== 'Belum Panen';
+    return selesai;
+  });
+
+  // Kelompokkan per GH
   const ghGroups = {};
-  allRecs.forEach(r=>{
+  allSelesaiRecs.forEach(r=>{
     if(!ghGroups[r.gh]) ghGroups[r.gh] = [];
     ghGroups[r.gh].push(r);
   });
 
   const rows = [];
   Object.entries(ghGroups).forEach(([gh, recs])=>{
-    // Urutkan periode: numerik jika bisa, else string
+    // Urutkan periode numerik
     recs.sort((a,b)=>{
       const na = parseFloat(a.periode)||0, nb = parseFloat(b.periode)||0;
       return na !== nb ? na - nb : (a.periode||'').localeCompare(b.periode||'');
     });
 
-    // Ambil periode terbaru (current) dan sebelumnya
-    if(recs.length < 1) return;
-    const curr = recs[recs.length - 1];
-    const prev = recs.length >= 2 ? recs[recs.length - 2] : null;
+    // Jika filter periode aktif → "current" harus sesuai periode tsb
+    let currIdx = recs.length - 1;
+    if(fPeriode){
+      const idx = recs.findIndex(r => r.periode === fPeriode);
+      if(idx === -1) return; // GH ini tidak punya periode yang diminta → skip
+      currIdx = idx;
+    }
+
+    const curr = recs[currIdx];
+    const prev = currIdx >= 1 ? recs[currIdx - 1] : null;
 
     const cTot = getGHTotals(gh, curr.periode);
     const pTot = prev ? getGHTotals(gh, prev.periode) : null;
@@ -1148,12 +1181,18 @@ function renderPeriodeTable(){
     const cPanen = cTot.total;
     const pPanen = pTot ? pTot.total : null;
 
+    // % grade current
     const cPremPct = cTot.total > 0 ? (cTot.prem / cTot.total * 100) : 0;
     const cImpPct  = cTot.total > 0 ? (cTot.imp  / cTot.total * 100) : 0;
     const cOsPct   = cTot.total > 0 ? (cTot.os   / cTot.total * 100) : 0;
     const cPctEst  = curr.est > 0   ? (cPanen / curr.est * 100) : 0;
 
-    // Trend: bandingkan total panen current vs previous
+    // % grade previous (fix #3: untuk tanda naik/turun per kolom %)
+    const pPremPct = (pTot && pTot.total > 0) ? (pTot.prem / pTot.total * 100) : null;
+    const pImpPct  = (pTot && pTot.total > 0) ? (pTot.imp  / pTot.total * 100) : null;
+    const pOsPct   = (pTot && pTot.total > 0) ? (pTot.os   / pTot.total * 100) : null;
+
+    // Trend total panen
     let trendVal = null;
     if(pPanen !== null && pPanen > 0){
       trendVal = ((cPanen - pPanen) / pPanen * 100);
@@ -1163,6 +1202,7 @@ function renderPeriodeTable(){
       gh, curr, prev,
       cPanen, pPanen, trendVal,
       cPremPct, cImpPct, cOsPct, cPctEst,
+      pPremPct, pImpPct, pOsPct,
     });
   });
 
@@ -1170,36 +1210,86 @@ function renderPeriodeTable(){
   rows.sort((a,b)=>{
     if(tblSortMode==='panen') return b.cPanen - a.cPanen;
     if(tblSortMode==='pct')   return b.cPctEst - a.cPctEst;
-    // default: gh name
     return a.gh.localeCompare(b.gh);
   });
 
   if(!rows.length){
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--hint);font-size:11px;">Tidak ada data</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--hint);font-size:11px;">Tidak ada data GH selesai untuk filter yang dipilih.</td></tr>';
     return;
+  }
+
+  // ── Helper: render kolom % dengan tanda naik/turun vs periode sebelumnya ──
+  // fix #3
+  function pctCell(curr, prev, chipFn){
+    const chip = chipFn(curr);
+    if(prev === null){
+      return `<div style="text-align:right;">${chip}</div>`;
+    }
+    const diff = curr - prev;
+    const absDiff = Math.abs(diff).toFixed(1);
+    // threshold kecil agar tidak tampil tanda untuk perubahan sangat kecil
+    let trendHtml = '';
+    if(diff > 0.2){
+      trendHtml = `<div style="font-size:9px;color:var(--green);font-weight:700;text-align:right;">↑ +${absDiff}%</div>`;
+    } else if(diff < -0.2){
+      trendHtml = `<div style="font-size:9px;color:var(--red);font-weight:700;text-align:right;">↓ -${absDiff}%</div>`;
+    } else {
+      trendHtml = `<div style="font-size:9px;color:var(--hint);text-align:right;">→</div>`;
+    }
+    return `<div style="text-align:right;">${chip}${trendHtml}</div>`;
   }
 
   tbody.innerHTML = rows.map((r,idx)=>{
     const bgRow = idx % 2 === 0 ? '' : 'background:var(--surface2);';
 
-    // Trend badge
+    // Trend total panen badge
     let trendHtml = '<span class="tbl-trend-eq">—</span>';
     if(r.trendVal !== null){
-      const sign = r.trendVal >= 0 ? '+' : '';
-      const cls  = r.trendVal > 2 ? 'tbl-trend-up' : r.trendVal < -2 ? 'tbl-trend-dn' : 'tbl-trend-eq';
+      const sign  = r.trendVal >= 0 ? '+' : '';
+      const cls   = r.trendVal > 2 ? 'tbl-trend-up' : r.trendVal < -2 ? 'tbl-trend-dn' : 'tbl-trend-eq';
       const arrow = r.trendVal > 2 ? '↑' : r.trendVal < -2 ? '↓' : '→';
-      trendHtml = `<span class="${cls}">${arrow} ${sign}${r.trendVal.toFixed(1)}%</span>`;
+      trendHtml   = `<span class="${cls}">${arrow} ${sign}${r.trendVal.toFixed(1)}%</span>`;
     }
 
     // % Tercapai chip
-    const chipCls = r.cPctEst >= 85 ? 'chip-ok' : r.cPctEst >= 50 ? 'chip-mid' : r.cPctEst > 0 ? 'chip-bad' : 'chip-neu';
+    const chipCls    = r.cPctEst >= 85 ? 'chip-ok' : r.cPctEst >= 50 ? 'chip-mid' : r.cPctEst > 0 ? 'chip-bad' : 'chip-neu';
     const pctEstHtml = r.cPctEst > 0
       ? `<span class="tbl-pct-chip ${chipCls}">${r.cPctEst.toFixed(0)}%</span>`
       : `<span class="tbl-pct-chip chip-neu">—</span>`;
 
-    // % grade chips
-    const osCls = r.cOsPct > 15 ? 'chip-bad' : r.cOsPct > 8 ? 'chip-mid' : 'chip-ok';
-    const premCls = r.cPremPct >= 70 ? 'chip-ok' : r.cPremPct >= 50 ? 'chip-mid' : 'chip-bad';
+    // Premium: naik = bagus (hijau naik), turun = merah
+    const premCell = pctCell(r.cPremPct, r.pPremPct, v=>{
+      const cls = v >= 70 ? 'chip-ok' : v >= 50 ? 'chip-mid' : 'chip-bad';
+      return `<span class="tbl-pct-chip ${cls}">${v.toFixed(1)}%</span>`;
+    });
+
+    // Imperfect: netral
+    const impCell = pctCell(r.cImpPct, r.pImpPct, v=>{
+      return `<span class="tbl-pct-chip chip-neu">${v.toFixed(1)}%</span>`;
+    });
+
+    // Outspec: naik = buruk (merah naik), turun = hijau
+    // Balik logika warna tanda: diff positif (naik) → merah, negatif (turun) → hijau
+    function osPctCell(curr, prev){
+      const chip = (()=>{
+        const cls = curr > 15 ? 'chip-bad' : curr > 8 ? 'chip-mid' : 'chip-ok';
+        return `<span class="tbl-pct-chip ${cls}">${curr.toFixed(1)}%</span>`;
+      })();
+      if(prev === null) return `<div style="text-align:right;">${chip}</div>`;
+      const diff = curr - prev;
+      const absDiff = Math.abs(diff).toFixed(1);
+      let trendHtml = '';
+      if(diff > 0.2){
+        // outspec naik = buruk → merah
+        trendHtml = `<div style="font-size:9px;color:var(--red);font-weight:700;text-align:right;">↑ +${absDiff}%</div>`;
+      } else if(diff < -0.2){
+        // outspec turun = baik → hijau
+        trendHtml = `<div style="font-size:9px;color:var(--green);font-weight:700;text-align:right;">↓ -${absDiff}%</div>`;
+      } else {
+        trendHtml = `<div style="font-size:9px;color:var(--hint);text-align:right;">→</div>`;
+      }
+      return `<div style="text-align:right;">${chip}${trendHtml}</div>`;
+    }
 
     return `<tr style="${bgRow}">
       <td style="font-weight:600;white-space:nowrap;">${r.gh}</td>
@@ -1207,9 +1297,9 @@ function renderPeriodeTable(){
       <td style="font-weight:600;white-space:nowrap;">${r.curr.periode}</td>
       <td style="text-align:right;font-weight:700;white-space:nowrap;">${fmt(r.cPanen)}</td>
       <td style="text-align:right;white-space:nowrap;">${trendHtml}</td>
-      <td style="text-align:right;"><span class="tbl-pct-chip ${premCls}">${r.cPremPct.toFixed(1)}%</span></td>
-      <td style="text-align:right;"><span class="tbl-pct-chip chip-neu">${r.cImpPct.toFixed(1)}%</span></td>
-      <td style="text-align:right;"><span class="tbl-pct-chip ${osCls}">${r.cOsPct.toFixed(1)}%</span></td>
+      <td style="padding:4px 9px;">${premCell}</td>
+      <td style="padding:4px 9px;">${impCell}</td>
+      <td style="padding:4px 9px;">${osPctCell(r.cOsPct, r.pOsPct)}</td>
       <td style="text-align:right;">${pctEstHtml}</td>
     </tr>`;
   }).join('');
