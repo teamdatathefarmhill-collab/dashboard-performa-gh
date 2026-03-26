@@ -1204,34 +1204,35 @@ function render(){
     return a.gh.localeCompare(b.gh);
   });
 
-  // Agregasi bulan aktif (untuk filter Lalu/Ini/Depan) — hanya tampilkan data bulan yg relevan
-  const ymRange   = getActiveYMRange();
-  function getYMTotals(ghList){
-    if(!ymRange||!RAW||!RAW.monthly) return null;
-    const {ymDari, ymSampai} = ymRange;
+  // Agregasi dari RAW.monthly — satu-satunya sumber data yang konsisten
+  // Filter bulan jika Lalu/Ini/Depan aktif, else semua bulan
+  const ymRange = getActiveYMRange();
+  function sumMonthly(ghList, ymDari, ymSampai){
+    if(!RAW||!RAW.monthly) return {prem:0,imp:0,os:0,total:0};
     let prem=0,imp=0,os=0,total=0;
     ghList.forEach(r=>{
       Object.keys(RAW.monthly).forEach(mk=>{
         const parts=mk.split('||');
         if(parts[0]!==r.gh||parts[1]!==r.periode) return;
         const ym=parts[2]||'';
-        if(ym<ymDari||ym>ymSampai) return;
+        if(ymDari && ym<ymDari) return;
+        if(ymSampai && ym>ymSampai) return;
         const m=RAW.monthly[mk];
         if(m){ prem+=m.premium; imp+=m.imperfect; os+=m.outspec; total+=m.total; }
       });
     });
     return {prem,imp,os,total};
   }
-  const ymTotals = getYMTotals(ghList);
+  const ymD = ymRange ? ymRange.ymDari  : null;
+  const ymS = ymRange ? ymRange.ymSampai : null;
+  const mt  = sumMonthly(ghList, ymD, ymS);
 
-  // Totals — pakai data bulan aktif jika filter Lalu/Ini/Depan aktif, else all-time
-  const totSelesai = ymTotals
-    ? (ymTotals.prem + ymTotals.imp)
-    : ghList.reduce((a,r)=>a+(r.selesai_dk||r.selesai||0),0);
-  const totPrem  = ymTotals ? ymTotals.prem  : ghList.reduce((a,r)=>a+r.premium,0);
-  const totImp   = ymTotals ? ymTotals.imp   : ghList.reduce((a,r)=>a+r.imperfect,0);
-  const totOS    = ymTotals ? ymTotals.os    : ghList.reduce((a,r)=>a+r.outspec,0);
-  const totPanen = ymTotals ? ymTotals.total : totPrem+totImp+totOS;
+  // Totals — selalu dari RAW.monthly agar konsisten antara mode Semua/Lalu/Ini/Depan
+  const totPrem    = mt.prem;
+  const totImp     = mt.imp;
+  const totOS      = mt.os;
+  const totPanen   = mt.total;           // premium+imperfect+outspec
+  const totSelesai = mt.prem + mt.imp;   // panen aktual (tanpa outspec) untuk KPI %Tercapai
   const totSisa  = ghList.reduce((a,r)=>a+r.sisa,0);
   const totEst   = ghList.reduce((a,r)=>a+r.est,0);
   const totPop   = ghList.reduce((a,r)=>a+r.pop,0);
