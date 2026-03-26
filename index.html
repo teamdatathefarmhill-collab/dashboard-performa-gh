@@ -1233,14 +1233,14 @@ function render(){
   const mt  = sumMonthly(ghList, ymD, ymS);
 
   // Totals — selalu dari RAW.monthly agar konsisten antara mode Semua/Lalu/Ini/Depan
+  const totEst     = ghList.reduce((a,r)=>a+r.est,0);
+  const totPop     = ghList.reduce((a,r)=>a+r.pop,0);
   const totPrem    = mt.prem;
   const totImp     = mt.imp;
   const totOS      = mt.os;
-  const totPanen   = mt.total;           // premium+imperfect+outspec
-  const totSelesai = mt.prem + mt.imp;   // panen aktual (tanpa outspec) untuk KPI %Tercapai
-  const totSisa  = ghList.reduce((a,r)=>a+r.sisa,0);
-  const totEst   = ghList.reduce((a,r)=>a+r.est,0);
-  const totPop   = ghList.reduce((a,r)=>a+r.pop,0);
+  const totPanen   = mt.total;                              // premium+imperfect+outspec
+  const totSelesai = mt.prem + mt.imp;                      // panen aktual (tanpa outspec)
+  const totSisa    = Math.max(0, totEst - totSelesai);      // sisa = Est - sudah panen
   const pctPrem    = totPanen ? totPrem/totPanen*100 : 0;
   const pctImp     = totPanen ? totImp/totPanen*100 : 0;
   const pctOS      = totPanen ? totOS/totPanen*100 : 0;
@@ -1279,15 +1279,11 @@ function render(){
   const panenBulanIni = sumMonthly(ghList, ymThisMonth, ymThisMonth);
   const panenSdHariIni = panenBulanIni.prem + panenBulanIni.imp; // tanpa outspec
 
-  // Rate: kg/hari dari data yang sudah ada bulan ini
-  const rateHarian = hariSudah > 0 ? panenSdHariIni / hariSudah : 0;
+  // Est. Akhir Bulan = Total panen sudah terjadi + sisa panen yang masih ada
+  const estAkhirBulan = totSelesai + totSisa;
 
-  // Proyeksi akhir bulan = yang sudah + (rate × sisa hari)
-  const estAkhirBulan = panenSdHariIni + (rateHarian * hariSisa);
-
-  // Kelas warna: bandingkan proyeksi vs estimasi total GH ongoing
-  const estOngoing = ghList.filter(r=>r.kategori==='Ongoing').reduce((a,r)=>a+r.est,0);
-  const estBulanPct = estOngoing > 0 ? (estAkhirBulan / estOngoing * 100) : 0;
+  // Kelas warna: bandingkan vs estimasi total
+  const estBulanPct = totEst > 0 ? (estAkhirBulan / totEst * 100) : 0;
 
   // KPI
   document.getElementById('k-pop').textContent   = totPop.toLocaleString('id-ID');
@@ -1307,7 +1303,7 @@ function render(){
   const estBlnCard = document.getElementById('k-estbln-card');
   if(estBlnEl){
     estBlnEl.textContent  = fmt(estAkhirBulan);
-    estBlnSEl.textContent = `rate ${rateHarian.toFixed(1)} kg/hari · sisa ${hariSisa}h`;
+    estBlnSEl.textContent = `sudah: ${fmt(totSelesai)} + sisa: ${fmt(totSisa)}`;
     estBlnCard.className  = 'kpi ' + (estBulanPct>=80 ? 'ok' : estBulanPct>=50 ? '' : 'warn');
   }
 
