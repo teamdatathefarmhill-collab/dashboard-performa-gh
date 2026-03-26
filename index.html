@@ -2085,11 +2085,11 @@ Tulis evaluasi dengan format berikut (gunakan markdown):
 
 Gunakan data aktual yang diberikan, sebutkan nama GH spesifik, dan beri angka nyata dalam rekomendasi.`;
 
-    const response = await fetch(PROXY_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt })
-    });
+    // SESUDAH — hapus headers
+const response = await fetch(PROXY_URL, {
+  method: 'POST',
+  body: JSON.stringify({ prompt })
+});
 
     const data = await response.json();
     if(data.error) throw new Error(data.error);
