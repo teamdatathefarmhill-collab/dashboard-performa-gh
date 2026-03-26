@@ -495,7 +495,9 @@ function buildDataset(rows){
 
   // Step 2: Aggregate per GH+Periode+YearMonth from DATA KEBUN + Tanggal Ref
   const monthly={};
+  const future={};  // DATA KEBUN dengan Tanggal Ref > hari ini (sisa panen terjadwal)
   const tglRefMap={};
+  const _todayStr = new Date().toISOString().substring(0,10);
   // Track first ACTUAL panen date (PERFECT or IMPERFECT only, NOT outspec)
   // This is used to determine if a GH has truly started harvesting
   const firstActualPanenMap={}; // gpk -> first tgl with PERFECT or IMPERFECT
@@ -519,14 +521,22 @@ function buildDataset(rows){
     }
     const val=parseFloat(r['DATA KEBUN']||0);
     if(!r['GH']||!r['Tanggal Ref']||val<=0) return;
-    // FIX: hanya masukkan data yang Tanggal Ref-nya sudah terjadi (<= hari ini)
     const tglRef = r['Tanggal Ref'].substring(0,10);
-    const todayStr = new Date().toISOString().substring(0,10);
-    if(tglRef > todayStr) return; // skip future entries
     const ym=tglRef.substring(0,7);
+    const grade=(r['GRADE']||'').toUpperCase();
+    if(tglRef > _todayStr){
+      // Data masa depan → masuk future (sisa panen terjadwal)
+      const mk=r['GH']+'||'+r['Periode']+'||'+ym;
+      if(!future[mk]) future[mk]={premium:0,imperfect:0,outspec:0,total:0,ym,gh:r['GH'],periode:r['Periode']};
+      if(grade==='PERFECT')        future[mk].premium   += val;
+      else if(grade==='IMPERFECT') future[mk].imperfect += val;
+      else if(grade==='OUTSPEC')   future[mk].outspec   += val;
+      future[mk].total += val;
+      return;
+    }
+    // Data sudah terjadi (<= hari ini) → masuk monthly
     const mk=r['GH']+'||'+r['Periode']+'||'+ym;
     if(!monthly[mk]) monthly[mk]={premium:0,imperfect:0,outspec:0,total:0,ym,gh:r['GH'],periode:r['Periode']};
-    const grade=(r['GRADE']||'').toUpperCase();
     if(grade==='PERFECT')        monthly[mk].premium   += val;
     else if(grade==='IMPERFECT') monthly[mk].imperfect += val;
     else if(grade==='OUTSPEC')   monthly[mk].outspec   += val;
@@ -616,7 +626,7 @@ function buildDataset(rows){
   });
 
   return{
-    gh_records:ghRecords, monthly, tglRefMap, outspec_notes_map, outspec_note_map, notes_note_map,
+    gh_records:ghRecords, monthly, future, tglRefMap, outspec_notes_map, outspec_note_map, notes_note_map,
     filters:{
       periodes:  [...new Set(ghRecords.map(r=>r.periode).filter(Boolean))].sort(),
       klasifikasis:[...new Set(ghRecords.map(r=>r.klasifikasi).filter(Boolean))].sort(),
@@ -1240,9 +1250,26 @@ function render(){
   const totOS      = mt.os;
   const totPanen   = mt.total;                              // premium+imperfect+outspec
   const totSelesai = mt.prem + mt.imp;                      // panen aktual (tanpa outspec)
-  // totSisa: jumlah seg_Sisa per GH (sisa panen per GH dari sheet, sudah benar)
-  // seg_Sisa adalah sisa panen keseluruhan per GH, bukan sisa bulanan
-  const totSisa    = Math.max(0, ghList.reduce((a,r)=>a+(r.sisa||0),0));
+  // totSisa: jumlah DATA KEBUN dengan Tanggal Ref > hari ini (sisa panen terjadwal),
+  // filtered sesuai filter bulan aktif (Lalu/Ini/Depan/Semua) — hanya PERFECT+IMPERFECT
+  function sumFuture(ghList, ymDari, ymSampai){
+    if(!RAW||!RAW.future) return {prem:0,imp:0,os:0,total:0};
+    let prem=0,imp=0,os=0,total=0;
+    ghList.forEach(r=>{
+      Object.keys(RAW.future).forEach(mk=>{
+        const parts=mk.split('||');
+        if(parts[0]!==r.gh||parts[1]!==r.periode) return;
+        const ym=parts[2]||'';
+        if(ymDari && ym<ymDari) return;
+        if(ymSampai && ym>ymSampai) return;
+        const m=RAW.future[mk];
+        if(m){ prem+=m.premium; imp+=m.imperfect; os+=m.outspec; total+=m.total; }
+      });
+    });
+    return {prem,imp,os,total};
+  }
+  const ftSisa  = sumFuture(ghList, ymD, ymS);
+  const totSisa = Math.max(0, ftSisa.prem + ftSisa.imp);
   const pctPrem    = totPanen ? totPrem/totPanen*100 : 0;
   const pctImp     = totPanen ? totImp/totPanen*100 : 0;
   const pctOS      = totPanen ? totOS/totPanen*100 : 0;
@@ -1281,8 +1308,7 @@ function render(){
   const panenBulanIni = sumMonthly(ghList, ymThisMonth, ymThisMonth);
   const panenSdHariIni = panenBulanIni.prem + panenBulanIni.imp; // tanpa outspec
 
-  // Est. Akhir Panen = panen aktual (premium+imperfect tanpa outspec) + sisa panen
-  // Menggunakan totSelesai agar outspec tidak ikut diproyeksikan
+  // Est. Akhir Panen = panen aktual (premium+imperfect, tanpa outspec) + sisa terjadwal
   const estAkhirBulan = totSelesai + totSisa;
 
   // Kelas warna: bandingkan vs estimasi total
