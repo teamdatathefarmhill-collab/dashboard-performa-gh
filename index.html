@@ -169,7 +169,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 @media print{
   body{background:#fff;font-size:11px;}
   #loading-screen,#err-screen{display:none!important;}
-  .filters,#btn-refresh,#btn-pdf,#quick-bulan-btns,#pill-bulan{display:none!important;}
+  .filters,#btn-refresh,#btn-pdf,#quick-bulan-btns{display:none!important;}
   .page{max-width:100%;padding:8px 12px;}
   .header{margin-bottom:10px;}
   .kpi-row{grid-template-columns:repeat(3,1fr);gap:6px;}
@@ -299,12 +299,6 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
         <option value="Terpenuhi">Selesai ✓</option>
         <option value="Tidak Terpenuhi">Tidak Terpenuhi</option>
       </select></div>
-      <div class="fpill" id="pill-bulan" style="gap:5px;">
-        <label>Tanggal</label>
-        <input type="date" id="f-bulan-dari" style="border:none;background:transparent;font-size:11px;color:var(--text);font-weight:600;cursor:pointer;outline:none;">
-        <span style="color:var(--hint);font-size:10px;">s/d</span>
-        <input type="date" id="f-bulan-sampai" style="border:none;background:transparent;font-size:11px;color:var(--text);font-weight:600;cursor:pointer;outline:none;">
-      </div>
       <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;" id="quick-bulan-btns">
         <button class="qbtn" onclick="setQuickBulan('prev')" title="Bulan lalu">← Lalu</button>
         <button class="qbtn" onclick="setQuickBulan('this')" title="Bulan ini">Ini</button>
@@ -741,40 +735,36 @@ function getYearMonth(dateStr){
   return dateStr.substring(0,7);
 }
 
-// FIX: gunakan local date bukan toISOString() agar tidak geser karena UTC
-// Quick filter preset buttons
+// Quick bulan filter — mode: 'all' | 'prev' | 'this' | 'next'
 let activeQuick = 'all';
 function setQuickBulan(mode){
   activeQuick = mode;
   document.querySelectorAll('.qbtn').forEach(b=>{
     b.classList.toggle('active', b.getAttribute('onclick')===`setQuickBulan('${mode}')`);
   });
+  render();
+}
 
+// Kembalikan YM range {ymDari, ymSampai} berdasarkan activeQuick
+function getActiveYMRange(){
   const now = new Date();
   const pad = n => String(n).padStart(2,'0');
-  const toDate = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-  const firstOfMonth = d => new Date(d.getFullYear(), d.getMonth(), 1);
-  const lastOfMonth  = d => new Date(d.getFullYear(), d.getMonth()+1, 0);
-
-  const inDari   = document.getElementById('f-bulan-dari');
-  const inSampai = document.getElementById('f-bulan-sampai');
-  if(!inDari||!inSampai) return;
-
-  if(mode==='all'){
-    inDari.value=''; inSampai.value='';
-  } else if(mode==='this'){
-    inDari.value   = toDate(firstOfMonth(now));
-    inSampai.value = toDate(lastOfMonth(now));
-  } else if(mode==='prev'){
-    const d = new Date(now.getFullYear(), now.getMonth()-1, 1);
-    inDari.value   = toDate(firstOfMonth(d));
-    inSampai.value = toDate(lastOfMonth(d));
-  } else if(mode==='next'){
-    const d = new Date(now.getFullYear(), now.getMonth()+1, 1);
-    inDari.value   = toDate(firstOfMonth(d));
-    inSampai.value = toDate(lastOfMonth(d));
+  const ym  = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}`;
+  if(activeQuick==='this') {
+    const m = ym(now);
+    return {ymDari:m, ymSampai:m};
   }
-  render();
+  if(activeQuick==='prev') {
+    const d = new Date(now.getFullYear(), now.getMonth()-1, 1);
+    const m = ym(d);
+    return {ymDari:m, ymSampai:m};
+  }
+  if(activeQuick==='next') {
+    const d = new Date(now.getFullYear(), now.getMonth()+1, 1);
+    const m = ym(d);
+    return {ymDari:m, ymSampai:m};
+  }
+  return null; // 'all' — no filter
 }
 
 function initFilters(){
@@ -797,12 +787,6 @@ function initFilters(){
   ['f-periode','f-klas','f-gh'].forEach(id=>{
     document.getElementById(id).addEventListener('change', ()=>cascadeFilters(id));
   });
-  // Date range filter: input event untuk date picker
-  const inDari   = document.getElementById('f-bulan-dari');
-  const inSampai = document.getElementById('f-bulan-sampai');
-  if(inDari)   inDari.addEventListener('change',   ()=>{ activeQuick=''; document.querySelectorAll('.qbtn').forEach(b=>b.classList.remove('active')); render(); });
-  if(inSampai) inSampai.addEventListener('change', ()=>{ activeQuick=''; document.querySelectorAll('.qbtn').forEach(b=>b.classList.remove('active')); render(); });
-
   // Run initial cascade from periode
   cascadeFilters('f-periode');
 }
@@ -855,8 +839,6 @@ function getFiltered(){
   const k       = document.getElementById('f-klas').value;
   const g       = document.getElementById('f-gh').value;
   const kat     = document.getElementById('f-kategori') ? document.getElementById('f-kategori').value : '';
-  const blnDari   = document.getElementById('f-bulan-dari')   ? document.getElementById('f-bulan-dari').value   : '';
-  const blnSampai = document.getElementById('f-bulan-sampai') ? document.getElementById('f-bulan-sampai').value : '';
   let rows  = RAW ? RAW.gh_records : [];
   if(p) rows = rows.filter(r => r.periode     === p);
   if(k) rows = rows.filter(r => r.klasifikasi === k);
@@ -872,14 +854,11 @@ function getFiltered(){
     });
   }
 
-  // Terapkan filter range tanggal jika ada
-  const hasRange = blnDari || blnSampai;
-  if(hasRange && RAW){
-    const dari   = blnDari   || '0000-01-01';
-    const sampai = blnSampai || '9999-12-31';
-    // dari/sampai format YYYY-MM-DD, monthly key pakai YYYY-MM
-    const ymDari   = dari.substring(0,7);
-    const ymSampai = sampai.substring(0,7);
+  // Filter bulan aktif (Lalu/Ini/Depan) berdasarkan YM dari monthly data
+  const ymRange = getActiveYMRange();
+  if(ymRange && RAW){
+    const {ymDari, ymSampai} = ymRange;
+    // GH yang punya aktivitas panen di bulan tersebut
     const hasActivity = new Set(
       Object.keys(RAW.monthly||{})
         .filter(mk=>{
@@ -890,15 +869,11 @@ function getFiltered(){
     );
     rows = rows.filter(r=>{
       const gpk = r.gh+'||'+r.periode;
-      if(hasActivity.has(gpk)){
-        // Untuk filter tanggal lebih presisi: cek tgl_mulai & tgl_akhir GH
-        const tglMulai = r.tgl_mulai || '0000-01-01';
-        const tglAkhir = r.tgl_akhir || '9999-12-31';
-        return tglAkhir >= dari && tglMulai <= sampai;
-      }
-      // Sertakan Belum Panen jika tgl_mulai dalam range
-      if((r.kategori==='Belum Panen'||r.kat_panen==='BELUM PANEN') && r.tgl_mulai){
-        return r.tgl_mulai <= sampai;
+      if(hasActivity.has(gpk)) return true;
+      // Sertakan Belum Panen jika tgl_mulai ada di bulan tsb
+      if((r.kategori==='Belum Panen'||r.ket_panen==='BELUM PANEN') && r.tgl_mulai){
+        const tglYM = r.tgl_mulai.substring(0,7);
+        return tglYM >= ymDari && tglYM <= ymSampai;
       }
       return false;
     });
@@ -1208,18 +1183,13 @@ function render(){
   if(!RAW) return;
   const rows = getFiltered();
   const pFilter   = document.getElementById('f-periode').value;
-  const blnDari   = document.getElementById('f-bulan-dari')   ? document.getElementById('f-bulan-dari').value   : '';
-  const blnSampai = document.getElementById('f-bulan-sampai') ? document.getElementById('f-bulan-sampai').value : '';
-  const hasRangeFilter = blnDari || blnSampai;
   if(!rows.length){ document.getElementById('gh-cards').innerHTML='<div class="no-data">Tidak ada data untuk filter yang dipilih.</div>'; return; }
 
-  // Aggregate GH-level (deduplicate by GH since varian filter may produce multiple rows per GH)
+  // Aggregate GH-level (deduplicate by GH)
   const ghMap = {};
   rows.forEach(r=>{
     const key = r.gh+'||'+r.periode;
-    if(!ghMap[key]){
-      ghMap[key] = {...r};
-    }
+    if(!ghMap[key]) ghMap[key] = {...r};
   });
   const ghList = Object.values(ghMap).sort((a,b)=>{
     if(sortMode === 'tercapai'){
@@ -1229,45 +1199,42 @@ function render(){
     } else {
       if(Math.abs((a.est||0)-(b.est||0)) > 0.001) return (b.est||0)-(a.est||0);
     }
-    // Secondary: periode then name
     const nA=parseFloat(a.periode)||0, nB=parseFloat(b.periode)||0;
     if(nA!==nB) return nA-nB;
     return a.gh.localeCompare(b.gh);
   });
 
-  // Agregasi grade dari range tanggal (atau semua jika tidak ada filter)
-  // HARUS dideklarasikan sebelum totSelesai yang bergantung pada mTotals
-  function getRangeTotals(ghList, dari, sampai){
-    if((!dari && !sampai)||!RAW||!RAW.monthly) return null;
-    const ymD = dari   ? dari.substring(0,7)   : '0000-00';
-    const ymS = sampai ? sampai.substring(0,7) : '9999-99';
+  // Agregasi bulan aktif (untuk filter Lalu/Ini/Depan) — hanya tampilkan data bulan yg relevan
+  const ymRange   = getActiveYMRange();
+  function getYMTotals(ghList){
+    if(!ymRange||!RAW||!RAW.monthly) return null;
+    const {ymDari, ymSampai} = ymRange;
     let prem=0,imp=0,os=0,total=0;
     ghList.forEach(r=>{
       Object.keys(RAW.monthly).forEach(mk=>{
         const parts=mk.split('||');
         if(parts[0]!==r.gh||parts[1]!==r.periode) return;
         const ym=parts[2]||'';
-        if(ym<ymD||ym>ymS) return;
+        if(ym<ymDari||ym>ymSampai) return;
         const m=RAW.monthly[mk];
         if(m){ prem+=m.premium; imp+=m.imperfect; os+=m.outspec; total+=m.total; }
       });
     });
     return {prem,imp,os,total};
   }
-  const mTotals  = getRangeTotals(ghList, blnDari, blnSampai);
-  const totPrem  = mTotals ? mTotals.prem  : ghList.reduce((a,r)=>a+r.premium,0);
-  const totImp   = mTotals ? mTotals.imp   : ghList.reduce((a,r)=>a+r.imperfect,0);
-  const totOS    = mTotals ? mTotals.os    : ghList.reduce((a,r)=>a+r.outspec,0);
-  const totPanen = mTotals ? mTotals.total : totPrem+totImp+totOS;
+  const ymTotals = getYMTotals(ghList);
 
-  // Totals
-  // FIX: when date range active, total panen (selesai) must also be range-filtered
-  const totSelesai = mTotals
-    ? (mTotals.prem + mTotals.imp)   // only PERFECT+IMPERFECT as "panen selesai" within range
+  // Totals — pakai data bulan aktif jika filter Lalu/Ini/Depan aktif, else all-time
+  const totSelesai = ymTotals
+    ? (ymTotals.prem + ymTotals.imp)
     : ghList.reduce((a,r)=>a+(r.selesai_dk||r.selesai||0),0);
-  const totSisa    = ghList.reduce((a,r)=>a+r.sisa,0);
-  const totEst     = ghList.reduce((a,r)=>a+r.est,0);
-  const totPop     = ghList.reduce((a,r)=>a+r.pop,0);
+  const totPrem  = ymTotals ? ymTotals.prem  : ghList.reduce((a,r)=>a+r.premium,0);
+  const totImp   = ymTotals ? ymTotals.imp   : ghList.reduce((a,r)=>a+r.imperfect,0);
+  const totOS    = ymTotals ? ymTotals.os    : ghList.reduce((a,r)=>a+r.outspec,0);
+  const totPanen = ymTotals ? ymTotals.total : totPrem+totImp+totOS;
+  const totSisa  = ghList.reduce((a,r)=>a+r.sisa,0);
+  const totEst   = ghList.reduce((a,r)=>a+r.est,0);
+  const totPop   = ghList.reduce((a,r)=>a+r.pop,0);
   const pctPrem    = totPanen ? totPrem/totPanen*100 : 0;
   const pctImp     = totPanen ? totImp/totPanen*100 : 0;
   const pctOS      = totPanen ? totOS/totPanen*100 : 0;
