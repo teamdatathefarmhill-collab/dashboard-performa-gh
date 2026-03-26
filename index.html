@@ -315,11 +315,12 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
   </div>
 
   <div class="sec">Ringkasan KPI</div>
-  <div class="kpi-row">
+  <div class="kpi-row" style="grid-template-columns:repeat(7,1fr)">
     <div class="kpi"><div class="kpi-lbl">Populasi Tanam</div><div class="kpi-val" id="k-pop">—</div><div class="kpi-sub" id="k-pop-s"></div></div>
     <div class="kpi"><div class="kpi-lbl">Total Panen</div><div class="kpi-val" id="k-tot">—</div><div class="kpi-sub" id="k-tot-s"></div></div>
     <div class="kpi" id="k-pct-card"><div class="kpi-lbl">% Tercapai vs Est</div><div class="kpi-val" id="k-pct">—</div><div class="kpi-sub" id="k-pct-s"></div></div>
     <div class="kpi"><div class="kpi-lbl">Sisa Panen</div><div class="kpi-val" id="k-sisa">—</div><div class="kpi-sub" id="k-sisa-s"></div></div>
+    <div class="kpi" id="k-estbln-card"><div class="kpi-lbl">Est. Akhir Bulan Ini</div><div class="kpi-val" id="k-estbln">—</div><div class="kpi-sub" id="k-estbln-s"></div></div>
     <div class="kpi info"><div class="kpi-lbl">GH Ongoing</div><div class="kpi-val" id="k-ong">—</div><div class="kpi-sub" id="k-ong-s"></div></div>
     <div class="kpi warn"><div class="kpi-lbl">Total Outspec</div><div class="kpi-val" id="k-os">—</div><div class="kpi-sub" id="k-os-s"></div></div>
   </div>
@@ -518,7 +519,11 @@ function buildDataset(rows){
     }
     const val=parseFloat(r['DATA KEBUN']||0);
     if(!r['GH']||!r['Tanggal Ref']||val<=0) return;
-    const ym=r['Tanggal Ref'].substring(0,7);
+    // FIX: hanya masukkan data yang Tanggal Ref-nya sudah terjadi (<= hari ini)
+    const tglRef = r['Tanggal Ref'].substring(0,10);
+    const todayStr = new Date().toISOString().substring(0,10);
+    if(tglRef > todayStr) return; // skip future entries
+    const ym=tglRef.substring(0,7);
     const mk=r['GH']+'||'+r['Periode']+'||'+ym;
     if(!monthly[mk]) monthly[mk]={premium:0,imperfect:0,outspec:0,total:0,ym,gh:r['GH'],periode:r['Periode']};
     const grade=(r['GRADE']||'').toUpperCase();
@@ -1261,17 +1266,51 @@ function render(){
   if(alerts.length){ alertEl.style.display='flex'; document.getElementById('alert-txt').innerHTML=alerts.join(' '); }
   else alertEl.style.display='none';
 
+  // ── Est. Akhir Bulan Ini ──────────────────────────────────────────────────
+  // Proyeksi: berapa total panen sampai akhir bulan ini, berdasarkan rate kg/hari aktual
+  // Hanya dari GH Ongoing yang sudah mulai panen bulan ini
+  const nowEst    = new Date();
+  const ymThisMonth = `${nowEst.getFullYear()}-${String(nowEst.getMonth()+1).padStart(2,'0')}`;
+  const lastDayOfMonth = new Date(nowEst.getFullYear(), nowEst.getMonth()+1, 0).getDate();
+  const hariSudah = nowEst.getDate();            // hari ke-N bulan ini
+  const hariSisa  = lastDayOfMonth - hariSudah;  // sisa hari sampai akhir bulan
+
+  // Ambil total panen bulan ini (sudah terjadi) dari monthly data
+  const panenBulanIni = sumMonthly(ghList, ymThisMonth, ymThisMonth);
+  const panenSdHariIni = panenBulanIni.prem + panenBulanIni.imp; // tanpa outspec
+
+  // Rate: kg/hari dari data yang sudah ada bulan ini
+  const rateHarian = hariSudah > 0 ? panenSdHariIni / hariSudah : 0;
+
+  // Proyeksi akhir bulan = yang sudah + (rate × sisa hari)
+  const estAkhirBulan = panenSdHariIni + (rateHarian * hariSisa);
+
+  // Kelas warna: bandingkan proyeksi vs estimasi total GH ongoing
+  const estOngoing = ghList.filter(r=>r.kategori==='Ongoing').reduce((a,r)=>a+r.est,0);
+  const estBulanPct = estOngoing > 0 ? (estAkhirBulan / estOngoing * 100) : 0;
+
   // KPI
   document.getElementById('k-pop').textContent   = totPop.toLocaleString('id-ID');
   document.getElementById('k-pop-s').textContent  = 'tanaman';
   document.getElementById('k-tot').textContent   = fmt(totPanen);
-  document.getElementById('k-tot-s').textContent  = `dari est. ${fmt(totEst)}`;
+  document.getElementById('k-tot-s').textContent  = `sudah terjadi · dari est. ${fmt(totEst)}`;
   document.getElementById('k-pct').textContent   = pctTercapai.toFixed(1)+'%';
   document.getElementById('k-pct-s').textContent  = `%Tercapai vs Estimasi`;
   const pctCard = document.getElementById('k-pct-card');
   pctCard.className = 'kpi'+(pctTercapai>=80?' ok':pctTercapai<50?' warn':'');
   document.getElementById('k-sisa').textContent  = fmt(totSisa);
   document.getElementById('k-sisa-s').textContent = `dari target`;
+
+  // Est. Akhir Bulan card
+  const estBlnEl   = document.getElementById('k-estbln');
+  const estBlnSEl  = document.getElementById('k-estbln-s');
+  const estBlnCard = document.getElementById('k-estbln-card');
+  if(estBlnEl){
+    estBlnEl.textContent  = fmt(estAkhirBulan);
+    estBlnSEl.textContent = `rate ${rateHarian.toFixed(1)} kg/hari · sisa ${hariSisa}h`;
+    estBlnCard.className  = 'kpi ' + (estBulanPct>=80 ? 'ok' : estBulanPct>=50 ? '' : 'warn');
+  }
+
   document.getElementById('k-ong').textContent   = ongoingCount;
   document.getElementById('k-ong-s').textContent  = `dari ${ghList.length} GH`;
   document.getElementById('k-os').textContent    = fmt(totOS);
