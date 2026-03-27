@@ -450,23 +450,24 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
     </table>
   </div>
 
-  <!-- SANITASI KATEGORI CHART — selalu tampil jika data sanitasi tersedia -->
+  <!-- SANITASI KATEGORI CHART — hanya donut + legend -->
   <div id="sanitasi-kategori-section" style="display:none;margin-bottom:14px;">
     <div class="sec" style="margin-top:0;">Distribusi Kategori Sanitasi <span class="bnew">BARU</span></div>
     <div class="card">
-      <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;">
-        <div style="flex:0 0 200px;">
-          <div class="card-ttl">Pie Kategori</div>
-          <div style="position:relative;height:200px;"><canvas id="c-sanitasi-kategori-pie"></canvas></div>
-          <div id="sanitasi-kategori-legend" style="margin-top:6px;display:flex;flex-direction:column;gap:3px;"></div>
+      <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+        <div style="flex:0 0 220px;display:flex;flex-direction:column;align-items:center;">
+          <div style="position:relative;height:220px;width:220px;">
+            <canvas id="c-sanitasi-kategori-pie"></canvas>
+            <div id="sanitasi-donut-center" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;">
+              <div style="font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Total</div>
+              <div id="sanitasi-donut-total" style="font-size:22px;font-weight:700;color:var(--red);line-height:1.1;">—</div>
+              <div style="font-size:9px;color:var(--hint);">tanaman</div>
+            </div>
+          </div>
         </div>
-        <div style="flex:1;min-width:200px;">
-          <div class="card-ttl">Detail Kategori</div>
-          <div id="sanitasi-kategori-detail"></div>
-        </div>
-        <div style="flex:0 0 140px;">
-          <div class="card-ttl">Ringkasan</div>
-          <div id="sanitasi-kategori-kpi" style="font-size:11px;"></div>
+        <div style="flex:1;min-width:160px;">
+          <div class="card-ttl">Kategori</div>
+          <div id="sanitasi-kategori-legend" style="display:flex;flex-direction:column;gap:5px;"></div>
         </div>
       </div>
     </div>
@@ -818,56 +819,98 @@ async function loadData(isRefresh=false){
     }, 100);
   }
 
-  try {
-    // Fetch dari Apps Script proxy
-    console.log('[loadData] Fetching:', PROXY_URL);
-    const url = PROXY_URL + '?t=' + Date.now();
-    let text = '';
-    try {
-      // Fetch dengan timeout 30 detik
-      const controller = new AbortController();
-      const timeoutId  = setTimeout(()=>controller.abort(), 30000);
-      const res = await fetch(url, {
-        redirect: 'follow',
-        cache:    'no-cache',
-        signal:   controller.signal,
-      });
-      clearTimeout(timeoutId);
-      if(!res.ok) throw new Error('HTTP '+res.status+' dari Apps Script');
-      text = await res.text();
-      console.log('Fetch OK, content-type:', res.headers.get('content-type'));
-    } catch(fetchErr) {
-      if(fetchErr.name === 'AbortError')
-        throw new Error('Timeout 30 detik — Apps Script tidak merespons. Coba refresh.');
-      throw new Error('Gagal fetch: '+fetchErr.message);
-    }
-    // Log response for debugging
-    console.log('Response length:', text.length, 'First 200:', text.substring(0,200));
-    if(!text || text.length < 10) throw new Error('Data kosong ('+text.length+' chars) — cek Apps Script');
-    // Detect if response is HTML error page instead of CSV
-    if(text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html')) {
-      throw new Error('Apps Script return HTML bukan CSV — pastikan: 1) deploy sebagai Web App 2) Who has access: Anyone 3) sudah authorize');
-    }
-    const rows = parseCSV(text);
-    if(!rows.length) throw new Error('Tidak ada baris data');
+  // ── CACHE HELPERS ─────────────────────────────────────────────────────────────
+  const CACHE_KEY_PANEN    = 'gh_cache_panen';
+  const CACHE_KEY_SANITASI = 'gh_cache_sanitasi';
+  const CACHE_TTL_MS       = 5 * 60 * 1000; // 5 menit
 
+  function saveCache(key, text){
+    try { sessionStorage.setItem(key, JSON.stringify({ ts: Date.now(), data: text })); } catch(e){}
+  }
+  function loadCache(key){
+    try {
+      const raw = sessionStorage.getItem(key);
+      if(!raw) return null;
+      const obj = JSON.parse(raw);
+      if(Date.now() - obj.ts > CACHE_TTL_MS) return null;
+      return obj.data;
+    } catch(e){ return null; }
+  }
+
+  try {
     // preserve filter state on refresh
     const prevP = RAW ? document.getElementById('f-periode').value : null;
     const prevK = RAW ? document.getElementById('f-klas').value    : null;
 
+    // ── Cek cache dulu (kecuali force refresh) ────────────────────────────────
+    const cachedPanen    = isRefresh ? null : loadCache(CACHE_KEY_PANEN);
+    const cachedSanitasi = isRefresh ? null : loadCache(CACHE_KEY_SANITASI);
+
+    if(cachedPanen && cachedSanitasi){
+      // Data dari cache — sangat cepat
+      console.log('[loadData] Using cached data');
+      RAW          = buildDataset(parseCSV(cachedPanen));
+      RAW_SANITASI = buildSanitasiDataset(parseCSV(cachedSanitasi));
+      initFilters(prevP, prevK);
+      if(timerInterval) clearInterval(timerInterval);
+      if(!isRefresh){
+        const bar=document.getElementById('ld-bar'), status=document.getElementById('ld-status'), timer=document.getElementById('ld-timer');
+        const elapsed=((Date.now()-t0)/1000).toFixed(1);
+        if(bar) bar.style.width='100%'; if(status) status.textContent='Selesai!'; if(timer) timer.textContent=elapsed+' detik';
+        await new Promise(r=>setTimeout(r,300));
+      }
+      document.getElementById('loading-screen').style.display='none';
+      document.getElementById('dashboard').style.display='block';
+      if(isRefresh) showToast('✓ Data dari cache · '+RAW.loaded_at+' · '+RAW.total_rows.toLocaleString()+' records');
+      // Tetap fetch di background untuk update cache
+      Promise.all([
+        fetch(PROXY_URL+'?t='+Date.now(),{redirect:'follow',cache:'no-cache'}).then(r=>r.text()).then(t=>{ if(t&&t.length>10&&!t.trim().startsWith('<')) saveCache(CACHE_KEY_PANEN,t); }).catch(()=>{}),
+        fetch(PROXY_URL+'?type=sanitasi&t='+Date.now(),{redirect:'follow',cache:'no-cache'}).then(r=>r.text()).then(t=>{ if(t&&t.length>10&&!t.trim().startsWith('<')) saveCache(CACHE_KEY_SANITASI,t); }).catch(()=>{}),
+      ]);
+      return;
+    }
+
+    // ── Fetch kedua sheet SECARA PARALEL ─────────────────────────────────────
+    console.log('[loadData] Fetching panen + sanitasi in parallel...');
+    const panenUrl = PROXY_URL + '?t=' + Date.now();
+    const sanUrl   = PROXY_URL + '?type=sanitasi&t=' + Date.now();
+
+    const controller = new AbortController();
+    const timeoutId  = setTimeout(()=>controller.abort(), 35000);
+
+    let text = '', sanText = '';
+    try {
+      const [res, sanRes] = await Promise.all([
+        fetch(panenUrl,  { redirect:'follow', cache:'no-cache', signal: controller.signal }),
+        fetch(sanUrl,    { redirect:'follow', cache:'no-cache', signal: controller.signal }),
+      ]);
+      clearTimeout(timeoutId);
+      if(!res.ok) throw new Error('HTTP '+res.status+' dari Apps Script (panen)');
+      [text, sanText] = await Promise.all([res.text(), sanRes.ok ? sanRes.text() : Promise.resolve('')]);
+      console.log('Fetch OK — panen:', text.length, 'chars | sanitasi:', sanText.length, 'chars');
+    } catch(fetchErr){
+      clearTimeout(timeoutId);
+      if(fetchErr.name==='AbortError') throw new Error('Timeout 35 detik — Apps Script tidak merespons. Coba refresh.');
+      throw new Error('Gagal fetch: '+fetchErr.message);
+    }
+
+    if(!text || text.length < 10) throw new Error('Data kosong ('+text.length+' chars) — cek Apps Script');
+    if(text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html'))
+      throw new Error('Apps Script return HTML bukan CSV — pastikan: 1) deploy sebagai Web App 2) Who has access: Anyone 3) sudah authorize');
+
+    const rows = parseCSV(text);
+    if(!rows.length) throw new Error('Tidak ada baris data');
+
+    // Simpan ke cache
+    saveCache(CACHE_KEY_PANEN, text);
+    if(sanText && sanText.length > 10 && !sanText.trim().startsWith('<')) saveCache(CACHE_KEY_SANITASI, sanText);
+
     RAW = buildDataset(rows);
 
-    // ── Fetch sanitasi data (parallel, non-blocking) ──────────────────────────
-    try {
-      const sanUrl = PROXY_URL + '?type=sanitasi&t=' + Date.now();
-      const sanRes = await fetch(sanUrl, { redirect:'follow', cache:'no-cache' });
-      if(sanRes.ok){
-        const sanText = await sanRes.text();
-        if(sanText && sanText.length > 10 && !sanText.trim().startsWith('<')){
-          RAW_SANITASI = buildSanitasiDataset(parseCSV(sanText));
-        }
-      }
-    } catch(sanErr){ console.warn('Sanitasi data gagal dimuat:', sanErr.message); }
+    if(sanText && sanText.length > 10 && !sanText.trim().startsWith('<')){
+      try { RAW_SANITASI = buildSanitasiDataset(parseCSV(sanText)); }
+      catch(sanErr){ console.warn('Sanitasi parse gagal:', sanErr.message); }
+    }
 
     initFilters(prevP, prevK);
 
@@ -2453,49 +2496,20 @@ function renderSanitasiKategoriChart(){
 
   const pieColors = ['#e24b4a','#ef9f27','#5aac1a','#378add','#1d9e75','#d85a30','#9c59c2','#185fa5','#854f0b','#3b6d11'];
 
-  // KPI
-  const kpiEl = document.getElementById('sanitasi-kategori-kpi');
-  if(kpiEl) kpiEl.innerHTML = `
-    <div style="margin-bottom:10px;">
-      <div style="font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Total Sanitasi</div>
-      <div style="font-size:22px;font-weight:700;color:var(--red);">${total.toLocaleString('id-ID')}</div>
-      <div style="font-size:10px;color:var(--hint);">tanaman</div>
-    </div>
-    <div>
-      <div style="font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Kategori</div>
-      <div style="font-size:18px;font-weight:700;color:var(--text);">${entries.length}</div>
-    </div>`;
+  // Angka total di tengah donut
+  const dotTotal = document.getElementById('sanitasi-donut-total');
+  if(dotTotal) dotTotal.textContent = total.toLocaleString('id-ID');
 
-  // Detail bars
-  const detEl = document.getElementById('sanitasi-kategori-detail');
-  if(detEl){
-    const maxVal = entries[0][1]||1;
-    detEl.innerHTML = entries.map(([k,val],i)=>{
-      const pct = total ? (val/total*100).toFixed(1) : 0;
-      const w   = (val/maxVal*100).toFixed(1);
-      return `<div style="margin-bottom:8px;">
-        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:2px;">
-          <span style="display:flex;align-items:center;gap:5px;">
-            <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${pieColors[i%pieColors.length]};flex-shrink:0;"></span>
-            <span style="font-weight:600;">${k}</span>
-          </span>
-          <span style="font-weight:700;">${val.toLocaleString('id-ID')} <span style="color:var(--hint);font-weight:400;">(${pct}%)</span></span>
-        </div>
-        <div style="background:var(--surface2);border-radius:3px;height:7px;overflow:hidden;">
-          <div style="width:${w}%;height:100%;border-radius:3px;background:${pieColors[i%pieColors.length]};opacity:.85;"></div>
-        </div>
-      </div>`;
-    }).join('');
-  }
-
-  // Legend
+  // Legend dengan nama, jumlah, dan persen
   const legEl = document.getElementById('sanitasi-kategori-legend');
   if(legEl){
-    legEl.innerHTML = entries.slice(0,6).map(([k,val],i)=>{
+    legEl.innerHTML = entries.map(([k,val],i)=>{
       const pct = total ? (val/total*100).toFixed(1) : 0;
-      return `<div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted);">
-        <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${pieColors[i%pieColors.length]};flex-shrink:0;"></span>
-        <span>${k} <strong style="color:var(--text);">${pct}%</strong></span>
+      return `<div style="display:flex;align-items:center;gap:7px;font-size:11px;">
+        <span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${pieColors[i%pieColors.length]};flex-shrink:0;"></span>
+        <span style="flex:1;color:var(--text);font-weight:600;">${k}</span>
+        <span style="color:var(--hint);font-size:10px;">${val.toLocaleString('id-ID')}</span>
+        <span style="color:var(--muted);font-size:10px;min-width:36px;text-align:right;font-weight:700;">${pct}%</span>
       </div>`;
     }).join('');
   }
@@ -2516,7 +2530,7 @@ function renderSanitasiKategoriChart(){
     },
     options:{
       responsive:true, maintainAspectRatio:false,
-      cutout: '58%',
+      cutout: '68%',
       plugins:{
         legend:{display:false},
         tooltip:{callbacks:{label:c=>{
