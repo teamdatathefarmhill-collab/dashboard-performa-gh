@@ -490,10 +490,10 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
   <!-- SANITASI + AI EVAL — 2 kolom: kiri donut, kanan AI -->
   <div id="sanitasi-kategori-section" style="display:none;margin-bottom:14px;">
     <div class="sec" style="margin-top:0;">Distribusi Kategori Sanitasi &amp; Evaluasi AI <span class="bnew">AI</span></div>
-    <div style="display:grid;grid-template-columns:320px 1fr;gap:10px;align-items:stretch;">
+    <div style="display:grid;grid-template-columns:320px 1fr;gap:10px;align-items:start;">
 
       <!-- KIRI: Donut chart sanitasi -->
-      <div class="card" style="display:flex;flex-direction:column;justify-content:center;">
+      <div class="card" style="display:flex;flex-direction:column;justify-content:flex-start;">
         <div class="card-ttl" style="margin-bottom:10px;">Distribusi Kategori Sanitasi</div>
         <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
           <div style="flex:0 0 150px;position:relative;height:150px;">
@@ -901,9 +901,10 @@ async function loadData(isRefresh=false){
   }
 
   try {
-    // preserve filter state on refresh
-    const prevP = RAW ? document.getElementById('f-periode').value : null;
-    const prevK = RAW ? document.getElementById('f-klas').value    : null;
+    // preserve filter state on refresh — termasuk GH multi-select
+    const prevP  = RAW ? document.getElementById('f-periode').value : null;
+    const prevK  = RAW ? document.getElementById('f-klas').value    : null;
+    const prevGHs = RAW ? getSelectedGHs() : null; // simpan array GH yang dipilih
 
     // ── Cek cache dulu (kecuali force refresh) ────────────────────────────────
     const cachedPanen    = isRefresh ? null : loadCache(CACHE_KEY_PANEN);
@@ -914,7 +915,7 @@ async function loadData(isRefresh=false){
       console.log('[loadData] Using cached data');
       RAW          = buildDataset(parseCSV(cachedPanen));
       RAW_SANITASI = buildSanitasiDataset(parseCSV(cachedSanitasi));
-      initFilters(prevP, prevK);
+      initFilters(prevP, prevK, prevGHs);
       if(timerInterval) clearInterval(timerInterval);
       if(!isRefresh){
         const bar=document.getElementById('ld-bar'), status=document.getElementById('ld-status'), timer=document.getElementById('ld-timer');
@@ -975,7 +976,7 @@ async function loadData(isRefresh=false){
       catch(sanErr){ console.warn('Sanitasi parse gagal:', sanErr.message); }
     }
 
-    initFilters(prevP, prevK);
+    initFilters(prevP, prevK, prevGHs);
 
     // Complete progress bar
     if(timerInterval) clearInterval(timerInterval);
@@ -1062,7 +1063,7 @@ function onGHCheckChange(){
   const allChk = document.getElementById('gh-chk-all');
   if(allChk) allChk.checked = all.length === checked.length;
   updateGHLabel();
-  render();
+  debouncedRender();
 }
 
 function selectAllGH(e){
@@ -1071,7 +1072,7 @@ function selectAllGH(e){
   const state = allChk ? allChk.checked : true;
   document.querySelectorAll('#gh-multi-list input[type=checkbox]').forEach(c => c.checked = state);
   updateGHLabel();
-  render();
+  debouncedRender();
 }
 
 function updateGHLabel(){
@@ -1116,7 +1117,7 @@ function setQuickBulan(mode){
   document.querySelectorAll('.qbtn').forEach(b=>{
     b.classList.toggle('active', b.getAttribute('onclick')===`setQuickBulan('${mode}')`);
   });
-  render();
+  debouncedRender();
 }
 
 // Kembalikan YM range {ymDari, ymSampai} berdasarkan activeQuick
@@ -1141,7 +1142,7 @@ function getActiveYMRange(){
   return null; // 'all' — no filter
 }
 
-function initFilters(){
+function initFilters(prevP, prevK, prevGHs){
   const GH_WHITELIST = ['tohudan','sawahan','colomadu','bergas'];
   const isWhitelistedGH = v => GH_WHITELIST.some(w => (v||'').toLowerCase().includes(w));
 
@@ -1159,6 +1160,18 @@ function initFilters(){
   // Build GH multi-select checkboxes
   const filteredGHs = RAW.filters.ghs.filter(isWhitelistedGH);
   buildGHMultiSelect(filteredGHs);
+
+  // Restore pilihan GH sebelumnya jika ada (supaya tidak reset saat auto-refresh)
+  if(prevGHs && prevGHs.length){
+    document.querySelectorAll('#gh-multi-list input[type=checkbox]').forEach(c => {
+      c.checked = prevGHs.includes(c.value);
+    });
+    const allChk = document.getElementById('gh-chk-all');
+    const all = document.querySelectorAll('#gh-multi-list input[type=checkbox]');
+    const chk = document.querySelectorAll('#gh-multi-list input[type=checkbox]:checked');
+    if(allChk) allChk.checked = all.length === chk.length;
+    updateGHLabel();
+  }
 
   // Attach cascade listeners
   ['f-periode','f-klas'].forEach(id=>{
@@ -1206,7 +1219,7 @@ function cascadeFilters(changedId){
   const validGHs = unique(ghRows, 'gh').filter(v => GH_WHITELIST.some(w => (v||'').toLowerCase().includes(w)));
   updateGHMultiOptions(validGHs);
 
-  render();
+  debouncedRender();
 }
 
 
@@ -1333,7 +1346,7 @@ function setSortMode(mode){
   document.getElementById('sort-tercapai').style.color      = mode==='tercapai' ? 'var(--green)'    : 'var(--muted)';
   document.getElementById('sort-est').style.background      = mode==='est'      ? 'var(--blue-bg)'  : 'var(--surface2)';
   document.getElementById('sort-est').style.color           = mode==='est'      ? 'var(--blue)'     : 'var(--muted)';
-  render();
+  debouncedRender();
 }
 
 
@@ -1903,6 +1916,23 @@ function renderInsight(ghList, kpi){
   c2 += `</div>`;
 
   el.innerHTML = c1 + c2;
+}
+
+// ── DEBOUNCE RENDER ───────────────────────────────────────────────────────────
+// Render tidak langsung dipanggil tiap kali filter berubah,
+// tapi ditunda 150ms — jika ada perubahan lagi dalam 150ms, timer di-reset.
+// Ini mencegah render berulang saat user ganti beberapa filter sekaligus.
+let _renderTimer = null;
+function debouncedRender(delay){
+  const ms = delay !== undefined ? delay : 150;
+  // Tunjukkan hint "memfilter..." saat menunggu
+  const btn = document.getElementById('btn-refresh');
+  if(btn && _renderTimer) btn.textContent = '⏳ Memfilter...';
+  clearTimeout(_renderTimer);
+  _renderTimer = setTimeout(()=>{
+    render();
+    if(btn) btn.textContent = '↻ Refresh Data';
+  }, ms);
 }
 
 function render(){
