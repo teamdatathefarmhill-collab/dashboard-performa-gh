@@ -171,6 +171,12 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 .ins-empty{font-size:11px;color:var(--hint);font-style:italic;padding:4px 0;}
 
 
+/* MULTI-SELECT KLAS */
+.klas-opt{display:flex;align-items:center;gap:7px;padding:5px 12px;cursor:pointer;font-size:11px;color:var(--text);transition:background .1s;}
+.klas-opt:hover{background:var(--surface2);}
+.klas-opt input[type=checkbox]{accent-color:var(--green-bar);width:13px;height:13px;cursor:pointer;}
+.klas-opt.selected{background:var(--green-bg);}
+
 @keyframes spin{to{transform:rotate(360deg);}}
 @keyframes livepulse{0%,100%{opacity:1;}50%{opacity:.4;}}
 .rbtn{display:flex;align-items:center;gap:5px;padding:6px 12px;border-radius:20px;border:1px solid var(--border-med);background:var(--surface);font-size:11px;color:var(--blue);font-weight:600;cursor:pointer;box-shadow:var(--shadow);}
@@ -302,7 +308,18 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
     </div>
     <div class="filters">
       <div class="fpill"><label>Periode</label><select id="f-periode"><option value="">Semua</option></select></div>
-      <div class="fpill"><label>Klasifikasi GH</label><select id="f-klas"><option value="">Semua</option></select></div>
+      <!-- Multi-select Klasifikasi GH -->
+      <div class="fpill" style="position:relative;cursor:pointer;user-select:none;" id="fpill-klas" onclick="toggleKlasDropdown(event)">
+        <label style="pointer-events:none;">Klasifikasi GH</label>
+        <span id="klas-label" style="font-weight:600;font-size:11px;color:var(--text);pointer-events:none;">Semua ▾</span>
+        <div id="klas-dropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;min-width:180px;background:var(--surface);border:1px solid var(--border-med);border-radius:var(--rs);box-shadow:0 4px 12px rgba(0,0,0,0.12);z-index:200;padding:6px 0;" onclick="event.stopPropagation()">
+          <div id="klas-options"></div>
+          <div style="padding:5px 10px;border-top:1px solid var(--border);margin-top:2px;display:flex;gap:6px;">
+            <button onclick="klasSelectAll()" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid var(--border-med);background:var(--surface2);color:var(--muted);cursor:pointer;font-weight:600;">Semua</button>
+            <button onclick="klasClearAll()" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid var(--border-med);background:var(--surface2);color:var(--muted);cursor:pointer;font-weight:600;">Reset</button>
+          </div>
+        </div>
+      </div>
       <div class="fpill"><label>GH</label><select id="f-gh"><option value="">Semua</option></select></div>
       <div class="fpill"><label>Status</label><select id="f-kategori" onchange="render()">
         <option value="">Semua</option>
@@ -452,6 +469,28 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
     Evaluasi &amp; Rekomendasi AI <span class="bnew">AI</span>
   </div>
 
+  <!-- SANITASI KATEGORI CHART — selalu tampil jika data sanitasi tersedia -->
+  <div id="sanitasi-kategori-section" style="display:none;margin-bottom:14px;">
+    <div class="sec" style="margin-top:0;">Distribusi Kategori Sanitasi <span class="bnew">BARU</span></div>
+    <div class="card">
+      <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;">
+        <div style="flex:0 0 200px;">
+          <div class="card-ttl">Pie Kategori</div>
+          <div style="position:relative;height:200px;"><canvas id="c-sanitasi-kategori-pie"></canvas></div>
+          <div id="sanitasi-kategori-legend" style="margin-top:6px;display:flex;flex-direction:column;gap:3px;"></div>
+        </div>
+        <div style="flex:1;min-width:200px;">
+          <div class="card-ttl">Detail Kategori</div>
+          <div id="sanitasi-kategori-detail"></div>
+        </div>
+        <div style="flex:0 0 140px;">
+          <div class="card-ttl">Ringkasan</div>
+          <div id="sanitasi-kategori-kpi" style="font-size:11px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- SANITASI CHART — muncul saat filter GH aktif -->
   <div id="sanitasi-section" style="display:none;margin-bottom:14px;">
     <div class="sec" style="margin-top:0;">Persebaran Sanitasi per Varietas <span class="bnew">BARU</span></div>
@@ -548,24 +587,20 @@ function parseCSV(text){
 
 // ── SANITASI DATASET ──────────────────────────────────────────────────────────
 function buildSanitasiDataset(rows){
-  // Aggregate sanitasi per GH+Periode+Varietas
-  const byGHPeriode = {};  // key: gh||periode → {total, byVarietas:{}}
-  const byGHPeriodeVarietas = {};
+  const byGHPeriode = {};
+  const byKategori  = {};
 
   rows.forEach(r=>{
-    const gh      = (r['GREENHOUSE']||'').trim();
-    const periode = (r['PERIODE']||'').trim();
-    const varietas= (r['VARIETAS']||'').trim() || 'Lainnya';
+    const gh       = (r['GREENHOUSE']||'').trim();
+    const periode  = (r['PERIODE']||'').trim();
+    const varietas = (r['VARIETAS']||'').trim() || 'Lainnya';
+    const kategori = (r['KATEGORI']||r['Kategori']||r['kategori']||'').trim() || 'Lainnya';
     if(!gh || !periode) return;
 
     const jmlSan  = parseFloat(r['JUMLAH SANITASI']||0);
     const jmlSul  = parseFloat(r['JUMLAH SULAMAN']||0);
     const trueSan = parseFloat(r['TRUE SANITASI']||0);
 
-    // Hitung effective sanitasi sesuai aturan:
-    // jika jmlSan == jmlSul → 0 (sulaman menutup semua sanitasi)
-    // jika jmlSan > jmlSul  → jmlSan - jmlSul
-    // gunakan TRUE SANITASI jika tersedia, else hitung manual
     let eff = 0;
     if(trueSan > 0){
       eff = trueSan;
@@ -575,12 +610,30 @@ function buildSanitasiDataset(rows){
     if(eff <= 0) return;
 
     const gpk = gh + '||' + periode;
-    if(!byGHPeriode[gpk]) byGHPeriode[gpk] = {gh, periode, total:0, byVarietas:{}};
+    if(!byGHPeriode[gpk]) byGHPeriode[gpk] = {gh, periode, total:0, byVarietas:{}, byKategori:{}};
     byGHPeriode[gpk].total += eff;
     byGHPeriode[gpk].byVarietas[varietas] = (byGHPeriode[gpk].byVarietas[varietas]||0) + eff;
+    byGHPeriode[gpk].byKategori[kategori] = (byGHPeriode[gpk].byKategori[kategori]||0) + eff;
+    byKategori[kategori] = (byKategori[kategori]||0) + eff;
   });
 
-  return { byGHPeriode };
+  // Store all rows (already filtered eff>0) for dynamic re-aggregation
+  const allRows = rows.map(r=>({
+    gh:       (r['GREENHOUSE']||'').trim(),
+    periode:  (r['PERIODE']||'').trim(),
+    klasifikasi: (r['KLASIFIKASI GH']||r['Klasifikasi GH']||r['klasifikasi']||'').trim(),
+    kategori: (r['KATEGORI']||r['Kategori']||r['kategori']||'').trim() || 'Lainnya',
+    eff: (()=>{
+      const jmlSan  = parseFloat(r['JUMLAH SANITASI']||0);
+      const jmlSul  = parseFloat(r['JUMLAH SULAMAN']||0);
+      const trueSan = parseFloat(r['TRUE SANITASI']||0);
+      if(trueSan > 0) return trueSan;
+      if(jmlSan > jmlSul) return jmlSan - jmlSul;
+      return 0;
+    })(),
+  })).filter(r=>r.gh && r.periode && r.eff > 0);
+
+  return { byGHPeriode, byKategori, allRows };
 }
 
 function buildDataset(rows){
@@ -931,7 +984,9 @@ function initFilters(){
     if(cur && vals.includes(cur)) sel.value = cur;
   };
   fill('f-periode',  RAW.filters.periodes);
-  fill('f-klas',     RAW.filters.klasifikasis);
+  // Multi-select klasifikasi GH
+  buildKlasOptions(RAW.filters.klasifikasis);
+  updateKlasLabel();
   // Filter GH dropdown: hanya tampilkan Tohudan, Sawahan, Colomadu, Bergas
   const filteredGHs = RAW.filters.ghs.filter(isWhitelistedGH);
   fill('f-gh', filteredGHs);
@@ -961,11 +1016,19 @@ function cascadeFilters(changedId){
   // based on all OTHER currently-selected filters
   ids.forEach(targetId => {
     if(targetId === changedId) return; // don't touch the filter that just changed
+    // f-klas is now a custom multi-select, skip select rebuild for it
+    if(targetId === 'f-klas') return;
 
     // Filter RAW data using all filters EXCEPT targetId
     let rows = RAW.gh_records;
     ids.forEach(id => {
       if(id === targetId) return;
+      if(id === 'f-klas'){
+        // apply multi-select
+        if(selectedKlas && selectedKlas.size > 0)
+          rows = rows.filter(r => selectedKlas.has(r[fields[id]]));
+        return;
+      }
       const val = cur[id];
       if(val) rows = rows.filter(r => r[fields[id]] === val);
     });
@@ -1002,7 +1065,9 @@ function getFiltered(){
   const kat     = document.getElementById('f-kategori') ? document.getElementById('f-kategori').value : '';
   let rows  = RAW ? RAW.gh_records : [];
   if(p) rows = rows.filter(r => r.periode     === p);
-  if(k) rows = rows.filter(r => r.klasifikasi === k);
+  // Multi-select klasifikasi: filter jika ada yang dipilih
+  if(selectedKlas && selectedKlas.size > 0) rows = rows.filter(r => selectedKlas.has(r.klasifikasi));
+  else if(k) rows = rows.filter(r => r.klasifikasi === k);
   if(g) rows = rows.filter(r => r.gh          === g);
 
   // Filter status/kategori
@@ -1053,7 +1118,7 @@ function getOutspecAggregated(mapKey){
     const rec = RAW.gh_records.find(r=>r.gh===gh && r.periode===periode);
     if(!rec) return;
     if(p && rec.periode!==p) return;
-    if(k && rec.klasifikasi!==k) return;
+    if(selectedKlas && selectedKlas.size > 0){ if(!selectedKlas.has(rec.klasifikasi)) return; } else if(k && rec.klasifikasi!==k) return;
     if(g && rec.gh!==g) return;
     Object.entries(noteMap).forEach(([note,val])=>{
       totals[note] = (totals[note]||0)+val;
@@ -1202,6 +1267,7 @@ function setTblSort(mode){
     btn.style.color      = m===mode ? 'var(--blue)'    : 'var(--muted)';
   });
   renderPeriodeTable();
+  renderSanitasiKategoriChart();
 }
 
 function renderPeriodeTable(){
@@ -1236,20 +1302,19 @@ function renderPeriodeTable(){
   }
 
   // ── Filter gh_records sesuai filter UI (fix #1) ──────────────────────────
+  const matchKlas = r => selectedKlas.size > 0 ? selectedKlas.has(r.klasifikasi) : (!fKlas || r.klasifikasi === fKlas);
   let filteredRecs = RAW.gh_records.filter(r=>{
-    if(fKlas && r.klasifikasi !== fKlas) return false;
+    if(!matchKlas(r))                   return false;
     if(fGH   && r.gh          !== fGH)  return false;
     if(!isWhitelisted(r.gh))            return false;
-    // Termasuk Belum Panen (semua status ditampilkan)
     return true;
   });
 
-  // Kelompokkan per nama GH — ambil semua periode per GH dari RAW tanpa filter periode
   const allSelesaiRecs = RAW.gh_records.filter(r=>{
-    if(fKlas && r.klasifikasi !== fKlas) return false;
+    if(!matchKlas(r))                   return false;
     if(fGH   && r.gh          !== fGH)  return false;
     if(!isWhitelisted(r.gh))            return false;
-    return true; // termasuk semua status
+    return true;
   });
 
   // Kelompokkan per GH
@@ -1432,6 +1497,8 @@ function renderPeriodeTable(){
 
   // Render sanitasi chart jika filter GH aktif
   renderSanitasiChart();
+  // Render sanitasi kategori chart (selalu tampil jika data tersedia)
+  renderSanitasiKategoriChart();
 }
 
 // ── SANITASI CHART ────────────────────────────────────────────────────────────
@@ -1467,6 +1534,11 @@ function renderSanitasiChart(){
     const ghNorm = (d.gh||'').trim().toLowerCase();
     if(ghNorm !== fGHNorm) return;
     if(fPeriode && String(d.periode).trim() !== String(fPeriode).trim()) return;
+    // Multi-select klas filter
+    if(selectedKlas && selectedKlas.size > 0){
+      const panenRec = RAW && RAW.gh_records.find(p=>p.gh.toLowerCase()===ghNorm && (!fPeriode||p.periode===fPeriode));
+      if(panenRec && !selectedKlas.has(panenRec.klasifikasi)) return;
+    }
     Object.entries(d.byVarietas).forEach(([v, val])=>{
       varMap[v] = (varMap[v]||0) + val;
       totalSan += val;
@@ -2319,6 +2391,202 @@ const response = await fetch(PROXY_URL, {
     btn.disabled = false;
     btn.innerHTML = '✨ Generate Evaluasi';
   }
+}
+
+// ── MULTI-SELECT KLASIFIKASI GH ──────────────────────────────────────────────
+let selectedKlas = new Set(); // empty = all selected
+
+function toggleKlasDropdown(e){
+  const dd = document.getElementById('klas-dropdown');
+  if(!dd) return;
+  const isOpen = dd.style.display !== 'none';
+  dd.style.display = isOpen ? 'none' : 'block';
+  if(!isOpen){
+    // Close when clicking outside
+    setTimeout(()=>{
+      document.addEventListener('click', function closeKlas(ev){
+        if(!document.getElementById('fpill-klas').contains(ev.target)){
+          document.getElementById('klas-dropdown').style.display='none';
+          document.removeEventListener('click', closeKlas);
+        }
+      });
+    }, 0);
+  }
+}
+
+function buildKlasOptions(vals){
+  const container = document.getElementById('klas-options');
+  if(!container) return;
+  container.innerHTML = vals.map(v=>`
+    <label class="klas-opt${selectedKlas.has(v)?' selected':''}">
+      <input type="checkbox" value="${v}" ${selectedKlas.has(v)?'checked':''} onchange="onKlasChange(this)">
+      ${v}
+    </label>`).join('');
+}
+
+function onKlasChange(cb){
+  const v = cb.value;
+  if(cb.checked) selectedKlas.add(v); else selectedKlas.delete(v);
+  // Update parent label highlight
+  cb.closest('.klas-opt').classList.toggle('selected', cb.checked);
+  updateKlasLabel();
+  cascadeFilters('f-klas');
+}
+
+function klasSelectAll(){
+  document.querySelectorAll('#klas-options input[type=checkbox]').forEach(cb=>{
+    cb.checked = true;
+    selectedKlas.add(cb.value);
+    cb.closest('.klas-opt').classList.add('selected');
+  });
+  updateKlasLabel();
+  render();
+}
+
+function klasClearAll(){
+  document.querySelectorAll('#klas-options input[type=checkbox]').forEach(cb=>{
+    cb.checked = false;
+    cb.closest('.klas-opt').classList.remove('selected');
+  });
+  selectedKlas.clear();
+  updateKlasLabel();
+  render();
+}
+
+function updateKlasLabel(){
+  const lbl = document.getElementById('klas-label');
+  if(!lbl) return;
+  if(selectedKlas.size === 0){
+    lbl.textContent = 'Semua ▾';
+  } else if(selectedKlas.size === 1){
+    lbl.textContent = [...selectedKlas][0] + ' ▾';
+  } else {
+    lbl.textContent = selectedKlas.size + ' dipilih ▾';
+  }
+}
+
+// Override getFiltered untuk multi-select klas
+const _origGetFiltered = getFiltered;
+
+// ── SANITASI KATEGORI CHART ───────────────────────────────────────────────────
+function renderSanitasiKategoriChart(){
+  const section = document.getElementById('sanitasi-kategori-section');
+  if(!section) return;
+
+  if(!RAW_SANITASI || !RAW_SANITASI.allRows || !RAW_SANITASI.allRows.length){
+    section.style.display = 'none';
+    return;
+  }
+
+  // Ambil filter aktif
+  const fPeriode = document.getElementById('f-periode').value;
+  const fGH      = document.getElementById('f-gh').value;
+
+  // Aggregate kategori sesuai filter aktif
+  const katMap = {};
+  let total    = 0;
+
+  RAW_SANITASI.allRows.forEach(r=>{
+    // Filter GH
+    if(fGH && r.gh.toLowerCase() !== fGH.toLowerCase()) return;
+    // Filter Periode
+    if(fPeriode && String(r.periode).trim() !== String(fPeriode).trim()) return;
+    // Filter multi-select klasifikasi (match via panen records)
+    if(selectedKlas.size > 0){
+      // Cari record panen yang match GH ini untuk ambil klasifikasi
+      const panenRec = RAW && RAW.gh_records.find(p=>
+        p.gh.toLowerCase() === r.gh.toLowerCase() &&
+        (!fPeriode || p.periode === fPeriode)
+      );
+      if(panenRec && !selectedKlas.has(panenRec.klasifikasi)) return;
+    }
+    katMap[r.kategori] = (katMap[r.kategori]||0) + r.eff;
+    total += r.eff;
+  });
+
+  const entries = Object.entries(katMap).sort((a,b)=>b[1]-a[1]);
+
+  if(!entries.length){
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = 'block';
+
+  const pieColors = ['#e24b4a','#ef9f27','#5aac1a','#378add','#1d9e75','#d85a30','#9c59c2','#185fa5','#854f0b','#3b6d11'];
+
+  // KPI
+  const kpiEl = document.getElementById('sanitasi-kategori-kpi');
+  if(kpiEl) kpiEl.innerHTML = `
+    <div style="margin-bottom:10px;">
+      <div style="font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Total Sanitasi</div>
+      <div style="font-size:22px;font-weight:700;color:var(--red);">${total.toLocaleString('id-ID')}</div>
+      <div style="font-size:10px;color:var(--hint);">tanaman</div>
+    </div>
+    <div>
+      <div style="font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Kategori</div>
+      <div style="font-size:18px;font-weight:700;color:var(--text);">${entries.length}</div>
+    </div>`;
+
+  // Detail bars
+  const detEl = document.getElementById('sanitasi-kategori-detail');
+  if(detEl){
+    const maxVal = entries[0][1]||1;
+    detEl.innerHTML = entries.map(([k,val],i)=>{
+      const pct = total ? (val/total*100).toFixed(1) : 0;
+      const w   = (val/maxVal*100).toFixed(1);
+      return `<div style="margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:2px;">
+          <span style="display:flex;align-items:center;gap:5px;">
+            <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${pieColors[i%pieColors.length]};flex-shrink:0;"></span>
+            <span style="font-weight:600;">${k}</span>
+          </span>
+          <span style="font-weight:700;">${val.toLocaleString('id-ID')} <span style="color:var(--hint);font-weight:400;">(${pct}%)</span></span>
+        </div>
+        <div style="background:var(--surface2);border-radius:3px;height:7px;overflow:hidden;">
+          <div style="width:${w}%;height:100%;border-radius:3px;background:${pieColors[i%pieColors.length]};opacity:.85;"></div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // Legend
+  const legEl = document.getElementById('sanitasi-kategori-legend');
+  if(legEl){
+    legEl.innerHTML = entries.slice(0,6).map(([k,val],i)=>{
+      const pct = total ? (val/total*100).toFixed(1) : 0;
+      return `<div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted);">
+        <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${pieColors[i%pieColors.length]};flex-shrink:0;"></span>
+        <span>${k} <strong style="color:var(--text);">${pct}%</strong></span>
+      </div>`;
+    }).join('');
+  }
+
+  // Pie chart
+  destroyChart('sanitasi-kategori-pie');
+  const pieCvs = document.getElementById('c-sanitasi-kategori-pie');
+  if(!pieCvs || !entries.length) return;
+  charts['sanitasi-kategori-pie'] = new Chart(pieCvs.getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels: entries.map(([k])=>k),
+      datasets:[{
+        data: entries.map(([,v])=>v),
+        backgroundColor: pieColors.slice(0, entries.length),
+        borderWidth: 2, borderColor: '#fff', hoverOffset: 8,
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      cutout: '58%',
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:c=>{
+          const pct = total ? (c.raw/total*100).toFixed(1) : 0;
+          return ` ${c.label}: ${c.raw.toLocaleString('id-ID')} (${pct}%)`;
+        }}}
+      }
+    }
+  });
 }
 
 // ── STARTUP ───────────────────────────────────────────────────────────────────
