@@ -466,10 +466,6 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
     </table>
   </div>
 
-  <div class="sec" style="margin-top:16px;">
-    Evaluasi &amp; Rekomendasi AI <span class="bnew">AI</span>
-  </div>
-
   <!-- SANITASI KATEGORI CHART — selalu tampil jika data sanitasi tersedia -->
   <div id="sanitasi-kategori-section" style="display:none;margin-bottom:14px;">
     <div class="sec" style="margin-top:0;">Distribusi Kategori Sanitasi <span class="bnew">BARU</span></div>
@@ -492,25 +488,11 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
     </div>
   </div>
 
-  <!-- SANITASI CHART — muncul saat filter GH aktif -->
-  <div id="sanitasi-section" style="display:none;margin-bottom:14px;">
-    <div class="sec" style="margin-top:0;">Persebaran Sanitasi per Varietas <span class="bnew">BARU</span></div>
-    <div class="card">
-      <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;">
-        <div style="flex:0 0 200px;">
-          <div class="card-ttl">Distribusi Sanitasi</div>
-          <div style="position:relative;height:180px;"><canvas id="c-sanitasi-pie"></canvas></div>
-        </div>
-        <div style="flex:1;min-width:180px;">
-          <div class="card-ttl">Detail per Varietas</div>
-          <div id="sanitasi-detail"></div>
-        </div>
-        <div style="flex:0 0 150px;">
-          <div class="card-ttl">Ringkasan</div>
-          <div id="sanitasi-kpi" style="font-size:11px;"></div>
-        </div>
-      </div>
-    </div>
+  <!-- SANITASI per Varietas: dihapus per permintaan -->
+  <div id="sanitasi-section" style="display:none;"></div>
+
+  <div class="sec" style="margin-top:16px;">
+    Evaluasi &amp; Rekomendasi AI <span class="bnew">AI</span>
   </div>
   <div class="card" id="ai-eval-card" style="margin-bottom:14px;">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
@@ -2508,12 +2490,49 @@ function renderSanitasiKategoriChart(){
   const katMap = {};
   let total    = 0;
 
+  // FIX: jika tidak ada filter periode, ambil hanya periode TERBARU per GH
+  // agar total sanitasi sesuai dengan yang ditampilkan di tabel (bukan akumulasi semua periode)
+  let periodeFilter = fPeriode;
+  if(!periodeFilter){
+    // Kumpulkan periode terbesar per ghNorm dari allRows
+    const latestPeriodeByGH = {};
+    RAW_SANITASI.allRows.forEach(r=>{
+      const key = r.ghNorm;
+      const p   = parseFloat(r.periode) || 0;
+      if(!latestPeriodeByGH[key] || p > latestPeriodeByGH[key]) latestPeriodeByGH[key] = p;
+    });
+    // Gunakan periode terbesar yang sedang aktif di panen (dari RAW.gh_records, filter ongoing/belum selesai)
+    // Jika ada filter GH, pakai periode terbesar GH tersebut saja
+    const activeGHNorm = fGH ? normalizeGH(fGH) : null;
+    const relevantPeriodes = new Set();
+    RAW_SANITASI.allRows.forEach(r=>{
+      if(activeGHNorm && r.ghNorm !== activeGHNorm) return;
+      const maxP = latestPeriodeByGH[r.ghNorm];
+      if(parseFloat(r.periode) === maxP) relevantPeriodes.add(String(r.periode).trim());
+    });
+    // Simpan untuk dipakai sebagai filter set
+    periodeFilter = relevantPeriodes; // Set of string
+  }
+
   RAW_SANITASI.allRows.forEach(r=>{
-    // FIX: gunakan ghNorm (lowercase) untuk match ke nilai filter f-gh
-    // yang berasal dari sheet panen (kolom "GH") — nama bisa berbeda case
+    // Filter GH
     if(fGH && r.ghNorm !== normalizeGH(fGH)) return;
-    // Filter Periode
-    if(fPeriode && String(r.periode).trim() !== String(fPeriode).trim()) return;
+    // Filter Periode — bisa string (dari dropdown) atau Set (latest per GH)
+    if(periodeFilter){
+      const rPeriode = String(r.periode).trim();
+      if(typeof periodeFilter === 'string'){
+        if(rPeriode !== periodeFilter) return;
+      } else {
+        // Set: periode terbaru per GH
+        const maxP = parseFloat(periodeFilter.size ? [...periodeFilter].sort((a,b)=>parseFloat(b)-parseFloat(a))[0] : 0);
+        const ghLatest = (() => {
+          let best = 0;
+          RAW_SANITASI.allRows.forEach(x=>{ if(x.ghNorm===r.ghNorm) { const p=parseFloat(x.periode)||0; if(p>best) best=p; } });
+          return String(best);
+        })();
+        if(rPeriode !== ghLatest) return;
+      }
+    }
     // Filter multi-select klasifikasi (match via panen records, pakai ghNorm)
     if(selectedKlas.size > 0){
       const panenRec = RAW && RAW.gh_records.find(p=>
