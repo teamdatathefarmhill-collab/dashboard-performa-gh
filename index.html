@@ -310,6 +310,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
       <div class="fpill"><label>Periode</label><select id="f-periode"><option value="">Semua</option></select></div>
       <!-- Multi-select Klasifikasi GH -->
       <div class="fpill" style="position:relative;cursor:pointer;user-select:none;" id="fpill-klas" onclick="toggleKlasDropdown(event)">
+        <input type="hidden" id="f-klas" value="">
         <label style="pointer-events:none;">Klasifikasi GH</label>
         <span id="klas-label" style="font-weight:600;font-size:11px;color:var(--text);pointer-events:none;">Semua ▾</span>
         <div id="klas-dropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;min-width:180px;background:var(--surface);border:1px solid var(--border-med);border-radius:var(--rs);box-shadow:0 4px 12px rgba(0,0,0,0.12);z-index:200;padding:6px 0;" onclick="event.stopPropagation()">
@@ -853,6 +854,7 @@ async function loadData(isRefresh=false){
 
   try {
     // Fetch dari Apps Script proxy
+    console.log('[loadData] Fetching:', PROXY_URL);
     const url = PROXY_URL + '?t=' + Date.now();
     let text = '';
     try {
@@ -926,7 +928,15 @@ async function loadData(isRefresh=false){
     if(!isRefresh) {
       document.getElementById('loading-screen').style.display = 'none';
       document.getElementById('err-screen').style.display     = 'flex';
-      document.getElementById('err-msg').textContent = e.message + ' — cek koneksi internet atau Apps Script.';
+      // Sembunyikan JS internal error dari user, tampilkan pesan yang actionable
+      const rawMsg = e.message || '';
+      const isJsInternalErr = rawMsg.includes('Cannot read') || rawMsg.includes('null') || rawMsg.includes('undefined');
+      const userMsg = isJsInternalErr
+        ? 'Gagal terhubung ke Apps Script. Pastikan: 1) URL Apps Script benar, 2) sudah di-deploy sebagai Web App, 3) akses "Anyone".'
+        : rawMsg + ' — cek koneksi internet atau Apps Script.';
+      document.getElementById('err-msg').textContent = userMsg;
+      // Log error asli ke console untuk debugging
+      console.error('[loadData error]', e);
     } else {
       showToast('Gagal refresh: '+e.message);
     }
@@ -999,9 +1009,10 @@ function initFilters(){
   // Tidak set default periode agar semua data tampil saat pertama buka
 
   // Attach cascade listeners
-  ['f-periode','f-klas','f-gh'].forEach(id=>{
+  ['f-periode','f-gh'].forEach(id=>{
     document.getElementById(id).addEventListener('change', ()=>cascadeFilters(id));
   });
+  // f-klas adalah custom multi-select, cascade dipanggil dari klasToggle/klasClearAll
   // Run initial cascade from periode
   cascadeFilters('f-periode');
 }
@@ -2471,6 +2482,9 @@ function updateKlasLabel(){
   } else {
     lbl.textContent = selectedKlas.size + ' dipilih ▾';
   }
+  // Sync hidden input agar getElementById('f-klas').value tidak null/crash
+  const hiddenKlas = document.getElementById('f-klas');
+  if(hiddenKlas) hiddenKlas.value = selectedKlas.size === 1 ? [...selectedKlas][0] : '';
 }
 
 // Override getFiltered untuk multi-select klas
