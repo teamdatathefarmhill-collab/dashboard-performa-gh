@@ -147,6 +147,21 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 /* NO DATA */
 .no-data{text-align:center;padding:24px;color:var(--hint);font-size:12px;}
 
+/* MULTI-SELECT GH DROPDOWN */
+.gh-multi-wrap{position:relative;}
+.gh-multi-btn{display:flex;align-items:center;gap:4px;padding:5px 10px;border-radius:20px;border:1px solid var(--border-med);background:var(--surface);font-size:11px;color:var(--muted);box-shadow:var(--shadow);cursor:pointer;white-space:nowrap;user-select:none;}
+.gh-multi-btn label{font-weight:600;pointer-events:none;}
+.gh-multi-btn .gh-multi-val{font-weight:600;color:var(--text);max-width:140px;overflow:hidden;text-overflow:ellipsis;}
+.gh-multi-btn .gh-arrow{font-size:9px;color:var(--hint);margin-left:2px;}
+.gh-multi-dropdown{display:none;position:absolute;top:calc(100% + 5px);left:0;min-width:180px;background:var(--surface);border:1px solid var(--border-med);border-radius:var(--r);box-shadow:0 4px 16px rgba(0,0,0,0.12);z-index:200;overflow:hidden;}
+.gh-multi-dropdown.open{display:block;}
+.gh-multi-item{display:flex;align-items:center;gap:8px;padding:7px 12px;font-size:11px;cursor:pointer;color:var(--text);transition:background .1s;}
+.gh-multi-item:hover{background:var(--surface2);}
+.gh-multi-item input[type=checkbox]{accent-color:var(--green-bar);width:13px;height:13px;cursor:pointer;flex-shrink:0;}
+.gh-multi-item label{cursor:pointer;font-weight:500;flex:1;}
+.gh-multi-divider{height:1px;background:var(--border);margin:3px 0;}
+.gh-multi-all{font-weight:700;color:var(--green);}
+
 /* SANITASI + AI layout responsive */
 @media(max-width:900px){
   #sanitasi-kategori-section > div:last-child {
@@ -312,7 +327,22 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
     <div class="filters">
       <div class="fpill"><label>Periode</label><select id="f-periode"><option value="">Semua</option></select></div>
       <div class="fpill"><label>Klasifikasi GH</label><select id="f-klas" onchange="cascadeFilters('f-klas')"><option value="">Semua</option></select></div>
-      <div class="fpill"><label>GH</label><select id="f-gh"><option value="">Semua</option></select></div>
+      <!-- GH Multi-Select -->
+      <div class="gh-multi-wrap" id="gh-multi-wrap">
+        <div class="gh-multi-btn" id="gh-multi-btn" onclick="toggleGHDropdown(event)">
+          <label>GH</label>
+          <span class="gh-multi-val" id="gh-multi-val">Semua</span>
+          <span class="gh-arrow">▼</span>
+        </div>
+        <div class="gh-multi-dropdown" id="gh-multi-dropdown">
+          <div class="gh-multi-item gh-multi-all" onclick="selectAllGH(event)">
+            <input type="checkbox" id="gh-chk-all" checked onchange="selectAllGH(event)">
+            <label for="gh-chk-all">Semua GH</label>
+          </div>
+          <div class="gh-multi-divider"></div>
+          <div id="gh-multi-list"></div>
+        </div>
+      </div>
       <div class="fpill"><label>Status</label><select id="f-kategori" onchange="render()">
         <option value="">Semua</option>
         <option value="Ongoing">Ongoing</option>
@@ -465,7 +495,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
       <!-- KIRI: Donut chart sanitasi -->
       <div class="card" style="display:flex;flex-direction:column;justify-content:center;">
         <div class="card-ttl" style="margin-bottom:10px;">Distribusi Kategori Sanitasi</div>
-        <div style="display:flex;align-items:center;gap:16px;">
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
           <div style="flex:0 0 150px;position:relative;height:150px;">
             <canvas id="c-sanitasi-kategori-pie"></canvas>
             <div id="sanitasi-donut-center" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;">
@@ -474,7 +504,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
               <div style="font-size:8px;color:var(--hint);">tanaman</div>
             </div>
           </div>
-          <div style="flex:1;">
+          <div style="flex:1;min-width:120px;">
             <div id="sanitasi-kategori-legend" style="display:flex;flex-direction:column;gap:5px;"></div>
           </div>
         </div>
@@ -989,6 +1019,90 @@ async function loadData(isRefresh=false){
 
 // Init filters
 
+// ── GH MULTI-SELECT ───────────────────────────────────────────────────────────
+let _ghAllOptions = []; // semua opsi GH yang tersedia
+
+function buildGHMultiSelect(ghs){
+  _ghAllOptions = ghs;
+  const list = document.getElementById('gh-multi-list');
+  if(!list) return;
+  list.innerHTML = ghs.map(gh => `
+    <div class="gh-multi-item">
+      <input type="checkbox" id="gh-chk-${gh.replace(/\s+/g,'_')}" value="${gh}" checked
+        onchange="onGHCheckChange()">
+      <label for="gh-chk-${gh.replace(/\s+/g,'_')}">${gh}</label>
+    </div>`).join('');
+  updateGHLabel();
+}
+
+function updateGHMultiOptions(validGHs){
+  // Rebuild checkboxes while preserving checked state
+  const prevChecked = getSelectedGHs();
+  const list = document.getElementById('gh-multi-list');
+  if(!list) return;
+  list.innerHTML = validGHs.map(gh => {
+    const isChecked = !prevChecked.length || prevChecked.includes(gh);
+    return `<div class="gh-multi-item">
+      <input type="checkbox" id="gh-chk-${gh.replace(/\s+/g,'_')}" value="${gh}" ${isChecked?'checked':''}
+        onchange="onGHCheckChange()">
+      <label for="gh-chk-${gh.replace(/\s+/g,'_')}">${gh}</label>
+    </div>`;
+  }).join('');
+  updateGHLabel();
+}
+
+function getSelectedGHs(){
+  const checks = document.querySelectorAll('#gh-multi-list input[type=checkbox]:checked');
+  return Array.from(checks).map(c => c.value);
+}
+
+function onGHCheckChange(){
+  const all = document.querySelectorAll('#gh-multi-list input[type=checkbox]');
+  const checked = document.querySelectorAll('#gh-multi-list input[type=checkbox]:checked');
+  const allChk = document.getElementById('gh-chk-all');
+  if(allChk) allChk.checked = all.length === checked.length;
+  updateGHLabel();
+  render();
+}
+
+function selectAllGH(e){
+  e.stopPropagation();
+  const allChk = document.getElementById('gh-chk-all');
+  const state = allChk ? allChk.checked : true;
+  document.querySelectorAll('#gh-multi-list input[type=checkbox]').forEach(c => c.checked = state);
+  updateGHLabel();
+  render();
+}
+
+function updateGHLabel(){
+  const all  = document.querySelectorAll('#gh-multi-list input[type=checkbox]');
+  const chk  = document.querySelectorAll('#gh-multi-list input[type=checkbox]:checked');
+  const val  = document.getElementById('gh-multi-val');
+  if(!val) return;
+  if(!chk.length || chk.length === all.length){
+    val.textContent = 'Semua';
+  } else if(chk.length <= 2){
+    val.textContent = Array.from(chk).map(c=>c.value).join(', ');
+  } else {
+    val.textContent = chk.length + ' GH dipilih';
+  }
+}
+
+function toggleGHDropdown(e){
+  e.stopPropagation();
+  const dd = document.getElementById('gh-multi-dropdown');
+  if(dd) dd.classList.toggle('open');
+}
+
+// Tutup dropdown jika klik di luar
+document.addEventListener('click', function(e){
+  const wrap = document.getElementById('gh-multi-wrap');
+  if(wrap && !wrap.contains(e.target)){
+    const dd = document.getElementById('gh-multi-dropdown');
+    if(dd) dd.classList.remove('open');
+  }
+});
+
 // ── BULAN FILTER HELPERS ──────────────────────────────────────────────────────
 function getYearMonth(dateStr){
   if(!dateStr) return '';
@@ -1041,15 +1155,13 @@ function initFilters(){
   };
   fill('f-periode',  RAW.filters.periodes);
   fill('f-klas',     RAW.filters.klasifikasis);
-  // Filter GH dropdown: hanya tampilkan Tohudan, Sawahan, Colomadu, Bergas
-  const filteredGHs = RAW.filters.ghs.filter(isWhitelistedGH);
-  fill('f-gh', filteredGHs);
 
-  // Default: semua filter kosong (Semua)
-  // Tidak set default periode agar semua data tampil saat pertama buka
+  // Build GH multi-select checkboxes
+  const filteredGHs = RAW.filters.ghs.filter(isWhitelistedGH);
+  buildGHMultiSelect(filteredGHs);
 
   // Attach cascade listeners
-  ['f-periode','f-klas','f-gh'].forEach(id=>{
+  ['f-periode','f-klas'].forEach(id=>{
     document.getElementById(id).addEventListener('change', ()=>cascadeFilters(id));
   });
   // Run initial cascade from periode
@@ -1059,35 +1171,23 @@ function initFilters(){
 // Cascade: when one filter changes, update all others to only show
 // options that exist in the data matching current active filters
 function cascadeFilters(changedId){
-  const ids = ['f-periode','f-klas','f-gh'];
-  const fields = { 'f-periode':'periode', 'f-klas':'klasifikasi', 'f-gh':'gh' };
+  const ids = ['f-periode','f-klas'];
+  const fields = { 'f-periode':'periode', 'f-klas':'klasifikasi' };
 
   // Save current values of ALL filters
   const cur = {};
   ids.forEach(id => cur[id] = document.getElementById(id).value);
 
   // For each filter (except the one that changed), recompute valid options
-  // based on all OTHER currently-selected filters
   ids.forEach(targetId => {
-    if(targetId === changedId) return; // don't touch the filter that just changed
-
-    // Filter RAW data using all filters EXCEPT targetId
+    if(targetId === changedId) return;
     let rows = RAW.gh_records;
     ids.forEach(id => {
       if(id === targetId) return;
       const val = cur[id];
       if(val) rows = rows.filter(r => r[fields[id]] === val);
     });
-
-    // Get valid options for targetId from the filtered rows
-    let validVals = unique(rows, fields[targetId]);
-    // Untuk filter GH: hanya tampilkan Tohudan, Sawahan, Colomadu, Bergas
-    if(targetId === 'f-gh'){
-      const WL = ['tohudan','sawahan','colomadu','bergas'];
-      validVals = validVals.filter(v => WL.some(w => (v||'').toLowerCase().includes(w)));
-    }
-
-    // Rebuild the select, preserving current value if still valid
+    const validVals = unique(rows, fields[targetId]);
     const sel = document.getElementById(targetId);
     const prevVal = cur[targetId];
     sel.innerHTML = '<option value="">Semua</option>';
@@ -1096,9 +1196,15 @@ function cascadeFilters(changedId){
       o.value = v; o.textContent = v;
       sel.appendChild(o);
     });
-    // Keep previous value only if still valid
     sel.value = validVals.includes(prevVal) ? prevVal : '';
   });
+
+  // Update GH multi-select options based on current filters
+  const GH_WHITELIST = ['tohudan','sawahan','colomadu','bergas'];
+  let ghRows = RAW.gh_records;
+  ids.forEach(id => { const val = cur[id]; if(val) ghRows = ghRows.filter(r => r[fields[id]] === val); });
+  const validGHs = unique(ghRows, 'gh').filter(v => GH_WHITELIST.some(w => (v||'').toLowerCase().includes(w)));
+  updateGHMultiOptions(validGHs);
 
   render();
 }
@@ -1107,13 +1213,12 @@ function cascadeFilters(changedId){
 function getFiltered(){
   const p       = document.getElementById('f-periode').value;
   const k       = document.getElementById('f-klas').value;
-  const g       = document.getElementById('f-gh').value;
+  const selGHs  = getSelectedGHs(); // array of selected GH names, empty = semua
   const kat     = document.getElementById('f-kategori') ? document.getElementById('f-kategori').value : '';
   let rows  = RAW ? RAW.gh_records : [];
   if(p) rows = rows.filter(r => r.periode     === p);
-  // Multi-select klasifikasi: filter jika ada yang dipilih
   if(k) rows = rows.filter(r => r.klasifikasi === k);
-  if(g) rows = rows.filter(r => r.gh          === g);
+  if(selGHs.length) rows = rows.filter(r => selGHs.includes(r.gh));
 
   // Filter status/kategori
   if(kat){
@@ -1153,10 +1258,10 @@ function getFiltered(){
 }
 
 function getOutspecAggregated(mapKey){
-  const p = document.getElementById('f-periode').value;
-  const k = document.getElementById('f-klas').value;
-  const g = document.getElementById('f-gh').value;
-  const map = RAW[mapKey] || {};
+  const p    = document.getElementById('f-periode').value;
+  const k    = document.getElementById('f-klas').value;
+  const selG = getSelectedGHs(); // array; empty = semua
+  const map  = RAW[mapKey] || {};
   const totals = {};
   Object.entries(map).forEach(([keyStr, noteMap])=>{
     const [gh, periode] = keyStr.split('||');
@@ -1164,7 +1269,7 @@ function getOutspecAggregated(mapKey){
     if(!rec) return;
     if(p && rec.periode!==p) return;
     if(k && rec.klasifikasi!==k) return;
-    if(g && rec.gh!==g) return;
+    if(selG.length && !selG.includes(rec.gh)) return;
     Object.entries(noteMap).forEach(([note,val])=>{
       totals[note] = (totals[note]||0)+val;
     });
@@ -1257,16 +1362,16 @@ function showOsSubDetail(kat, color){
   // Aggregate Note subs for this specific Notes category using notes_note_map
   const totals = {};
   if(RAW && RAW.notes_note_map){
-    const p   = document.getElementById('f-periode').value;
-    const k   = document.getElementById('f-klas').value;
-    const g   = document.getElementById('f-gh').value;
+    const p    = document.getElementById('f-periode').value;
+    const k    = document.getElementById('f-klas').value;
+    const selG = getSelectedGHs();
     Object.entries(RAW.notes_note_map).forEach(([mk, cats])=>{
       const [gh, periode] = mk.split('||');
       const rec = RAW.gh_records.find(r=>r.gh===gh&&r.periode===periode);
       if(!rec) return;
       if(p && rec.periode!==p) return;
       if(k && rec.klasifikasi!==k) return;
-      if(g && rec.gh!==g) return;
+      if(selG.length && !selG.includes(rec.gh)) return;
       const subs = cats[kat];
       if(!subs) return;
       Object.entries(subs).forEach(([note,val])=>{
@@ -1323,7 +1428,7 @@ function renderPeriodeTable(){
   // ── Ambil filter aktif dari UI ───────────────────────────────────────────
   const fPeriode = document.getElementById('f-periode').value;
   const fKlas    = document.getElementById('f-klas').value;
-  const fGH      = document.getElementById('f-gh').value;
+  const selGHs   = getSelectedGHs(); // array; empty = semua
 
   // ── Whitelist nama GH yang ditampilkan (fix #2) ──────────────────────────
   const GH_WHITELIST = ['tohudan','sawahan','colomadu','bergas'];
@@ -1349,9 +1454,9 @@ function renderPeriodeTable(){
   // ── Filter gh_records sesuai filter UI (fix #1) ──────────────────────────
   const matchKlas = r => !fKlas || r.klasifikasi === fKlas;
   let filteredRecs = RAW.gh_records.filter(r=>{
-    if(!matchKlas(r))                   return false;
-    if(fGH   && r.gh          !== fGH)  return false;
-    if(!isWhitelisted(r.gh))            return false;
+    if(!matchKlas(r))                              return false;
+    if(selGHs.length && !selGHs.includes(r.gh))   return false;
+    if(!isWhitelisted(r.gh))                       return false;
     return true;
   });
 
@@ -1548,7 +1653,8 @@ function renderPeriodeTable(){
 
 // ── SANITASI CHART ────────────────────────────────────────────────────────────
 function renderSanitasiChart(){
-  const fGH      = document.getElementById('f-gh').value;
+  const selGHs   = getSelectedGHs();
+  const fGH      = selGHs.length === 1 ? selGHs[0] : '';
   const fPeriode = document.getElementById('f-periode').value;
   const fKlas    = document.getElementById('f-klas').value;
   const section  = document.getElementById('sanitasi-section');
@@ -1888,7 +1994,9 @@ function render(){
   // HEADER
   const p = document.getElementById('f-periode').value||'Semua Periode';
   const k = document.getElementById('f-klas').value||'Semua Klasifikasi';
-  document.getElementById('hdr-sub').textContent = `Monitoring Panen · ${p} · ${k} · ${ghList.length} GH`;
+  const selGHsHdr = getSelectedGHs();
+  const ghLabel = !selGHsHdr.length ? 'Semua GH' : selGHsHdr.length <= 2 ? selGHsHdr.join(', ') : selGHsHdr.length + ' GH';
+  document.getElementById('hdr-sub').textContent = `Monitoring Panen · ${p} · ${k} · ${ghLabel} · ${ghList.length} GH`;
 
   // ALERT
   const alerts=[];
@@ -2456,9 +2564,11 @@ function renderSanitasiKategoriChart(){
   }
 
   // Ambil filter aktif
-  const fPeriode = document.getElementById('f-periode').value;
-  const fGH      = document.getElementById('f-gh').value;
-  const fKlas    = document.getElementById('f-klas').value;
+  const fPeriode  = document.getElementById('f-periode').value;
+  const selGHs    = getSelectedGHs(); // array; empty = semua
+  const fKlas     = document.getElementById('f-klas').value;
+  // fGH: untuk backward compat single-GH logic pakai first selected, kosong = semua
+  const fGH       = selGHs.length ? selGHs[0] : '';
 
   // Aggregate kategori sesuai filter aktif
   const katMap = {};
@@ -2489,8 +2599,8 @@ function renderSanitasiKategoriChart(){
   }
 
   RAW_SANITASI.allRows.forEach(r=>{
-    // Filter GH
-    if(fGH && r.ghNorm !== normalizeGH(fGH)) return;
+    // Filter GH — support multi-select
+    if(selGHs.length && !selGHs.some(g => normalizeGH(g) === r.ghNorm)) return;
     // Filter Periode — bisa string (dari dropdown) atau Set (latest per GH)
     if(periodeFilter){
       const rPeriode = String(r.periode).trim();
