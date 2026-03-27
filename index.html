@@ -802,30 +802,53 @@ function buildDataset(rows){
   });
 
   // Step 4: Outspec by Notes (kategori) and Note (sub-kategori)
+  // Keys: GH||Periode (for non-YM aggregation) AND GH||Periode||YM (for YM-filtered aggregation)
   const outspec_notes_map={}, outspec_note_map={}, seenN=new Set(), seenS=new Set();
+  // YM-aware maps: key = GH||Periode||YM
+  const outspec_notes_ym_map={}, outspec_note_ym_map={};
   rows.forEach(r=>{
     if((r['GRADE']||'').toUpperCase()!=='OUTSPEC'||!r['DATA KEBUN']) return;
     const val=parseFloat(r['DATA KEBUN']||0); if(val<=0) return;
+    // Use 'Tanggal Ref' for YM bucketing (consistent with monthly map)
+    const tglRef = (r['Tanggal Ref']||'').substring(0,10);
+    const ym = tglRef ? tglRef.substring(0,7) : '';
     const mk=r['GH']+'||'+r['Periode'];
+    const mkYm = mk + (ym ? '||'+ym : '');
     if(r['Notes']){
       const key=mk+'||N||'+r['Notes']+'||'+r['DATA KEBUN']+'||'+r['TANGGAL'];
       if(!seenN.has(key)){ seenN.add(key);
         if(!outspec_notes_map[mk]) outspec_notes_map[mk]={};
-        outspec_notes_map[mk][r['Notes']]=(outspec_notes_map[mk][r['Notes']]||0)+val; }
+        outspec_notes_map[mk][r['Notes']]=(outspec_notes_map[mk][r['Notes']]||0)+val;
+        // YM map
+        if(ym){
+          if(!outspec_notes_ym_map[mkYm]) outspec_notes_ym_map[mkYm]={};
+          outspec_notes_ym_map[mkYm][r['Notes']]=(outspec_notes_ym_map[mkYm][r['Notes']]||0)+val;
+        }
+      }
     }
     if(r['Note']){
       const key=mk+'||S||'+r['Note']+'||'+r['DATA KEBUN']+'||'+r['TANGGAL'];
       if(!seenS.has(key)){ seenS.add(key);
         if(!outspec_note_map[mk]) outspec_note_map[mk]={};
-        outspec_note_map[mk][r['Note']]=(outspec_note_map[mk][r['Note']]||0)+val; }
+        outspec_note_map[mk][r['Note']]=(outspec_note_map[mk][r['Note']]||0)+val;
+        // YM map
+        if(ym){
+          if(!outspec_note_ym_map[mkYm]) outspec_note_ym_map[mkYm]={};
+          outspec_note_ym_map[mkYm][r['Note']]=(outspec_note_ym_map[mkYm][r['Note']]||0)+val;
+        }
+      }
     }
   });
 
   // Step 5: Build Notes→Note mapping (for pie click drill-down)
+  // Also build YM-aware version
   const notes_note_map={}, seenNN=new Set();
+  const notes_note_ym_map={};
   rows.forEach(r=>{
     if((r['GRADE']||'').toUpperCase()!=='OUTSPEC'||!r['Notes']||!r['Note']||!r['DATA KEBUN']) return;
     const val=parseFloat(r['DATA KEBUN']||0); if(val<=0) return;
+    const tglRef = (r['Tanggal Ref']||'').substring(0,10);
+    const ym = tglRef ? tglRef.substring(0,7) : '';
     const key=r['GH']+'||'+r['Periode']+'||'+r['Notes']+'||'+r['Note']+'||'+r['DATA KEBUN']+'||'+(r['TANGGAL']||'');
     if(!seenNN.has(key)){
       seenNN.add(key);
@@ -833,11 +856,20 @@ function buildDataset(rows){
       if(!notes_note_map[mk]) notes_note_map[mk]={};
       if(!notes_note_map[mk][r['Notes']]) notes_note_map[mk][r['Notes']]={};
       notes_note_map[mk][r['Notes']][r['Note']]=(notes_note_map[mk][r['Notes']][r['Note']]||0)+val;
+      // YM map
+      if(ym){
+        const mkYm=mk+'||'+ym;
+        if(!notes_note_ym_map[mkYm]) notes_note_ym_map[mkYm]={};
+        if(!notes_note_ym_map[mkYm][r['Notes']]) notes_note_ym_map[mkYm][r['Notes']]={};
+        notes_note_ym_map[mkYm][r['Notes']][r['Note']]=(notes_note_ym_map[mkYm][r['Notes']][r['Note']]||0)+val;
+      }
     }
   });
 
   return{
-    gh_records:ghRecords, monthly, future, tglRefMap, outspec_notes_map, outspec_note_map, notes_note_map,
+    gh_records:ghRecords, monthly, future, tglRefMap,
+    outspec_notes_map, outspec_note_map, notes_note_map,
+    outspec_notes_ym_map, outspec_note_ym_map, notes_note_ym_map,
     filters:{
       periodes:  [...new Set(ghRecords.map(r=>r.periode).filter(Boolean))].sort(),
       klasifikasis:[...new Set(ghRecords.map(r=>r.klasifikasi).filter(Boolean))].sort(),
@@ -1274,19 +1306,48 @@ function getOutspecAggregated(mapKey){
   const p    = document.getElementById('f-periode').value;
   const k    = document.getElementById('f-klas').value;
   const selG = getSelectedGHs(); // array; empty = semua
-  const map  = RAW[mapKey] || {};
+  const ymRange = getActiveYMRange();
+
+  // If YM filter is active, use YM-aware maps
+  const ymMapKey = mapKey === 'outspec_notes_map' ? 'outspec_notes_ym_map'
+                 : mapKey === 'outspec_note_map'  ? 'outspec_note_ym_map'
+                 : mapKey === 'notes_note_map'    ? 'notes_note_ym_map'
+                 : null;
+
   const totals = {};
-  Object.entries(map).forEach(([keyStr, noteMap])=>{
-    const [gh, periode] = keyStr.split('||');
-    const rec = RAW.gh_records.find(r=>r.gh===gh && r.periode===periode);
-    if(!rec) return;
-    if(p && rec.periode!==p) return;
-    if(k && rec.klasifikasi!==k) return;
-    if(selG.length && !selG.includes(rec.gh)) return;
-    Object.entries(noteMap).forEach(([note,val])=>{
-      totals[note] = (totals[note]||0)+val;
+
+  if(ymRange && ymMapKey && RAW[ymMapKey]){
+    // Use YM-keyed map: key = GH||Periode||YM
+    const {ymDari, ymSampai} = ymRange;
+    Object.entries(RAW[ymMapKey]).forEach(([keyStr, noteMap])=>{
+      const parts = keyStr.split('||');
+      const gh = parts[0], periode = parts[1], ym = parts[2]||'';
+      if(ym < ymDari || ym > ymSampai) return;
+      const rec = RAW.gh_records.find(r=>r.gh===gh && r.periode===periode);
+      if(!rec) return;
+      if(p && rec.periode!==p) return;
+      if(k && rec.klasifikasi!==k) return;
+      if(selG.length && !selG.includes(rec.gh)) return;
+      Object.entries(noteMap).forEach(([note,val])=>{
+        totals[note] = (totals[note]||0)+val;
+      });
     });
-  });
+  } else {
+    // No YM filter: use original per-GH||Periode map
+    const map  = RAW[mapKey] || {};
+    Object.entries(map).forEach(([keyStr, noteMap])=>{
+      const [gh, periode] = keyStr.split('||');
+      const rec = RAW.gh_records.find(r=>r.gh===gh && r.periode===periode);
+      if(!rec) return;
+      if(p && rec.periode!==p) return;
+      if(k && rec.klasifikasi!==k) return;
+      if(selG.length && !selG.includes(rec.gh)) return;
+      Object.entries(noteMap).forEach(([note,val])=>{
+        totals[note] = (totals[note]||0)+val;
+      });
+    });
+  }
+
   return Object.entries(totals).sort((a,b)=>b[1]-a[1]);
 }
 function getOutspecNotes(filtered){ return getOutspecAggregated('outspec_notes_map'); }
@@ -1378,19 +1439,41 @@ function showOsSubDetail(kat, color){
     const p    = document.getElementById('f-periode').value;
     const k    = document.getElementById('f-klas').value;
     const selG = getSelectedGHs();
-    Object.entries(RAW.notes_note_map).forEach(([mk, cats])=>{
-      const [gh, periode] = mk.split('||');
-      const rec = RAW.gh_records.find(r=>r.gh===gh&&r.periode===periode);
-      if(!rec) return;
-      if(p && rec.periode!==p) return;
-      if(k && rec.klasifikasi!==k) return;
-      if(selG.length && !selG.includes(rec.gh)) return;
-      const subs = cats[kat];
-      if(!subs) return;
-      Object.entries(subs).forEach(([note,val])=>{
-        totals[note] = (totals[note]||0)+val;
+    const ymRange = getActiveYMRange();
+
+    if(ymRange && RAW.notes_note_ym_map){
+      // YM-filtered drill-down
+      const {ymDari, ymSampai} = ymRange;
+      Object.entries(RAW.notes_note_ym_map).forEach(([mk, cats])=>{
+        const parts = mk.split('||');
+        const gh = parts[0], periode = parts[1], ym = parts[2]||'';
+        if(ym < ymDari || ym > ymSampai) return;
+        const rec = RAW.gh_records.find(r=>r.gh===gh&&r.periode===periode);
+        if(!rec) return;
+        if(p && rec.periode!==p) return;
+        if(k && rec.klasifikasi!==k) return;
+        if(selG.length && !selG.includes(rec.gh)) return;
+        const subs = cats[kat];
+        if(!subs) return;
+        Object.entries(subs).forEach(([note,val])=>{
+          totals[note] = (totals[note]||0)+val;
+        });
       });
-    });
+    } else {
+      Object.entries(RAW.notes_note_map).forEach(([mk, cats])=>{
+        const [gh, periode] = mk.split('||');
+        const rec = RAW.gh_records.find(r=>r.gh===gh&&r.periode===periode);
+        if(!rec) return;
+        if(p && rec.periode!==p) return;
+        if(k && rec.klasifikasi!==k) return;
+        if(selG.length && !selG.includes(rec.gh)) return;
+        const subs = cats[kat];
+        if(!subs) return;
+        Object.entries(subs).forEach(([note,val])=>{
+          totals[note] = (totals[note]||0)+val;
+        });
+      });
+    }
   }
 
   const entries = Object.entries(totals).sort((a,b)=>b[1]-a[1]);
