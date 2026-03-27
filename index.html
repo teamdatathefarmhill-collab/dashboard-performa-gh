@@ -429,24 +429,48 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
           <th style="padding:6px 9px;font-weight:700;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;border-bottom:1px solid var(--border-med);">GH</th>
           <th style="padding:6px 9px;font-weight:700;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;border-bottom:1px solid var(--border-med);">Periode Sblm</th>
           <th style="padding:6px 9px;font-weight:700;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;border-bottom:1px solid var(--border-med);">Periode Skrg</th>
-          <th style="padding:6px 9px;font-weight:700;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;border-bottom:1px solid var(--border-med);text-align:right;">Populasi</th>
+          <th style="padding:6px 9px;font-weight:700;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;border-bottom:1px solid var(--border-med);text-align:right;">Pop. Awal</th>
+          <th style="padding:6px 9px;font-weight:700;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;border-bottom:1px solid var(--border-med);text-align:right;">Pop. Akhir</th>
+          <th style="padding:6px 9px;font-weight:700;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;border-bottom:1px solid var(--border-med);text-align:right;">Sanitasi</th>
           <th style="padding:6px 9px;font-weight:700;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;border-bottom:1px solid var(--border-med);text-align:right;">Panen Sblm</th>
           <th style="padding:6px 9px;font-weight:700;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;border-bottom:1px solid var(--border-med);text-align:right;">Total Panen</th>
           <th style="padding:6px 9px;font-weight:700;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;border-bottom:1px solid var(--border-med);text-align:right;">Trend</th>
           <th style="padding:6px 9px;font-weight:700;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;border-bottom:1px solid var(--border-med);text-align:right;">% Premium</th>
           <th style="padding:6px 9px;font-weight:700;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;border-bottom:1px solid var(--border-med);text-align:right;">% Imperfect</th>
           <th style="padding:6px 9px;font-weight:700;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;border-bottom:1px solid var(--border-med);text-align:right;">% Outspec</th>
+          <th style="padding:6px 9px;font-weight:700;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;border-bottom:1px solid var(--border-med);text-align:right;">Status</th>
           <th style="padding:6px 9px;font-weight:700;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;border-bottom:1px solid var(--border-med);text-align:right;">% Tercapai</th>
         </tr>
       </thead>
       <tbody id="tbl-periode-body">
-        <tr><td colspan="11" style="text-align:center;padding:20px;color:var(--hint);font-size:11px;">Memuat data...</td></tr>
+        <tr><td colspan="14" style="text-align:center;padding:20px;color:var(--hint);font-size:11px;">Memuat data...</td></tr>
       </tbody>
     </table>
   </div>
 
   <div class="sec" style="margin-top:16px;">
     Evaluasi &amp; Rekomendasi AI <span class="bnew">AI</span>
+  </div>
+
+  <!-- SANITASI CHART — muncul saat filter GH aktif -->
+  <div id="sanitasi-section" style="display:none;margin-bottom:14px;">
+    <div class="sec" style="margin-top:0;">Persebaran Sanitasi per Varietas <span class="bnew">BARU</span></div>
+    <div class="card">
+      <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;">
+        <div style="flex:0 0 200px;">
+          <div class="card-ttl">Distribusi Sanitasi</div>
+          <div style="position:relative;height:180px;"><canvas id="c-sanitasi-pie"></canvas></div>
+        </div>
+        <div style="flex:1;min-width:180px;">
+          <div class="card-ttl">Detail per Varietas</div>
+          <div id="sanitasi-detail"></div>
+        </div>
+        <div style="flex:0 0 150px;">
+          <div class="card-ttl">Ringkasan</div>
+          <div id="sanitasi-kpi" style="font-size:11px;"></div>
+        </div>
+      </div>
+    </div>
   </div>
   <div class="card" id="ai-eval-card" style="margin-bottom:14px;">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
@@ -479,6 +503,7 @@ const PROXY_URL = 'https://script.google.com/macros/s/AKfycbzr5MO-8XXrO0jQuzmtwN
 const AUTO_REFRESH_MS = 5 * 60 * 1000; // auto refresh setiap 5 menit
 
 let RAW = null;
+let RAW_SANITASI = null;
 let charts = {};
 
 // ── HELPERS ──────────────────────────────────────────────────────────────────
@@ -521,6 +546,43 @@ function parseCSV(text){
   });
 }
 
+// ── SANITASI DATASET ──────────────────────────────────────────────────────────
+function buildSanitasiDataset(rows){
+  // Aggregate sanitasi per GH+Periode+Varietas
+  const byGHPeriode = {};  // key: gh||periode → {total, byVarietas:{}}
+  const byGHPeriodeVarietas = {};
+
+  rows.forEach(r=>{
+    const gh      = (r['GREENHOUSE']||'').trim();
+    const periode = (r['PERIODE']||'').trim();
+    const varietas= (r['VARIETAS']||'').trim() || 'Lainnya';
+    if(!gh || !periode) return;
+
+    const jmlSan  = parseFloat(r['JUMLAH SANITASI']||0);
+    const jmlSul  = parseFloat(r['JUMLAH SULAMAN']||0);
+    const trueSan = parseFloat(r['TRUE SANITASI']||0);
+
+    // Hitung effective sanitasi sesuai aturan:
+    // jika jmlSan == jmlSul → 0 (sulaman menutup semua sanitasi)
+    // jika jmlSan > jmlSul  → jmlSan - jmlSul
+    // gunakan TRUE SANITASI jika tersedia, else hitung manual
+    let eff = 0;
+    if(trueSan > 0){
+      eff = trueSan;
+    } else if(jmlSan > jmlSul){
+      eff = jmlSan - jmlSul;
+    }
+    if(eff <= 0) return;
+
+    const gpk = gh + '||' + periode;
+    if(!byGHPeriode[gpk]) byGHPeriode[gpk] = {gh, periode, total:0, byVarietas:{}};
+    byGHPeriode[gpk].total += eff;
+    byGHPeriode[gpk].byVarietas[varietas] = (byGHPeriode[gpk].byVarietas[varietas]||0) + eff;
+  });
+
+  return { byGHPeriode };
+}
+
 function buildDataset(rows){
   // Step 1: Dedup GH+Periode for meta info (est, pop, kategori, dates)
   const seen=new Set(), ghRecords=[];
@@ -531,6 +593,7 @@ function buildDataset(rows){
       ghRecords.push({
         gh:r['GH'], periode:r['Periode'], klasifikasi:r['Klasifikasi GH'], varian:r['VARIAN'],
         pop:parseFloat(r['Populasi Awal Tanam']||0),
+        pop_akhir:parseFloat(r['Populasi Akhir HST Max']||0),
         est:(function(){
           const estCol = parseFloat(r['Est']||0);
           const pop    = parseFloat(r['Populasi Awal Tanam']||0);
@@ -768,6 +831,19 @@ async function loadData(isRefresh=false){
     const prevK = RAW ? document.getElementById('f-klas').value    : null;
 
     RAW = buildDataset(rows);
+
+    // ── Fetch sanitasi data (parallel, non-blocking) ──────────────────────────
+    try {
+      const sanUrl = PROXY_URL + '?type=sanitasi&t=' + Date.now();
+      const sanRes = await fetch(sanUrl, { redirect:'follow', cache:'no-cache' });
+      if(sanRes.ok){
+        const sanText = await sanRes.text();
+        if(sanText && sanText.length > 10 && !sanText.trim().startsWith('<')){
+          RAW_SANITASI = buildSanitasiDataset(parseCSV(sanText));
+        }
+      }
+    } catch(sanErr){ console.warn('Sanitasi data gagal dimuat:', sanErr.message); }
+
     initFilters(prevP, prevK);
 
     // Complete progress bar
@@ -1164,22 +1240,16 @@ function renderPeriodeTable(){
     if(fKlas && r.klasifikasi !== fKlas) return false;
     if(fGH   && r.gh          !== fGH)  return false;
     if(!isWhitelisted(r.gh))            return false;
-    // Fix #4: hanya GH yang sudah selesai (bukan Ongoing / Belum Panen)
-    const selesai = r.kategori !== 'Ongoing' && r.kategori !== 'Belum Panen';
-    if(!selesai) return false;
+    // Termasuk Belum Panen (semua status ditampilkan)
     return true;
   });
 
-  // Filter periode: jika ada filter aktif, tetap ikutkan semua periode milik GH
-  // agar periode sebelumnya masih bisa dibandingkan. Tapi tampilkan hanya baris
-  // yang "periode saat ini" sesuai filter periode.
   // Kelompokkan per nama GH — ambil semua periode per GH dari RAW tanpa filter periode
   const allSelesaiRecs = RAW.gh_records.filter(r=>{
     if(fKlas && r.klasifikasi !== fKlas) return false;
     if(fGH   && r.gh          !== fGH)  return false;
     if(!isWhitelisted(r.gh))            return false;
-    const selesai = r.kategori !== 'Ongoing' && r.kategori !== 'Belum Panen';
-    return selesai;
+    return true; // termasuk semua status
   });
 
   // Kelompokkan per GH
@@ -1236,7 +1306,8 @@ function renderPeriodeTable(){
       cPanen, pPanen, trendVal,
       cPremPct, cImpPct, cOsPct, cPctEst,
       pPremPct, pImpPct, pOsPct,
-      pop: curr.pop || 0,
+      pop_awal:  curr.pop      || 0,
+      pop_akhir: curr.pop_akhir|| 0,
     });
   });
 
@@ -1248,7 +1319,7 @@ function renderPeriodeTable(){
   });
 
   if(!rows.length){
-    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:20px;color:var(--hint);font-size:11px;">Tidak ada data GH selesai untuk filter yang dipilih.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="14" style="text-align:center;padding:20px;color:var(--hint);font-size:11px;">Tidak ada data GH untuk filter yang dipilih.</td></tr>';
     return;
   }
 
@@ -1325,20 +1396,136 @@ function renderPeriodeTable(){
       return `<div style="text-align:right;">${chip}${trendHtml}</div>`;
     }
 
+    // Pop Akhir & Sanitasi
+    const sanitasiVal = (r.pop_awal > 0 && r.pop_akhir > 0) ? (r.pop_awal - r.pop_akhir) : null;
+    const sanitasiHtml = sanitasiVal !== null
+      ? `<span style="font-weight:700;color:${sanitasiVal>0?'var(--red)':'var(--green)'}">${sanitasiVal.toLocaleString('id-ID')}</span>`
+      : '<span style="color:var(--hint);">—</span>';
+
+    // Status badge
+    const statusMap = {
+      'Ongoing':        ['s-ongoing','Ongoing'],
+      'Belum Panen':    ['s-belum','Belum Panen'],
+      'Terpenuhi':      ['s-terpenuhi','Terpenuhi'],
+      'Tidak Terpenuhi':['s-tidak','Tdk Terpenuhi'],
+    };
+    const [sCls, sLbl] = statusMap[r.curr.kategori] || ['chip-neu', r.curr.kategori||'—'];
+    const statusHtml = `<span class="sbadge ${sCls}" style="font-size:9px;">${sLbl}</span>`;
+
     return `<tr style="${bgRow}">
       <td style="font-weight:600;white-space:nowrap;">${r.gh}</td>
       <td style="color:var(--hint);white-space:nowrap;">${r.prev ? r.prev.periode : '—'}</td>
       <td style="font-weight:600;white-space:nowrap;">${r.curr.periode}</td>
-      <td style="text-align:right;color:var(--muted);white-space:nowrap;">${r.pop > 0 ? r.pop.toLocaleString('id-ID') : '—'}</td>
+      <td style="text-align:right;color:var(--muted);white-space:nowrap;">${r.pop_awal > 0 ? r.pop_awal.toLocaleString('id-ID') : '—'}</td>
+      <td style="text-align:right;color:var(--muted);white-space:nowrap;">${r.pop_akhir > 0 ? r.pop_akhir.toLocaleString('id-ID') : '—'}</td>
+      <td style="text-align:right;white-space:nowrap;">${sanitasiHtml}</td>
       <td style="text-align:right;color:var(--muted);white-space:nowrap;">${r.pPanen !== null && r.pPanen > 0 ? fmt(r.pPanen) : '—'}</td>
-      <td style="text-align:right;font-weight:700;white-space:nowrap;">${fmt(r.cPanen)}</td>
-      <td style="text-align:right;white-space:nowrap;">${trendHtml}</td>
-      <td style="padding:4px 9px;">${premCell}</td>
-      <td style="padding:4px 9px;">${impCell}</td>
-      <td style="padding:4px 9px;">${osPctCell(r.cOsPct, r.pOsPct)}</td>
-      <td style="text-align:right;">${pctEstHtml}</td>
+      <td style="text-align:right;font-weight:700;white-space:nowrap;">${r.cPanen > 0 ? fmt(r.cPanen) : '<span style="color:var(--hint);">—</span>'}</td>
+      <td style="text-align:right;white-space:nowrap;">${r.cPanen > 0 ? trendHtml : '<span class="tbl-trend-eq">—</span>'}</td>
+      <td style="padding:4px 9px;">${r.cPanen > 0 ? premCell : '<span class="tbl-pct-chip chip-neu">—</span>'}</td>
+      <td style="padding:4px 9px;">${r.cPanen > 0 ? impCell  : '<span class="tbl-pct-chip chip-neu">—</span>'}</td>
+      <td style="padding:4px 9px;">${r.cPanen > 0 ? osPctCell(r.cOsPct, r.pOsPct) : '<span class="tbl-pct-chip chip-neu">—</span>'}</td>
+      <td style="text-align:center;padding:4px 9px;">${statusHtml}</td>
+      <td style="text-align:right;">${r.cPanen > 0 ? pctEstHtml : '<span class="tbl-pct-chip chip-neu">—</span>'}</td>
     </tr>`;
   }).join('');
+
+  // Render sanitasi chart jika filter GH aktif
+  renderSanitasiChart();
+}
+
+// ── SANITASI CHART ────────────────────────────────────────────────────────────
+function renderSanitasiChart(){
+  const fGH      = document.getElementById('f-gh').value;
+  const fPeriode = document.getElementById('f-periode').value;
+  const section  = document.getElementById('sanitasi-section');
+  if(!section) return;
+
+  // Hanya tampil jika filter GH aktif dan data sanitasi tersedia
+  if(!fGH || !RAW_SANITASI){
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = 'block';
+
+  // Kumpulkan data sanitasi untuk GH yang dipilih
+  const varMap = {};
+  let totalSan = 0;
+  Object.entries(RAW_SANITASI.byGHPeriode).forEach(([gpk, d])=>{
+    if(d.gh !== fGH) return;
+    if(fPeriode && d.periode !== fPeriode) return;
+    Object.entries(d.byVarietas).forEach(([v, val])=>{
+      varMap[v] = (varMap[v]||0) + val;
+      totalSan += val;
+    });
+  });
+
+  const entries = Object.entries(varMap).sort((a,b)=>b[1]-a[1]);
+  const pieColors = ['#5aac1a','#ef9f27','#e24b4a','#378add','#1d9e75','#d85a30','#9c59c2','#185fa5'];
+
+  // KPI
+  const kpiEl = document.getElementById('sanitasi-kpi');
+  if(kpiEl) kpiEl.innerHTML = `
+    <div style="margin-bottom:8px;">
+      <div style="font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Total Sanitasi</div>
+      <div style="font-size:20px;font-weight:700;color:var(--red);">${totalSan.toLocaleString('id-ID')}</div>
+      <div style="font-size:10px;color:var(--hint);">tanaman</div>
+    </div>
+    <div>
+      <div style="font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Varietas</div>
+      <div style="font-size:16px;font-weight:700;color:var(--text);">${entries.length}</div>
+    </div>`;
+
+  // Detail bars
+  const detEl = document.getElementById('sanitasi-detail');
+  if(detEl){
+    if(!entries.length){
+      detEl.innerHTML = '<div style="font-size:11px;color:var(--hint);font-style:italic;">Tidak ada data sanitasi untuk GH ini.</div>';
+    } else {
+      const maxVal = entries[0][1]||1;
+      detEl.innerHTML = entries.map(([v,val],i)=>{
+        const pct = totalSan ? (val/totalSan*100).toFixed(1) : 0;
+        const w   = (val/maxVal*100).toFixed(1);
+        return `<div style="margin-bottom:7px;">
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:2px;">
+            <span style="font-weight:600;">${v}</span>
+            <span style="font-weight:700;">${val.toLocaleString('id-ID')} <span style="color:var(--hint);font-weight:400;">(${pct}%)</span></span>
+          </div>
+          <div style="background:var(--surface2);border-radius:3px;height:6px;overflow:hidden;">
+            <div style="width:${w}%;height:100%;border-radius:3px;background:${pieColors[i%pieColors.length]};"></div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+  }
+
+  // Pie chart
+  destroyChart('sanitasi-pie');
+  const pieCvs = document.getElementById('c-sanitasi-pie');
+  if(!pieCvs || !entries.length) return;
+  const ctxPie = pieCvs.getContext('2d');
+  charts['sanitasi-pie'] = new Chart(ctxPie, {
+    type: 'doughnut',
+    data: {
+      labels: entries.map(([v])=>v),
+      datasets:[{
+        data: entries.map(([,val])=>val),
+        backgroundColor: pieColors.slice(0, entries.length),
+        borderWidth: 2, borderColor: '#fff', hoverOffset: 6,
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      cutout: '60%',
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:c=>{
+          const pct = totalSan ? (c.raw/totalSan*100).toFixed(1) : 0;
+          return ` ${c.label}: ${c.raw.toLocaleString('id-ID')} (${pct}%)`;
+        }}}
+      }
+    }
+  });
 }
 
 // ── INSIGHT MANAGER ──────────────────────────────────────────────────────────
