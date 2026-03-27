@@ -171,11 +171,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 .ins-empty{font-size:11px;color:var(--hint);font-style:italic;padding:4px 0;}
 
 
-/* MULTI-SELECT KLAS */
-.klas-opt{display:flex;align-items:center;gap:7px;padding:5px 12px;cursor:pointer;font-size:11px;color:var(--text);transition:background .1s;}
-.klas-opt:hover{background:var(--surface2);}
-.klas-opt input[type=checkbox]{accent-color:var(--green-bar);width:13px;height:13px;cursor:pointer;}
-.klas-opt.selected{background:var(--green-bg);}
+
 
 @keyframes spin{to{transform:rotate(360deg);}}
 @keyframes livepulse{0%,100%{opacity:1;}50%{opacity:.4;}}
@@ -308,19 +304,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
     </div>
     <div class="filters">
       <div class="fpill"><label>Periode</label><select id="f-periode"><option value="">Semua</option></select></div>
-      <!-- Multi-select Klasifikasi GH -->
-      <div class="fpill" style="position:relative;cursor:pointer;user-select:none;" id="fpill-klas" onclick="toggleKlasDropdown(event)">
-        <input type="hidden" id="f-klas" value="">
-        <label style="pointer-events:none;">Klasifikasi GH</label>
-        <span id="klas-label" style="font-weight:600;font-size:11px;color:var(--text);pointer-events:none;">Semua ▾</span>
-        <div id="klas-dropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;min-width:180px;background:var(--surface);border:1px solid var(--border-med);border-radius:var(--rs);box-shadow:0 4px 12px rgba(0,0,0,0.12);z-index:200;padding:6px 0;" onclick="event.stopPropagation()">
-          <div id="klas-options"></div>
-          <div style="padding:5px 10px;border-top:1px solid var(--border);margin-top:2px;display:flex;gap:6px;">
-            <button onclick="klasSelectAll()" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid var(--border-med);background:var(--surface2);color:var(--muted);cursor:pointer;font-weight:600;">Semua</button>
-            <button onclick="klasClearAll()" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid var(--border-med);background:var(--surface2);color:var(--muted);cursor:pointer;font-weight:600;">Reset</button>
-          </div>
-        </div>
-      </div>
+      <div class="fpill"><label>Klasifikasi GH</label><select id="f-klas" onchange="cascadeFilters('f-klas')"><option value="">Semua</option></select></div>
       <div class="fpill"><label>GH</label><select id="f-gh"><option value="">Semua</option></select></div>
       <div class="fpill"><label>Status</label><select id="f-kategori" onchange="render()">
         <option value="">Semua</option>
@@ -980,9 +964,7 @@ function initFilters(){
     if(cur && vals.includes(cur)) sel.value = cur;
   };
   fill('f-periode',  RAW.filters.periodes);
-  // Multi-select klasifikasi GH
-  buildKlasOptions(RAW.filters.klasifikasis);
-  updateKlasLabel();
+  fill('f-klas',     RAW.filters.klasifikasis);
   // Filter GH dropdown: hanya tampilkan Tohudan, Sawahan, Colomadu, Bergas
   const filteredGHs = RAW.filters.ghs.filter(isWhitelistedGH);
   fill('f-gh', filteredGHs);
@@ -991,10 +973,9 @@ function initFilters(){
   // Tidak set default periode agar semua data tampil saat pertama buka
 
   // Attach cascade listeners
-  ['f-periode','f-gh'].forEach(id=>{
+  ['f-periode','f-klas','f-gh'].forEach(id=>{
     document.getElementById(id).addEventListener('change', ()=>cascadeFilters(id));
   });
-  // f-klas adalah custom multi-select, cascade dipanggil dari klasToggle/klasClearAll
   // Run initial cascade from periode
   cascadeFilters('f-periode');
 }
@@ -1013,19 +994,11 @@ function cascadeFilters(changedId){
   // based on all OTHER currently-selected filters
   ids.forEach(targetId => {
     if(targetId === changedId) return; // don't touch the filter that just changed
-    // f-klas is now a custom multi-select, skip select rebuild for it
-    if(targetId === 'f-klas') return;
 
     // Filter RAW data using all filters EXCEPT targetId
     let rows = RAW.gh_records;
     ids.forEach(id => {
       if(id === targetId) return;
-      if(id === 'f-klas'){
-        // apply multi-select
-        if(selectedKlas && selectedKlas.size > 0)
-          rows = rows.filter(r => selectedKlas.has(r[fields[id]]));
-        return;
-      }
       const val = cur[id];
       if(val) rows = rows.filter(r => r[fields[id]] === val);
     });
@@ -1063,8 +1036,7 @@ function getFiltered(){
   let rows  = RAW ? RAW.gh_records : [];
   if(p) rows = rows.filter(r => r.periode     === p);
   // Multi-select klasifikasi: filter jika ada yang dipilih
-  if(selectedKlas && selectedKlas.size > 0) rows = rows.filter(r => selectedKlas.has(r.klasifikasi));
-  else if(k) rows = rows.filter(r => r.klasifikasi === k);
+  if(k) rows = rows.filter(r => r.klasifikasi === k);
   if(g) rows = rows.filter(r => r.gh          === g);
 
   // Filter status/kategori
@@ -1115,7 +1087,7 @@ function getOutspecAggregated(mapKey){
     const rec = RAW.gh_records.find(r=>r.gh===gh && r.periode===periode);
     if(!rec) return;
     if(p && rec.periode!==p) return;
-    if(selectedKlas && selectedKlas.size > 0){ if(!selectedKlas.has(rec.klasifikasi)) return; } else if(k && rec.klasifikasi!==k) return;
+    if(k && rec.klasifikasi!==k) return;
     if(g && rec.gh!==g) return;
     Object.entries(noteMap).forEach(([note,val])=>{
       totals[note] = (totals[note]||0)+val;
@@ -1299,7 +1271,7 @@ function renderPeriodeTable(){
   }
 
   // ── Filter gh_records sesuai filter UI (fix #1) ──────────────────────────
-  const matchKlas = r => selectedKlas.size > 0 ? selectedKlas.has(r.klasifikasi) : (!fKlas || r.klasifikasi === fKlas);
+  const matchKlas = r => !fKlas || r.klasifikasi === fKlas;
   let filteredRecs = RAW.gh_records.filter(r=>{
     if(!matchKlas(r))                   return false;
     if(fGH   && r.gh          !== fGH)  return false;
@@ -1502,6 +1474,7 @@ function renderPeriodeTable(){
 function renderSanitasiChart(){
   const fGH      = document.getElementById('f-gh').value;
   const fPeriode = document.getElementById('f-periode').value;
+  const fKlas    = document.getElementById('f-klas').value;
   const section  = document.getElementById('sanitasi-section');
   if(!section) return;
 
@@ -1532,9 +1505,9 @@ function renderSanitasiChart(){
     if(ghNorm !== fGHNorm) return;
     if(fPeriode && String(d.periode).trim() !== String(fPeriode).trim()) return;
     // Multi-select klas filter
-    if(selectedKlas && selectedKlas.size > 0){
+    if(fKlas){
       const panenRec = RAW && RAW.gh_records.find(p=>p.gh.toLowerCase()===ghNorm && (!fPeriode||p.periode===fPeriode));
-      if(panenRec && !selectedKlas.has(panenRec.klasifikasi)) return;
+      if(panenRec && panenRec.klasifikasi !== fKlas) return;
     }
     Object.entries(d.byVarietas).forEach(([v, val])=>{
       varMap[v] = (varMap[v]||0) + val;
@@ -2394,83 +2367,7 @@ const response = await fetch(PROXY_URL, {
   }
 }
 
-// ── MULTI-SELECT KLASIFIKASI GH ──────────────────────────────────────────────
-let selectedKlas = new Set(); // empty = all selected
-
-function toggleKlasDropdown(e){
-  const dd = document.getElementById('klas-dropdown');
-  if(!dd) return;
-  const isOpen = dd.style.display !== 'none';
-  dd.style.display = isOpen ? 'none' : 'block';
-  if(!isOpen){
-    // Close when clicking outside
-    setTimeout(()=>{
-      document.addEventListener('click', function closeKlas(ev){
-        if(!document.getElementById('fpill-klas').contains(ev.target)){
-          document.getElementById('klas-dropdown').style.display='none';
-          document.removeEventListener('click', closeKlas);
-        }
-      });
-    }, 0);
-  }
-}
-
-function buildKlasOptions(vals){
-  const container = document.getElementById('klas-options');
-  if(!container) return;
-  container.innerHTML = vals.map(v=>`
-    <label class="klas-opt${selectedKlas.has(v)?' selected':''}">
-      <input type="checkbox" value="${v}" ${selectedKlas.has(v)?'checked':''} onchange="onKlasChange(this)">
-      ${v}
-    </label>`).join('');
-}
-
-function onKlasChange(cb){
-  const v = cb.value;
-  if(cb.checked) selectedKlas.add(v); else selectedKlas.delete(v);
-  // Update parent label highlight
-  cb.closest('.klas-opt').classList.toggle('selected', cb.checked);
-  updateKlasLabel();
-  cascadeFilters('f-klas');
-}
-
-function klasSelectAll(){
-  document.querySelectorAll('#klas-options input[type=checkbox]').forEach(cb=>{
-    cb.checked = true;
-    selectedKlas.add(cb.value);
-    cb.closest('.klas-opt').classList.add('selected');
-  });
-  updateKlasLabel();
-  render();
-}
-
-function klasClearAll(){
-  document.querySelectorAll('#klas-options input[type=checkbox]').forEach(cb=>{
-    cb.checked = false;
-    cb.closest('.klas-opt').classList.remove('selected');
-  });
-  selectedKlas.clear();
-  updateKlasLabel();
-  render();
-}
-
-function updateKlasLabel(){
-  const lbl = document.getElementById('klas-label');
-  if(!lbl) return;
-  if(selectedKlas.size === 0){
-    lbl.textContent = 'Semua ▾';
-  } else if(selectedKlas.size === 1){
-    lbl.textContent = [...selectedKlas][0] + ' ▾';
-  } else {
-    lbl.textContent = selectedKlas.size + ' dipilih ▾';
-  }
-  // Sync hidden input agar getElementById('f-klas').value tidak null/crash
-  const hiddenKlas = document.getElementById('f-klas');
-  if(hiddenKlas) hiddenKlas.value = selectedKlas.size === 1 ? [...selectedKlas][0] : '';
-}
-
-// Override getFiltered untuk multi-select klas
-const _origGetFiltered = getFiltered;
+// Klasifikasi GH: pakai <select> biasa (f-klas)
 
 // ── SANITASI KATEGORI CHART ───────────────────────────────────────────────────
 function renderSanitasiKategoriChart(){
@@ -2485,6 +2382,7 @@ function renderSanitasiKategoriChart(){
   // Ambil filter aktif
   const fPeriode = document.getElementById('f-periode').value;
   const fGH      = document.getElementById('f-gh').value;
+  const fKlas    = document.getElementById('f-klas').value;
 
   // Aggregate kategori sesuai filter aktif
   const katMap = {};
@@ -2534,12 +2432,12 @@ function renderSanitasiKategoriChart(){
       }
     }
     // Filter multi-select klasifikasi (match via panen records, pakai ghNorm)
-    if(selectedKlas.size > 0){
+    if(fKlas){
       const panenRec = RAW && RAW.gh_records.find(p=>
         normalizeGH(p.gh) === r.ghNorm &&
         (!fPeriode || String(p.periode).trim() === String(r.periode).trim())
       );
-      if(panenRec && !selectedKlas.has(panenRec.klasifikasi)) return;
+      if(panenRec && panenRec.klasifikasi !== fKlas) return;
     }
     katMap[r.kategori] = (katMap[r.kategori]||0) + r.eff;
     total += r.eff;
