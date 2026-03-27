@@ -1461,9 +1461,9 @@ function renderPeriodeTable(){
   });
 
   const allSelesaiRecs = RAW.gh_records.filter(r=>{
-    if(!matchKlas(r))                   return false;
-    if(fGH   && r.gh          !== fGH)  return false;
-    if(!isWhitelisted(r.gh))            return false;
+    if(!matchKlas(r))                              return false;
+    if(selGHs.length && !selGHs.includes(r.gh))   return false;
+    if(!isWhitelisted(r.gh))                       return false;
     return true;
   });
 
