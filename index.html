@@ -226,21 +226,52 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 .blive{background:var(--teal-bg);color:var(--teal);animation:livepulse 2s ease-in-out infinite;}
 .skel{background:linear-gradient(90deg,#e8e7e1 25%,#f0efe9 50%,#e8e7e1 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;}
 @keyframes shimmer{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
+/* PDF popup header — hidden by default, shown only in pdf-popup-mode */
+#pdf-popup-header{display:none;}
+
 @media print{
   body{background:#fff;font-size:11px;}
-  #loading-screen,#err-screen{display:none!important;}
+  #loading-screen,#err-screen,#popup-panen-overlay{display:none!important;}
   .filters,#btn-refresh,#btn-pdf,#quick-bulan-btns{display:none!important;}
   .page{max-width:100%;padding:8px 12px;}
-  .header{margin-bottom:10px;}
-  .kpi-row{grid-template-columns:repeat(3,1fr);gap:6px;}
-  .gh-row{grid-template-columns:repeat(3,1fr);gap:6px;}
-  .chart-row{grid-template-columns:1fr 1fr;gap:8px;}
-  .bot-grid{grid-template-columns:1fr 1fr;gap:8px;}
-  .insight-grid{grid-template-columns:1fr 1fr;gap:6px;}
+  .header{margin-bottom:8px;}
+  .alert-bar{margin-bottom:8px;padding:7px 11px;}
   .card,.kpi,.gh-card,.ins-card{box-shadow:none;border:1px solid #ddd;break-inside:avoid;}
   canvas{max-width:100%!important;}
-  .sec{margin-top:10px;}
-  @page{margin:12mm 10mm;size:A4 landscape;}
+  .sec{margin-top:8px;}
+  @page{margin:10mm 10mm;size:A4 landscape;}
+
+  /* ── MODE NORMAL (bukan popup PDF) ── */
+  body:not(.pdf-popup-mode) .kpi-row{grid-template-columns:repeat(3,1fr);gap:6px;}
+  body:not(.pdf-popup-mode) .gh-row{grid-template-columns:repeat(3,1fr);gap:6px;}
+  body:not(.pdf-popup-mode) .chart-row{grid-template-columns:1fr 1fr;gap:8px;}
+  body:not(.pdf-popup-mode) .bot-grid{grid-template-columns:1fr 1fr;gap:8px;}
+  body:not(.pdf-popup-mode) .insight-grid{grid-template-columns:1fr 1fr;gap:6px;}
+
+  /* ── MODE PDF POPUP (laporan panen selesai) ── */
+  /* Header khusus popup tampil */
+  body.pdf-popup-mode #pdf-popup-header{display:block!important;margin-bottom:10px;padding:10px 14px;background:#eaf3de;border:1px solid #97c459;border-radius:8px;}
+  /* KPI row penuh 6 kolom tapi sembunyikan GH Ongoing */
+  body.pdf-popup-mode .kpi-row{grid-template-columns:repeat(6,1fr);gap:6px;}
+  body.pdf-popup-mode #k-ong-card{display:none!important;}
+  /* Sembunyikan Status per GH (gh-cards dan section header-nya) */
+  body.pdf-popup-mode .sec-gh-status{display:none!important;}
+  body.pdf-popup-mode #gh-cards{display:none!important;}
+  /* Sembunyikan AI eval */
+  body.pdf-popup-mode #ai-eval-card{display:none!important;}
+  body.pdf-popup-mode #ai-eval-standalone{display:none!important;}
+  /* Sanitasi donut section: tampil, tapi hanya kolom donut (hide AI card) */
+  body.pdf-popup-mode #sanitasi-kategori-section{display:block!important;}
+  body.pdf-popup-mode #sanitasi-kategori-section > div:last-child{grid-template-columns:1fr!important;}
+  /* Layout chart */
+  body.pdf-popup-mode .chart-row{grid-template-columns:1fr 1fr;gap:8px;}
+  body.pdf-popup-mode .bot-grid{grid-template-columns:1fr 1fr;gap:8px;}
+  /* Tabel perbandingan: font lebih kecil agar muat di A4 landscape */
+  body.pdf-popup-mode #tbl-periode{font-size:9px;}
+  body.pdf-popup-mode #tbl-periode td,
+  body.pdf-popup-mode #tbl-periode th{padding:3px 5px;}
+  /* Insight text lebih besar */
+  body.pdf-popup-mode #insight-text{font-size:11.5px;line-height:1.75;}
 }
 </style>
 </head>
@@ -396,7 +427,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
     <div class="kpi" id="k-pct-card"><div class="kpi-lbl">% Tercapai vs Est</div><div class="kpi-val" id="k-pct">—</div><div class="kpi-sub" id="k-pct-s"></div></div>
     <div class="kpi"><div class="kpi-lbl">Total Target</div><div class="kpi-val" id="k-target">—</div><div class="kpi-sub" id="k-target-s"></div></div>
     <div class="kpi" id="k-estbln-card"><div class="kpi-lbl">Est. Akhir Bulan Ini</div><div class="kpi-val" id="k-estbln">—</div><div class="kpi-sub" id="k-estbln-s"></div></div>
-    <div class="kpi info"><div class="kpi-lbl">GH Ongoing</div><div class="kpi-val" id="k-ong">—</div><div class="kpi-sub" id="k-ong-s"></div></div>
+    <div class="kpi info" id="k-ong-card"><div class="kpi-lbl">GH Ongoing</div><div class="kpi-val" id="k-ong">—</div><div class="kpi-sub" id="k-ong-s"></div></div>
     <div class="kpi warn"><div class="kpi-lbl">Total Outspec</div><div class="kpi-val" id="k-os">—</div><div class="kpi-sub" id="k-os-s"></div></div>
   </div>
 
@@ -409,7 +440,13 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
     </div>
   </div>
 
-  <div class="sec">Status per Greenhouse <span class="blive">&#x25CF; LIVE</span></div>
+  <!-- Header khusus PDF laporan panen selesai (hanya muncul saat print popup) -->
+  <div id="pdf-popup-header">
+    <div style="font-size:15px;font-weight:700;color:#3b6d11;">🌿 Laporan Panen Selesai</div>
+    <div id="pdf-popup-header-sub" style="font-size:11px;color:#6b6b66;margin-top:3px;"></div>
+  </div>
+
+  <div class="sec sec-gh-status">Status per Greenhouse <span class="blive">&#x25CF; LIVE</span></div>
   <div class="gh-row" id="gh-cards"></div>
 
   <div class="sec" style="margin-top:16px;">Perbandingan Antar Periode per GH <span class="bnew">BARU</span></div>
@@ -1983,7 +2020,7 @@ function renderInsight(ghList, kpi){
   const el = document.getElementById('insight-text');
   if(!el) return;
 
-  const todayStr   = new Date().toISOString().substring(0,10);
+  const todayStr    = new Date().toISOString().substring(0,10);
   const ongoingList = ghList.filter(r=>r.kategori==='Ongoing');
   const selesaiList = ghList.filter(r=>
     r.kategori!=='Ongoing' && r.kategori!=='Belum Panen' &&
@@ -1991,59 +2028,100 @@ function renderInsight(ghList, kpi){
   );
   const belumList   = ghList.filter(r=>r.kategori==='Belum Panen');
 
-  // Kualitas
-  const avgPremPct  = kpi.totPanen > 0 ? (kpi.totPrem / kpi.totPanen * 100) : 0;
-  const qualityGH = ghList.filter(r=>{
-    const tot=r.premium+r.imperfect+r.outspec;
-    return tot>100;
-  }).map(r=>{
-    const tot=r.premium+r.imperfect+r.outspec||1;
-    return {gh:r.gh, premPct:r.premium/tot*100, osPct:r.outspec/tot*100, tot};
+  // Kualitas per GH
+  const avgPremPct = kpi.totPanen > 0 ? (kpi.totPrem / kpi.totPanen * 100) : 0;
+  const avgImpPct  = kpi.totPanen > 0 ? (kpi.totImp  / kpi.totPanen * 100) : 0;
+  const avgOsPct   = kpi.totPanen > 0 ? (kpi.totOS   / kpi.totPanen * 100) : 0;
+
+  const qualityGH = ghList.filter(r => (r.premium+r.imperfect+r.outspec) > 100).map(r => {
+    const tot = r.premium+r.imperfect+r.outspec || 1;
+    return {
+      gh: r.gh, periode: r.periode,
+      premPct: r.premium/tot*100,
+      impPct:  r.imperfect/tot*100,
+      osPct:   r.outspec/tot*100,
+      tot,
+      pctEst:  r.est > 0 ? (r.selesai/r.est*100) : null,
+    };
   });
+
   const topPrem    = [...qualityGH].sort((a,b)=>b.premPct-a.premPct).slice(0,3);
-  const bottomPrem = [...qualityGH].sort((a,b)=>a.premPct-b.premPct).filter(x=>x.osPct>15||x.premPct<50).slice(0,3);
+  const worstOS    = [...qualityGH].filter(x=>x.osPct>10).sort((a,b)=>b.osPct-a.osPct).slice(0,3);
 
-  // GH bermasalah (selesai)
-  const masalah = [];
-  selesaiList.forEach(r=>{
-    const pct   = r.est ? (r.selesai/r.est*100) : 0;
+  // GH selesai: terpenuhi vs tidak
+  const terpenuhi     = selesaiList.filter(r => r.est > 0 && (r.selesai/r.est) >= 0.85);
+  const tidakTerpenuhi= selesaiList.filter(r => r.est > 0 && (r.selesai/r.est) < 0.85);
+
+  // Detail GH bermasalah (selesai, tidak terpenuhi atau outspec tinggi)
+  const masalahDetail = [];
+  selesaiList.forEach(r => {
     const tot   = r.premium+r.imperfect+r.outspec;
-    const osPct = tot>0 ? r.outspec/tot*100 : 0;
-    if(pct < 85) masalah.push(`${r.gh} (${pct.toFixed(0)}% tercapai)`);
-    else if(osPct > 15) masalah.push(`${r.gh} (outspec ${osPct.toFixed(1)}%)`);
+    const osPct = tot > 0 ? r.outspec/tot*100 : 0;
+    const pct   = r.est > 0 ? (r.selesai/r.est*100) : null;
+    const issues = [];
+    if(pct !== null && pct < 85) issues.push(`target ${pct.toFixed(0)}%`);
+    if(osPct > 15) issues.push(`outspec ${osPct.toFixed(1)}%`);
+    if(issues.length) masalahDetail.push(`<strong>${r.gh}</strong> (${issues.join(', ')})`);
   });
 
-  // Susun narasi paragraf (bukan bullet per baris)
+  // Ongoing: detail sisa
+  const ongoingDetail = [...ongoingList]
+    .filter(r => r.sisa > 0)
+    .sort((a,b) => b.sisa - a.sisa)
+    .slice(0, 5)
+    .map(r => `<strong>${r.gh}</strong> sisa ${fmt(r.sisa)}`);
+
   const pctTercapaiTxt = kpi.pctTercapai ? kpi.pctTercapai.toFixed(1) : '—';
+  const osLabel = avgOsPct < 5
+    ? `<span style="color:var(--green);font-weight:700;">rendah (${avgOsPct.toFixed(1)}%)</span>`
+    : avgOsPct < 15
+    ? `<span style="color:var(--amber);font-weight:700;">sedang (${avgOsPct.toFixed(1)}%)</span>`
+    : `<span style="color:var(--red);font-weight:700;">tinggi (${avgOsPct.toFixed(1)}%)</span>`;
 
-  // Kalimat 1: Status + pencapaian
-  let para = `Dari <strong>${ghList.length} GH</strong> yang dianalisis, ` +
-    `<strong style="color:var(--green);">${selesaiList.length} telah selesai</strong>` +
-    (ongoingList.length ? ` dan <strong style="color:var(--blue);">${ongoingList.length} masih ongoing</strong>` : '') +
-    (belumList.length ? `, serta <strong style="color:var(--amber);">${belumList.length} belum panen</strong>` : '') +
-    `. Total panen aktual <strong>${fmt(kpi.totPanen)}</strong> dari estimasi <strong>${fmt(kpi.totEst)}</strong>` +
-    (kpi.pctTercapai ? ` (<strong>${pctTercapaiTxt}%</strong> tercapai)` : '') + `. `;
+  // ── Susun paragraf ──
+  let para = '';
 
-  // Kalimat 2: Kualitas
-  const osTag = kpi.pctOS < 5 ? `<span style="color:var(--green)">rendah (${kpi.pctOS.toFixed(1)}%)</span>` :
-                kpi.pctOS < 10 ? `<span style="color:var(--amber)">sedang (${kpi.pctOS.toFixed(1)}%)</span>` :
-                `<span style="color:var(--red)">tinggi (${kpi.pctOS.toFixed(1)}%)</span>`;
-  para += `Rata-rata grade premium <strong>${avgPremPct.toFixed(1)}%</strong> dengan tingkat outspec ${osTag} dari total panen` +
-    (topPrem.length ? ` — GH terbaik: <strong>${topPrem.map(x=>x.gh+' ('+x.premPct.toFixed(0)+'%)').join(', ')}</strong>` : '') + `. `;
-
-  // Kalimat 3: Masalah atau kondisi baik
-  if(masalah.length){
-    para += `Perlu perhatian pada ${masalah.length} GH yang selesai dengan catatan: ${masalah.slice(0,5).join('; ')}` +
-      (masalah.length > 5 ? ` dan ${masalah.length-5} lainnya` : '') + `. `;
+  // § 1 — Ringkasan pencapaian
+  para += `Dari <strong>${ghList.length} GH</strong> yang dianalisis periode ini, `;
+  if(selesaiList.length && ongoingList.length){
+    para += `<strong style="color:var(--green);">${selesaiList.length} GH telah selesai panen</strong> dan <strong style="color:var(--blue);">${ongoingList.length} GH masih berjalan</strong>`;
   } else if(selesaiList.length){
-    para += `Semua GH yang telah selesai berhasil memenuhi target (≥85%). `;
+    para += `<strong style="color:var(--green);">seluruhnya (${selesaiList.length} GH) telah selesai panen</strong>`;
+  } else if(ongoingList.length){
+    para += `<strong style="color:var(--blue);">seluruhnya (${ongoingList.length} GH) masih berjalan</strong>`;
+  }
+  if(belumList.length) para += `, serta <strong style="color:var(--amber);">${belumList.length} GH belum mulai panen</strong>`;
+  para += `. `;
+
+  para += `Total panen aktual mencapai <strong>${fmt(kpi.totPanen)}</strong> dari estimasi <strong>${fmt(kpi.totEst)}</strong>`;
+  if(kpi.pctTercapai) para += ` — <strong>${pctTercapaiTxt}%</strong> dari target`;
+  if(terpenuhi.length || tidakTerpenuhi.length){
+    para += `. Dari ${selesaiList.length} GH selesai, <strong style="color:var(--green);">${terpenuhi.length} terpenuhi (≥85%)</strong>`;
+    if(tidakTerpenuhi.length) para += ` dan <strong style="color:var(--red);">${tidakTerpenuhi.length} tidak terpenuhi</strong>`;
+  }
+  para += `. `;
+
+  // § 2 — Kualitas grade
+  para += `Komposisi grade keseluruhan: premium <strong>${avgPremPct.toFixed(1)}%</strong>, imperfect <strong>${avgImpPct.toFixed(1)}%</strong>, outspec ${osLabel}. `;
+  if(topPrem.length){
+    para += `GH dengan premium tertinggi: ${topPrem.map(x=>`<strong>${x.gh}</strong> (${x.premPct.toFixed(1)}%)`).join(', ')}. `;
+  }
+  if(worstOS.length){
+    para += `GH dengan outspec perlu perhatian: ${worstOS.map(x=>`<strong>${x.gh}</strong> (${x.osPct.toFixed(1)}%)`).join(', ')}. `;
   }
 
-  // Kalimat 4: Ongoing
-  if(ongoingList.length){
-    const maxSisa = [...ongoingList].sort((a,b)=>b.sisa-a.sisa)[0];
-    para += `${ongoingList.length} GH masih berjalan` +
-      (maxSisa && maxSisa.sisa > 0 ? `, dengan sisa panen terbesar di <strong>${maxSisa.gh}</strong> (${fmt(maxSisa.sisa)})` : '') + `.`;
+  // § 3 — GH bermasalah
+  if(masalahDetail.length){
+    para += `GH yang selesai dengan catatan: ${masalahDetail.join('; ')}. `;
+  } else if(selesaiList.length){
+    para += `Semua GH yang telah selesai memenuhi target panen (≥85%). `;
+  }
+
+  // § 4 — Ongoing detail
+  if(ongoingList.length && ongoingDetail.length){
+    para += `GH yang masih berjalan dengan sisa panen terbesar: ${ongoingDetail.join(', ')}.`;
+  } else if(ongoingList.length){
+    para += `${ongoingList.length} GH masih dalam proses panen.`;
   }
 
   el.innerHTML = para;
@@ -2272,7 +2350,7 @@ function render(){
   document.getElementById('op3').textContent = fmt(totEst);
 
   // ── INSIGHT MANAGER ──
-  renderInsight(ghList, {totSelesai: totPremImpSelesai, totEst, totPanen, totOS, totPrem, pctOS, pctTercapai: pctTercapaiSelesai, ongoingCount});
+  renderInsight(ghList, {totSelesai: totPremImpSelesai, totEst, totPanen, totOS, totImp, totPrem, pctOS, pctTercapai: pctTercapaiSelesai, ongoingCount});
 
   // DONUT labels
   document.getElementById('lp').textContent = pctPrem.toFixed(1)+'%';
@@ -2964,26 +3042,34 @@ function downloadPDFPopup(){
   closePopupPanen();
 
   // Set filter GH ke GH yang selesai (multi-select)
-  // Uncheck semua dulu, lalu check hanya yang selesai
   const selesaiNames = new Set(_popupPanenGHs.map(r => r.gh));
   const allChecks = document.querySelectorAll('#gh-multi-list input[type=checkbox]');
-  allChecks.forEach(chk => {
-    chk.checked = selesaiNames.has(chk.value);
-  });
-  // Trigger update
+  allChecks.forEach(chk => { chk.checked = selesaiNames.has(chk.value); });
   if(typeof onGHCheckChange === 'function') onGHCheckChange();
 
-  // Tunggu sebentar agar render selesai, lalu print
+  // Isi header PDF
+  const ghNames   = _popupPanenGHs.map(r => r.gh + ' (Periode ' + r.periode + ')').join(', ');
+  const tglStr    = _popupPanenGHs[0]?.tgl_akhir
+    ? new Date(_popupPanenGHs[0].tgl_akhir).toLocaleDateString('id-ID', {weekday:'long', day:'numeric', month:'long', year:'numeric'})
+    : '';
+  const subEl = document.getElementById('pdf-popup-header-sub');
+  if(subEl) subEl.textContent = (tglStr ? 'Hari panen: ' + tglStr + ' · ' : '') + 'GH: ' + ghNames;
+
+  // Aktifkan mode PDF popup
+  document.body.classList.add('pdf-popup-mode');
+
+  // Tunggu render selesai, lalu print, lalu bersihkan mode
   setTimeout(() => {
     const btn = document.getElementById('btn-pdf');
     if(btn){ btn.disabled=true; btn.textContent='⏳ Menyiapkan...'; }
     setTimeout(() => {
       window.print();
       setTimeout(() => {
+        document.body.classList.remove('pdf-popup-mode');
         if(btn){ btn.disabled=false; btn.textContent='⬇ Download PDF'; }
       }, 1500);
-    }, 400);
-  }, 600);
+    }, 500);
+  }, 700);
 }
 
 // Tutup popup jika klik overlay (di luar box)
