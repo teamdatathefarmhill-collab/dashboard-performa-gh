@@ -2285,27 +2285,10 @@ function render(){
   const [ymEstY, ymEstM] = ymEst.split('-').map(Number);
   const labelBulanEst = MONTH_LABELS_ID[ymEstM-1] + ' ' + ymEstY;
 
-  // KPI
-  // % Tercapai = (premium+imperfect saja dari GH yang sudah selesai) / estimasi TOTAL semua GH
-  // Contoh: 38.24 Ton (prem+imp selesai) / 51.35 Ton (est total) = 74.46%
-  const todayForPct = new Date().toISOString().substring(0,10);
-  const selesaiDoneList = ghList.filter(r =>
-    r.kategori !== 'Ongoing' && r.kategori !== 'Belum Panen' &&
-    r.tgl_akhir && r.tgl_akhir <= todayForPct
-  );
-  // Hanya premium+imperfect (bukan outspec) dari GH yang sudah selesai
-  let totPremImpSelesai = 0;
-  selesaiDoneList.forEach(r => {
-    let gPrem=0, gImp=0;
-    Object.keys(RAW.monthly||{}).forEach(mk=>{
-      const parts=mk.split('||');
-      if(parts[0]!==r.gh||parts[1]!==r.periode) return;
-      const m=RAW.monthly[mk];
-      if(m){ gPrem+=m.premium; gImp+=m.imperfect; }
-    });
-    totPremImpSelesai += gPrem + gImp;
-  });
-  // Dibagi estimasi TOTAL semua GH (bukan hanya GH selesai)
+  // KPI % Tercapai vs Est
+  // = (premium+imperfect dari SEMUA GH yang tampil, sesuai filter bulan) / estimasi
+  // Pakai mt (sumMonthly yang sudah difilter bulan) supaya konsisten dengan filter Lalu/Ini/Depan
+  const totPremImpSelesai = mt.prem + mt.imp;
   const pctTercapaiSelesai = totEst > 0 ? (totPremImpSelesai / totEst * 100) : 0;
 
   // Total Target = populasi awal × 1 kg per tanaman (dalam gram→kg, pop sudah dalam satuan tanaman)
@@ -2318,7 +2301,7 @@ function render(){
   document.getElementById('k-tot').textContent   = fmt(totPanen);
   document.getElementById('k-tot-s').textContent  = `sudah terjadi · dari est. ${fmt(totEst)}`;
   document.getElementById('k-pct').textContent   = pctTercapaiSelesai.toFixed(1)+'%';
-  document.getElementById('k-pct-s').textContent  = `prem+imp selesai: ${fmt(totPremImpSelesai)} / est. ${fmt(totEst)}`;
+  document.getElementById('k-pct-s').textContent  = `prem+imp: ${fmt(totPremImpSelesai)} / est. ${fmt(totEst)}`;
   const pctCard = document.getElementById('k-pct-card');
   pctCard.className = 'kpi'+(pctTercapaiSelesai>=80?' ok':pctTercapaiSelesai<50?' warn':'');
   // Total Target: populasi awal × 1 kg/tanaman
