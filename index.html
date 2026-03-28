@@ -621,6 +621,7 @@ const AUTO_REFRESH_MS = 5 * 60 * 1000; // auto refresh setiap 5 menit
 
 let RAW = null;
 let RAW_SANITASI = null;
+let RAW_ESTIMASI = null;
 let charts = {};
 
 // ── HELPERS ──────────────────────────────────────────────────────────────────
@@ -661,6 +662,61 @@ function parseCSV(text){
     headers.forEach((h,i)=>obj[h]=(vals[i]||'').trim().replace(/^"|"$/g,''));
     return obj;
   });
+}
+
+// ── ESTIMASI DATASET ──────────────────────────────────────────────────────────
+// Sheet estimasi kolom: Tanggal, Greenhouse, Varian, Grade, Total, Month, Real Panen,
+//                       Month Real, Panen Ke-, Status, Periode
+// Map nama bulan Inggris → angka bulan (1-12)
+const MONTH_EN_MAP = {
+  january:1,february:2,march:3,april:4,may:5,june:6,
+  july:7,august:8,september:9,october:10,november:11,december:12
+};
+
+function buildEstimasiDataset(rows){
+  // rows: array of objects dari parseCSV
+  // Simpan semua baris dengan field yang diperlukan
+  const data = rows.map(r=>({
+    gh:      (r['Greenhouse']||r['GREENHOUSE']||'').trim(),
+    periode: (r['Periode']||r['PERIODE']||'').trim(),
+    month:   (r['Month']||r['MONTH']||'').trim().toLowerCase(),
+    total:   parseFloat(r['Total']||r['TOTAL']||0),
+  })).filter(r=>r.gh && r.total>0);
+  return { data };
+}
+
+function getEstimasiTotal(ghList, fPeriode, activeQuick){
+  if(!RAW_ESTIMASI || !RAW_ESTIMASI.data.length) return null; // null = fallback ke cara lama
+
+  // Buat set GH yang tampil (lowercase untuk matching)
+  const ghSet = new Set(ghList.map(r=>normalizeGH(r.gh)));
+
+  // Tentukan filter bulan dari activeQuick
+  let targetMonth = null; // angka bulan (1-12), null = semua
+  if(activeQuick && activeQuick !== 'all'){
+    const now = new Date();
+    let d;
+    if(activeQuick === 'this') d = new Date(now.getFullYear(), now.getMonth(), 1);
+    else if(activeQuick === 'prev') d = new Date(now.getFullYear(), now.getMonth()-1, 1);
+    else if(activeQuick === 'next') d = new Date(now.getFullYear(), now.getMonth()+1, 1);
+    if(d) targetMonth = d.getMonth()+1; // 1-12
+  }
+
+  let total = 0;
+  RAW_ESTIMASI.data.forEach(r=>{
+    // Filter GH: hanya GH yang tampil di dashboard saat ini
+    if(ghSet.size && !ghSet.has(normalizeGH(r.gh))) return;
+    // Filter Periode
+    if(fPeriode && r.periode !== fPeriode) return;
+    // Filter Bulan
+    if(targetMonth !== null){
+      const rowMonth = MONTH_EN_MAP[r.month] || 0;
+      if(rowMonth !== targetMonth) return;
+    }
+    total += r.total;
+  });
+
+  return total;
 }
 
 // ── SANITASI DATASET ──────────────────────────────────────────────────────────
@@ -932,6 +988,7 @@ async function loadData(isRefresh=false){
   // ── CACHE HELPERS ─────────────────────────────────────────────────────────────
   const CACHE_KEY_PANEN    = 'gh_cache_panen';
   const CACHE_KEY_SANITASI = 'gh_cache_sanitasi';
+  const CACHE_KEY_ESTIMASI = 'gh_cache_estimasi';
   const CACHE_TTL_MS       = 5 * 60 * 1000; // 5 menit
 
   function saveCache(key, text){
@@ -985,20 +1042,26 @@ async function loadData(isRefresh=false){
     console.log('[loadData] Fetching panen + sanitasi in parallel...');
     const panenUrl = PROXY_URL + '?t=' + Date.now();
     const sanUrl   = PROXY_URL + '?type=sanitasi&t=' + Date.now();
+    const estUrl   = PROXY_URL + '?type=estimasi&t=' + Date.now();
 
     const controller = new AbortController();
     const timeoutId  = setTimeout(()=>controller.abort(), 35000);
 
-    let text = '', sanText = '';
+    let text = '', sanText = '', estText = '';
     try {
-      const [res, sanRes] = await Promise.all([
+      const [res, sanRes, estRes] = await Promise.all([
         fetch(panenUrl,  { redirect:'follow', cache:'no-cache', signal: controller.signal }),
         fetch(sanUrl,    { redirect:'follow', cache:'no-cache', signal: controller.signal }),
+        fetch(estUrl,    { redirect:'follow', cache:'no-cache', signal: controller.signal }),
       ]);
       clearTimeout(timeoutId);
       if(!res.ok) throw new Error('HTTP '+res.status+' dari Apps Script (panen)');
-      [text, sanText] = await Promise.all([res.text(), sanRes.ok ? sanRes.text() : Promise.resolve('')]);
-      console.log('Fetch OK — panen:', text.length, 'chars | sanitasi:', sanText.length, 'chars');
+      [text, sanText, estText] = await Promise.all([
+        res.text(),
+        sanRes.ok ? sanRes.text() : Promise.resolve(''),
+        estRes.ok ? estRes.text() : Promise.resolve(''),
+      ]);
+      console.log('Fetch OK — panen:', text.length, 'chars | sanitasi:', sanText.length, 'chars | estimasi:', estText.length, 'chars');
     } catch(fetchErr){
       clearTimeout(timeoutId);
       if(fetchErr.name==='AbortError') throw new Error('Timeout 35 detik — Apps Script tidak merespons. Coba refresh.');
@@ -1015,12 +1078,18 @@ async function loadData(isRefresh=false){
     // Simpan ke cache
     saveCache(CACHE_KEY_PANEN, text);
     if(sanText && sanText.length > 10 && !sanText.trim().startsWith('<')) saveCache(CACHE_KEY_SANITASI, sanText);
+    if(estText && estText.length > 10 && !estText.trim().startsWith('<')) saveCache(CACHE_KEY_ESTIMASI, estText);
 
     RAW = buildDataset(rows);
 
     if(sanText && sanText.length > 10 && !sanText.trim().startsWith('<')){
       try { RAW_SANITASI = buildSanitasiDataset(parseCSV(sanText)); }
       catch(sanErr){ console.warn('Sanitasi parse gagal:', sanErr.message); }
+    }
+
+    if(estText && estText.length > 10 && !estText.trim().startsWith('<')){
+      try { RAW_ESTIMASI = buildEstimasiDataset(parseCSV(estText)); }
+      catch(estErr){ console.warn('Estimasi parse gagal:', estErr.message); }
     }
 
     initFilters(prevP, prevK, prevGHs);
@@ -2034,7 +2103,10 @@ function render(){
   const mt  = sumMonthly(ghList, ymD, ymS);
 
   // Totals — selalu dari RAW.monthly agar konsisten antara mode Semua/Lalu/Ini/Depan
-  const totEst     = ghList.reduce((a,r)=>a+r.est,0);
+  const totEstSheet = getEstimasiTotal(ghList, pFilter, activeQuick);
+  const totEstGH    = ghList.reduce((a,r)=>a+r.est,0);
+  const totEst      = totEstSheet !== null ? totEstSheet : totEstGH; // pakai sheet jika tersedia
+  const estSource   = totEstSheet !== null ? 'sheet estimasi' : 'per GH';
   const totPop     = ghList.reduce((a,r)=>a+r.pop,0);
   const totPrem    = mt.prem;
   const totImp     = mt.imp;
@@ -2124,7 +2196,7 @@ function render(){
   document.getElementById('k-tot').textContent   = fmt(totPanen);
   document.getElementById('k-tot-s').textContent  = `sudah terjadi · dari est. ${fmt(totEst)}`;
   document.getElementById('k-pct').textContent   = pctTercapai.toFixed(1)+'%';
-  document.getElementById('k-pct-s').textContent  = `%Tercapai vs Estimasi`;
+  document.getElementById('k-pct-s').textContent  = `vs Est. ${fmt(totEst)} (${estSource})`;
   const pctCard = document.getElementById('k-pct-card');
   pctCard.className = 'kpi'+(pctTercapai>=80?' ok':pctTercapai<50?' warn':'');
   document.getElementById('k-sisa').textContent  = fmt(totSisa);
