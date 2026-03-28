@@ -689,17 +689,6 @@ function buildEstimasiDataset(rows){
 function getEstimasiTotal(ghList, fPeriode, activeQuick){
   if(!RAW_ESTIMASI || !RAW_ESTIMASI.data.length) return null;
 
-  // Tentukan filter bulan dari activeQuick
-  let targetMonth = null;
-  if(activeQuick && activeQuick !== 'all'){
-    const now = new Date();
-    let d;
-    if(activeQuick === 'this') d = new Date(now.getFullYear(), now.getMonth(), 1);
-    else if(activeQuick === 'prev') d = new Date(now.getFullYear(), now.getMonth()-1, 1);
-    else if(activeQuick === 'next') d = new Date(now.getFullYear(), now.getMonth()+1, 1);
-    if(d) targetMonth = d.getMonth()+1;
-  }
-
   // Bangun set GH+Periode yang sedang ditampilkan (dari ghList yang sudah difilter)
   // Jika ghList kosong → tidak filter GH (tampilkan semua)
   const activeGHPeriodes = new Set(
@@ -707,6 +696,9 @@ function getEstimasiTotal(ghList, fPeriode, activeQuick){
   );
   const hasGHFilter = activeGHPeriodes.size > 0;
 
+  // Estimasi adalah TARGET TOTAL per GH+Periode — TIDAK dipotong per bulan.
+  // Filter bulan (Lalu/Ini/Depan) hanya berlaku untuk data panen aktual,
+  // bukan untuk target estimasi. Estimasi selalu diambil full per GH+Periode.
   let total = 0;
   RAW_ESTIMASI.data.forEach(r=>{
     // Filter Periode jika aktif
@@ -715,11 +707,6 @@ function getEstimasiTotal(ghList, fPeriode, activeQuick){
     if(hasGHFilter){
       const key = (r.gh + '||' + r.periode).toLowerCase();
       if(!activeGHPeriodes.has(key)) return;
-    }
-    // Filter Bulan jika aktif
-    if(targetMonth !== null){
-      const rowMonth = MONTH_EN_MAP[r.month] || 0;
-      if(rowMonth !== targetMonth) return;
     }
     total += r.total;
   });
@@ -2004,55 +1991,40 @@ function renderInsight(ghList, kpi){
     else if(osPct > 15) masalah.push(`${r.gh} (outspec ${osPct.toFixed(1)}%)`);
   });
 
-  // Susun narasi teks
-  const parts = [];
-
-  // Baris 1: Status keseluruhan
+  // Susun narasi paragraf (bukan bullet per baris)
   const pctTercapaiTxt = kpi.pctTercapai ? kpi.pctTercapai.toFixed(1) : '—';
-  parts.push(
-    `<span style="font-weight:700;color:var(--text);">📊 Status:</span> ` +
-    `Dari <strong>${ghList.length} GH</strong> yang dianalisis — ` +
-    `<strong style="color:var(--green);">${selesaiList.length} selesai</strong>, ` +
-    `<strong style="color:var(--blue);">${ongoingList.length} ongoing</strong>` +
-    (belumList.length ? `, <strong style="color:var(--amber);">${belumList.length} belum panen</strong>` : '') +
-    `. Total panen aktual <strong>${fmt(kpi.totPanen)}</strong> dari estimasi <strong>${fmt(kpi.totEst)}</strong>.`
-  );
 
-  // Baris 2: Kualitas
-  const osTag = kpi.pctOS < 5 ? `<span style="color:var(--green)">✓ rendah (${kpi.pctOS.toFixed(1)}%)</span>` :
+  // Kalimat 1: Status + pencapaian
+  let para = `Dari <strong>${ghList.length} GH</strong> yang dianalisis, ` +
+    `<strong style="color:var(--green);">${selesaiList.length} telah selesai</strong>` +
+    (ongoingList.length ? ` dan <strong style="color:var(--blue);">${ongoingList.length} masih ongoing</strong>` : '') +
+    (belumList.length ? `, serta <strong style="color:var(--amber);">${belumList.length} belum panen</strong>` : '') +
+    `. Total panen aktual <strong>${fmt(kpi.totPanen)}</strong> dari estimasi <strong>${fmt(kpi.totEst)}</strong>` +
+    (kpi.pctTercapai ? ` (<strong>${pctTercapaiTxt}%</strong> tercapai)` : '') + `. `;
+
+  // Kalimat 2: Kualitas
+  const osTag = kpi.pctOS < 5 ? `<span style="color:var(--green)">rendah (${kpi.pctOS.toFixed(1)}%)</span>` :
                 kpi.pctOS < 10 ? `<span style="color:var(--amber)">sedang (${kpi.pctOS.toFixed(1)}%)</span>` :
-                `<span style="color:var(--red)">⚠ tinggi (${kpi.pctOS.toFixed(1)}%)</span>`;
-  parts.push(
-    `<span style="font-weight:700;color:var(--text);">🏆 Kualitas:</span> ` +
-    `Rata-rata premium <strong>${avgPremPct.toFixed(1)}%</strong>. Outspec ${osTag} dari total panen.` +
-    (topPrem.length ? ` GH terbaik: <strong>${topPrem.map(x=>x.gh+' ('+x.premPct.toFixed(0)+'% prem)').join(', ')}</strong>.` : '')
-  );
+                `<span style="color:var(--red)">tinggi (${kpi.pctOS.toFixed(1)}%)</span>`;
+  para += `Rata-rata grade premium <strong>${avgPremPct.toFixed(1)}%</strong> dengan tingkat outspec ${osTag} dari total panen` +
+    (topPrem.length ? ` — GH terbaik: <strong>${topPrem.map(x=>x.gh+' ('+x.premPct.toFixed(0)+'%)').join(', ')}</strong>` : '') + `. `;
 
-  // Baris 3: Perlu perhatian
+  // Kalimat 3: Masalah atau kondisi baik
   if(masalah.length){
-    parts.push(
-      `<span style="font-weight:700;color:var(--text);">⚠️ Perlu Perhatian:</span> ` +
-      `${masalah.length} GH selesai dengan catatan — ${masalah.slice(0,5).join('; ')}` +
-      (masalah.length > 5 ? ` dan ${masalah.length-5} lainnya` : '') + `.`
-    );
+    para += `Perlu perhatian pada ${masalah.length} GH yang selesai dengan catatan: ${masalah.slice(0,5).join('; ')}` +
+      (masalah.length > 5 ? ` dan ${masalah.length-5} lainnya` : '') + `. `;
   } else if(selesaiList.length){
-    parts.push(
-      `<span style="font-weight:700;color:var(--text);">✅ Perhatian:</span> ` +
-      `Semua GH yang selesai memenuhi target (≥85%).`
-    );
+    para += `Semua GH yang telah selesai berhasil memenuhi target (≥85%). `;
   }
 
-  // Baris 4: Ongoing info
+  // Kalimat 4: Ongoing
   if(ongoingList.length){
     const maxSisa = [...ongoingList].sort((a,b)=>b.sisa-a.sisa)[0];
-    parts.push(
-      `<span style="font-weight:700;color:var(--text);">🌱 Ongoing:</span> ` +
-      `${ongoingList.length} GH masih berjalan.` +
-      (maxSisa ? ` Sisa panen terbesar: <strong>${maxSisa.gh}</strong> (${fmt(maxSisa.sisa)}).` : '')
-    );
+    para += `${ongoingList.length} GH masih berjalan` +
+      (maxSisa && maxSisa.sisa > 0 ? `, dengan sisa panen terbesar di <strong>${maxSisa.gh}</strong> (${fmt(maxSisa.sisa)})` : '') + `.`;
   }
 
-  el.innerHTML = parts.join('<br>');
+  el.innerHTML = para;
 }
 
 // ── DEBOUNCE RENDER ───────────────────────────────────────────────────────────
@@ -2121,10 +2093,15 @@ function render(){
   const mt  = sumMonthly(ghList, ymD, ymS);
 
   // Totals — selalu dari RAW.monthly agar konsisten antara mode Semua/Lalu/Ini/Depan
-  const totEstSheet = getEstimasiTotal(ghList, pFilter, activeQuick);
   const totEstGH    = ghList.reduce((a,r)=>a+r.est,0);
-  const totEst      = totEstSheet !== null ? totEstSheet : totEstGH; // pakai sheet jika tersedia
-  const estSource   = totEstSheet !== null ? 'sheet estimasi' : 'per GH';
+  // Pakai sheet estimasi HANYA jika ada filter aktif (periode, GH spesifik, atau bulan).
+  // Default "Semua" tanpa filter → pakai est per GH dari sheet panen (totEstGH).
+  const _selGHsNow   = getSelectedGHs();
+  const _totalGHOpts = document.querySelectorAll('#gh-multi-list input[type=checkbox]').length;
+  const _hasFilter   = !!(pFilter || (_selGHsNow.length && _selGHsNow.length < _totalGHOpts) || (activeQuick && activeQuick !== 'all'));
+  const totEstSheet  = _hasFilter ? getEstimasiTotal(ghList, pFilter, activeQuick) : null;
+  const totEst       = totEstSheet !== null ? totEstSheet : totEstGH;
+  const estSource    = totEstSheet !== null ? 'sheet estimasi' : 'per GH';
   const totPop     = ghList.reduce((a,r)=>a+r.pop,0);
   const totPrem    = mt.prem;
   const totImp     = mt.imp;
