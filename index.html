@@ -197,6 +197,30 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 
 @keyframes spin{to{transform:rotate(360deg);}}
 @keyframes livepulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+
+/* POPUP PANEN SELESAI */
+#popup-panen-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:2000;
+  display:flex;align-items:center;justify-content:center;padding:16px;
+  animation:fadeInOverlay .25s ease;
+}
+@keyframes fadeInOverlay{from{opacity:0;}to{opacity:1;}}
+#popup-panen-box{
+  background:var(--surface);border-radius:16px;padding:24px 24px 20px;
+  max-width:520px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,0.18);
+  animation:slideUpPopup .3s cubic-bezier(.22,.68,0,1.2);
+  max-height:85vh;overflow-y:auto;
+}
+@keyframes slideUpPopup{from{opacity:0;transform:translateY(28px);}to{opacity:1;transform:translateY(0);}}
+.popup-gh-item{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 11px;border-radius:var(--rs);background:var(--green-bg);
+  border:1px solid #97c459;margin-bottom:6px;
+}
+.popup-gh-name{font-weight:700;font-size:13px;color:var(--green);}
+.popup-gh-meta{font-size:10px;color:var(--muted);margin-top:1px;}
+@media print{#popup-panen-overlay{display:none!important;}}
+
 .rbtn{display:flex;align-items:center;gap:5px;padding:6px 12px;border-radius:20px;border:1px solid var(--border-med);background:var(--surface);font-size:11px;color:var(--blue);font-weight:600;cursor:pointer;box-shadow:var(--shadow);}
 .rbtn:hover{background:var(--blue-bg);}
 .blive{background:var(--teal-bg);color:var(--teal);animation:livepulse 2s ease-in-out infinite;}
@@ -564,6 +588,29 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
 </div>
 
 
+<!-- POPUP PANEN SELESAI H+1 -->
+<div id="popup-panen-overlay" style="display:none;">
+  <div id="popup-panen-box">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:14px;">
+      <div>
+        <div style="font-size:18px;font-weight:700;color:var(--green);letter-spacing:-.3px;">🌿 Panen Selesai!</div>
+        <div id="popup-panen-tanggal" style="font-size:11px;color:var(--hint);margin-top:2px;"></div>
+      </div>
+      <button onclick="closePopupPanen()" style="background:var(--surface2);border:none;border-radius:50%;width:28px;height:28px;font-size:14px;cursor:pointer;color:var(--muted);flex-shrink:0;display:flex;align-items:center;justify-content:center;">✕</button>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">GH berikut menyelesaikan panen pada hari kemarin:</div>
+    <div id="popup-gh-list" style="margin-bottom:16px;"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button onclick="downloadPDFPopup()" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 16px;border-radius:20px;border:none;background:var(--green);color:#fff;font-size:12px;font-weight:700;cursor:pointer;">
+        ⬇ Download PDF Laporan Panen
+      </button>
+      <button onclick="closePopupPanen()" style="padding:9px 16px;border-radius:20px;border:1px solid var(--border-med);background:var(--surface2);color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;">
+        Tutup
+      </button>
+    </div>
+  </div>
+</div>
+
 <script>
 
 
@@ -802,53 +849,30 @@ function buildDataset(rows){
   });
 
   // Step 4: Outspec by Notes (kategori) and Note (sub-kategori)
-  // Keys: GH||Periode (for non-YM aggregation) AND GH||Periode||YM (for YM-filtered aggregation)
   const outspec_notes_map={}, outspec_note_map={}, seenN=new Set(), seenS=new Set();
-  // YM-aware maps: key = GH||Periode||YM
-  const outspec_notes_ym_map={}, outspec_note_ym_map={};
   rows.forEach(r=>{
     if((r['GRADE']||'').toUpperCase()!=='OUTSPEC'||!r['DATA KEBUN']) return;
     const val=parseFloat(r['DATA KEBUN']||0); if(val<=0) return;
-    // Use 'Tanggal Ref' for YM bucketing (consistent with monthly map)
-    const tglRef = (r['Tanggal Ref']||'').substring(0,10);
-    const ym = tglRef ? tglRef.substring(0,7) : '';
     const mk=r['GH']+'||'+r['Periode'];
-    const mkYm = mk + (ym ? '||'+ym : '');
     if(r['Notes']){
       const key=mk+'||N||'+r['Notes']+'||'+r['DATA KEBUN']+'||'+r['TANGGAL'];
       if(!seenN.has(key)){ seenN.add(key);
         if(!outspec_notes_map[mk]) outspec_notes_map[mk]={};
-        outspec_notes_map[mk][r['Notes']]=(outspec_notes_map[mk][r['Notes']]||0)+val;
-        // YM map
-        if(ym){
-          if(!outspec_notes_ym_map[mkYm]) outspec_notes_ym_map[mkYm]={};
-          outspec_notes_ym_map[mkYm][r['Notes']]=(outspec_notes_ym_map[mkYm][r['Notes']]||0)+val;
-        }
-      }
+        outspec_notes_map[mk][r['Notes']]=(outspec_notes_map[mk][r['Notes']]||0)+val; }
     }
     if(r['Note']){
       const key=mk+'||S||'+r['Note']+'||'+r['DATA KEBUN']+'||'+r['TANGGAL'];
       if(!seenS.has(key)){ seenS.add(key);
         if(!outspec_note_map[mk]) outspec_note_map[mk]={};
-        outspec_note_map[mk][r['Note']]=(outspec_note_map[mk][r['Note']]||0)+val;
-        // YM map
-        if(ym){
-          if(!outspec_note_ym_map[mkYm]) outspec_note_ym_map[mkYm]={};
-          outspec_note_ym_map[mkYm][r['Note']]=(outspec_note_ym_map[mkYm][r['Note']]||0)+val;
-        }
-      }
+        outspec_note_map[mk][r['Note']]=(outspec_note_map[mk][r['Note']]||0)+val; }
     }
   });
 
   // Step 5: Build Notes→Note mapping (for pie click drill-down)
-  // Also build YM-aware version
   const notes_note_map={}, seenNN=new Set();
-  const notes_note_ym_map={};
   rows.forEach(r=>{
     if((r['GRADE']||'').toUpperCase()!=='OUTSPEC'||!r['Notes']||!r['Note']||!r['DATA KEBUN']) return;
     const val=parseFloat(r['DATA KEBUN']||0); if(val<=0) return;
-    const tglRef = (r['Tanggal Ref']||'').substring(0,10);
-    const ym = tglRef ? tglRef.substring(0,7) : '';
     const key=r['GH']+'||'+r['Periode']+'||'+r['Notes']+'||'+r['Note']+'||'+r['DATA KEBUN']+'||'+(r['TANGGAL']||'');
     if(!seenNN.has(key)){
       seenNN.add(key);
@@ -856,20 +880,11 @@ function buildDataset(rows){
       if(!notes_note_map[mk]) notes_note_map[mk]={};
       if(!notes_note_map[mk][r['Notes']]) notes_note_map[mk][r['Notes']]={};
       notes_note_map[mk][r['Notes']][r['Note']]=(notes_note_map[mk][r['Notes']][r['Note']]||0)+val;
-      // YM map
-      if(ym){
-        const mkYm=mk+'||'+ym;
-        if(!notes_note_ym_map[mkYm]) notes_note_ym_map[mkYm]={};
-        if(!notes_note_ym_map[mkYm][r['Notes']]) notes_note_ym_map[mkYm][r['Notes']]={};
-        notes_note_ym_map[mkYm][r['Notes']][r['Note']]=(notes_note_ym_map[mkYm][r['Notes']][r['Note']]||0)+val;
-      }
     }
   });
 
   return{
-    gh_records:ghRecords, monthly, future, tglRefMap,
-    outspec_notes_map, outspec_note_map, notes_note_map,
-    outspec_notes_ym_map, outspec_note_ym_map, notes_note_ym_map,
+    gh_records:ghRecords, monthly, future, tglRefMap, outspec_notes_map, outspec_note_map, notes_note_map,
     filters:{
       periodes:  [...new Set(ghRecords.map(r=>r.periode).filter(Boolean))].sort(),
       klasifikasis:[...new Set(ghRecords.map(r=>r.klasifikasi).filter(Boolean))].sort(),
@@ -1024,6 +1039,9 @@ async function loadData(isRefresh=false){
     }
     document.getElementById('loading-screen').style.display = 'none';
     document.getElementById('dashboard').style.display      = 'block';
+
+    // Cek popup panen selesai (hanya saat load pertama, bukan refresh)
+    if(!isRefresh) checkPopupPanenSelesai();
 
     if(isRefresh) showToast('✓ Data diperbarui · '+RAW.loaded_at+' · '+RAW.total_rows.toLocaleString()+' records');
 
@@ -1306,48 +1324,19 @@ function getOutspecAggregated(mapKey){
   const p    = document.getElementById('f-periode').value;
   const k    = document.getElementById('f-klas').value;
   const selG = getSelectedGHs(); // array; empty = semua
-  const ymRange = getActiveYMRange();
-
-  // If YM filter is active, use YM-aware maps
-  const ymMapKey = mapKey === 'outspec_notes_map' ? 'outspec_notes_ym_map'
-                 : mapKey === 'outspec_note_map'  ? 'outspec_note_ym_map'
-                 : mapKey === 'notes_note_map'    ? 'notes_note_ym_map'
-                 : null;
-
+  const map  = RAW[mapKey] || {};
   const totals = {};
-
-  if(ymRange && ymMapKey && RAW[ymMapKey]){
-    // Use YM-keyed map: key = GH||Periode||YM
-    const {ymDari, ymSampai} = ymRange;
-    Object.entries(RAW[ymMapKey]).forEach(([keyStr, noteMap])=>{
-      const parts = keyStr.split('||');
-      const gh = parts[0], periode = parts[1], ym = parts[2]||'';
-      if(ym < ymDari || ym > ymSampai) return;
-      const rec = RAW.gh_records.find(r=>r.gh===gh && r.periode===periode);
-      if(!rec) return;
-      if(p && rec.periode!==p) return;
-      if(k && rec.klasifikasi!==k) return;
-      if(selG.length && !selG.includes(rec.gh)) return;
-      Object.entries(noteMap).forEach(([note,val])=>{
-        totals[note] = (totals[note]||0)+val;
-      });
+  Object.entries(map).forEach(([keyStr, noteMap])=>{
+    const [gh, periode] = keyStr.split('||');
+    const rec = RAW.gh_records.find(r=>r.gh===gh && r.periode===periode);
+    if(!rec) return;
+    if(p && rec.periode!==p) return;
+    if(k && rec.klasifikasi!==k) return;
+    if(selG.length && !selG.includes(rec.gh)) return;
+    Object.entries(noteMap).forEach(([note,val])=>{
+      totals[note] = (totals[note]||0)+val;
     });
-  } else {
-    // No YM filter: use original per-GH||Periode map
-    const map  = RAW[mapKey] || {};
-    Object.entries(map).forEach(([keyStr, noteMap])=>{
-      const [gh, periode] = keyStr.split('||');
-      const rec = RAW.gh_records.find(r=>r.gh===gh && r.periode===periode);
-      if(!rec) return;
-      if(p && rec.periode!==p) return;
-      if(k && rec.klasifikasi!==k) return;
-      if(selG.length && !selG.includes(rec.gh)) return;
-      Object.entries(noteMap).forEach(([note,val])=>{
-        totals[note] = (totals[note]||0)+val;
-      });
-    });
-  }
-
+  });
   return Object.entries(totals).sort((a,b)=>b[1]-a[1]);
 }
 function getOutspecNotes(filtered){ return getOutspecAggregated('outspec_notes_map'); }
@@ -1439,41 +1428,19 @@ function showOsSubDetail(kat, color){
     const p    = document.getElementById('f-periode').value;
     const k    = document.getElementById('f-klas').value;
     const selG = getSelectedGHs();
-    const ymRange = getActiveYMRange();
-
-    if(ymRange && RAW.notes_note_ym_map){
-      // YM-filtered drill-down
-      const {ymDari, ymSampai} = ymRange;
-      Object.entries(RAW.notes_note_ym_map).forEach(([mk, cats])=>{
-        const parts = mk.split('||');
-        const gh = parts[0], periode = parts[1], ym = parts[2]||'';
-        if(ym < ymDari || ym > ymSampai) return;
-        const rec = RAW.gh_records.find(r=>r.gh===gh&&r.periode===periode);
-        if(!rec) return;
-        if(p && rec.periode!==p) return;
-        if(k && rec.klasifikasi!==k) return;
-        if(selG.length && !selG.includes(rec.gh)) return;
-        const subs = cats[kat];
-        if(!subs) return;
-        Object.entries(subs).forEach(([note,val])=>{
-          totals[note] = (totals[note]||0)+val;
-        });
+    Object.entries(RAW.notes_note_map).forEach(([mk, cats])=>{
+      const [gh, periode] = mk.split('||');
+      const rec = RAW.gh_records.find(r=>r.gh===gh&&r.periode===periode);
+      if(!rec) return;
+      if(p && rec.periode!==p) return;
+      if(k && rec.klasifikasi!==k) return;
+      if(selG.length && !selG.includes(rec.gh)) return;
+      const subs = cats[kat];
+      if(!subs) return;
+      Object.entries(subs).forEach(([note,val])=>{
+        totals[note] = (totals[note]||0)+val;
       });
-    } else {
-      Object.entries(RAW.notes_note_map).forEach(([mk, cats])=>{
-        const [gh, periode] = mk.split('||');
-        const rec = RAW.gh_records.find(r=>r.gh===gh&&r.periode===periode);
-        if(!rec) return;
-        if(p && rec.periode!==p) return;
-        if(k && rec.klasifikasi!==k) return;
-        if(selG.length && !selG.includes(rec.gh)) return;
-        const subs = cats[kat];
-        if(!subs) return;
-        Object.entries(subs).forEach(([note,val])=>{
-          totals[note] = (totals[note]||0)+val;
-        });
-      });
-    }
+    });
   }
 
   const entries = Object.entries(totals).sort((a,b)=>b[1]-a[1]);
@@ -2801,6 +2768,109 @@ function renderSanitasiKategoriChart(){
     }
   });
 }
+
+// ── POPUP PANEN SELESAI H+1 ───────────────────────────────────────────────────
+let _popupPanenGHs = []; // GH yang selesai kemarin, untuk PDF
+
+function checkPopupPanenSelesai(){
+  if(!RAW) return;
+
+  // Cek apakah hari ini adalah Senin (1) atau Kamis (4)
+  const today    = new Date();
+  const todayDay = today.getDay(); // 0=Min,1=Sen,2=Sel,3=Rab,4=Kam,5=Jum,6=Sab
+  const isKamis  = todayDay === 4;
+  const isSenin  = todayDay === 1;
+  if(!isKamis && !isSenin) return;
+
+  // Hitung tanggal kemarin (hari panen: Rabu atau Minggu)
+  const kemarin = new Date(today);
+  kemarin.setDate(today.getDate() - 1);
+  const kemarinStr = kemarin.toISOString().substring(0, 10);
+
+  // Verifikasi: kemarin memang hari panen (Rabu=3 atau Minggu=0)
+  const kemarinDay = kemarin.getDay();
+  if(kemarinDay !== 3 && kemarinDay !== 0) return;
+
+  // Cari GH yang tgl_akhir = kemarin DAN statusnya selesai
+  const ghSelesai = RAW.gh_records.filter(r => {
+    if(r.tgl_akhir !== kemarinStr) return false;
+    const kat = (r.kategori||'').toLowerCase();
+    const ket = (r.ket_panen||'').toUpperCase();
+    return kat === 'terpenuhi' || kat === 'tidak terpenuhi' ||
+           ket === 'selesai'   || ket === 'habis';
+  });
+
+  if(!ghSelesai.length) return;
+
+  // Simpan untuk keperluan PDF
+  _popupPanenGHs = ghSelesai;
+
+  // Isi konten popup
+  const hariPanen = kemarinDay === 3 ? 'Rabu' : 'Minggu';
+  const tglFormatted = kemarin.toLocaleDateString('id-ID', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+
+  document.getElementById('popup-panen-tanggal').textContent =
+    `Hari panen ${hariPanen}, ${tglFormatted}`;
+
+  const listEl = document.getElementById('popup-gh-list');
+  listEl.innerHTML = ghSelesai.map(r => {
+    const tot   = r.premium + r.imperfect + r.outspec;
+    const pct   = r.est > 0 ? (tot / r.est * 100).toFixed(0) : '—';
+    const prem  = tot > 0 ? (r.premium / tot * 100).toFixed(0) : '—';
+    const isOk  = r.est > 0 && (tot / r.est) >= 0.85;
+    return `<div class="popup-gh-item">
+      <div>
+        <div class="popup-gh-name">🌱 ${r.gh}</div>
+        <div class="popup-gh-meta">Periode ${r.periode} · Panen ${fmt(tot)} · Premium ${prem}% · Tercapai ${pct}%</div>
+      </div>
+      <span class="sbadge ${isOk ? 's-terpenuhi' : 's-tidak'}" style="font-size:9px;flex-shrink:0;">
+        ${isOk ? 'Terpenuhi ✓' : 'Tdk Terpenuhi'}
+      </span>
+    </div>`;
+  }).join('');
+
+  // Tampilkan popup
+  document.getElementById('popup-panen-overlay').style.display = 'flex';
+}
+
+function closePopupPanen(){
+  const overlay = document.getElementById('popup-panen-overlay');
+  if(overlay) overlay.style.display = 'none';
+}
+
+function downloadPDFPopup(){
+  if(!_popupPanenGHs.length) return;
+
+  // Tutup popup dulu
+  closePopupPanen();
+
+  // Set filter GH ke GH yang selesai (multi-select)
+  // Uncheck semua dulu, lalu check hanya yang selesai
+  const selesaiNames = new Set(_popupPanenGHs.map(r => r.gh));
+  const allChecks = document.querySelectorAll('#gh-multi-list input[type=checkbox]');
+  allChecks.forEach(chk => {
+    chk.checked = selesaiNames.has(chk.value);
+  });
+  // Trigger update
+  if(typeof onGHCheckChange === 'function') onGHCheckChange();
+
+  // Tunggu sebentar agar render selesai, lalu print
+  setTimeout(() => {
+    const btn = document.getElementById('btn-pdf');
+    if(btn){ btn.disabled=true; btn.textContent='⏳ Menyiapkan...'; }
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => {
+        if(btn){ btn.disabled=false; btn.textContent='⬇ Download PDF'; }
+      }, 1500);
+    }, 400);
+  }, 600);
+}
+
+// Tutup popup jika klik overlay (di luar box)
+document.getElementById('popup-panen-overlay').addEventListener('click', function(e){
+  if(e.target === this) closePopupPanen();
+});
 
 // ── STARTUP ───────────────────────────────────────────────────────────────────
 const _btnRefresh = document.getElementById('btn-refresh');
