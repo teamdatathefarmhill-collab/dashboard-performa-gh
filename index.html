@@ -2780,7 +2780,7 @@ function checkPopupPanenSelesai(){
   const todayDay = today.getDay(); // 0=Min,1=Sen,2=Sel,3=Rab,4=Kam,5=Jum,6=Sab
   const isKamis  = todayDay === 4;
   const isSenin  = todayDay === 1;
-  // if(!isKamis && !isSenin) return;  // ← comment dulu untuk test
+  if(!isKamis && !isSenin) return;
 
   // Hitung tanggal kemarin (hari panen: Rabu atau Minggu)
   const kemarin = new Date(today);
