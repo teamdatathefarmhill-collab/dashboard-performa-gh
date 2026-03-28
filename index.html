@@ -700,11 +700,22 @@ function getEstimasiTotal(ghList, fPeriode, activeQuick){
     if(d) targetMonth = d.getMonth()+1;
   }
 
+  // Bangun set GH+Periode yang sedang ditampilkan (dari ghList yang sudah difilter)
+  // Jika ghList kosong → tidak filter GH (tampilkan semua)
+  const activeGHPeriodes = new Set(
+    ghList.map(r => (r.gh + '||' + r.periode).toLowerCase())
+  );
+  const hasGHFilter = activeGHPeriodes.size > 0;
+
   let total = 0;
   RAW_ESTIMASI.data.forEach(r=>{
-    // TIDAK filter by GH — estimasi adalah target keseluruhan semua GH
     // Filter Periode jika aktif
     if(fPeriode && r.periode !== fPeriode) return;
+    // Filter GH+Periode: hanya ambil estimasi untuk GH yang sedang ditampilkan
+    if(hasGHFilter){
+      const key = (r.gh + '||' + r.periode).toLowerCase();
+      if(!activeGHPeriodes.has(key)) return;
+    }
     // Filter Bulan jika aktif
     if(targetMonth !== null){
       const rowMonth = MONTH_EN_MAP[r.month] || 0;
