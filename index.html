@@ -686,29 +686,25 @@ function buildEstimasiDataset(rows){
 }
 
 function getEstimasiTotal(ghList, fPeriode, activeQuick){
-  if(!RAW_ESTIMASI || !RAW_ESTIMASI.data.length) return null; // null = fallback ke cara lama
-
-  // Buat set GH yang tampil (lowercase untuk matching)
-  const ghSet = new Set(ghList.map(r=>normalizeGH(r.gh)));
+  if(!RAW_ESTIMASI || !RAW_ESTIMASI.data.length) return null;
 
   // Tentukan filter bulan dari activeQuick
-  let targetMonth = null; // angka bulan (1-12), null = semua
+  let targetMonth = null;
   if(activeQuick && activeQuick !== 'all'){
     const now = new Date();
     let d;
     if(activeQuick === 'this') d = new Date(now.getFullYear(), now.getMonth(), 1);
     else if(activeQuick === 'prev') d = new Date(now.getFullYear(), now.getMonth()-1, 1);
     else if(activeQuick === 'next') d = new Date(now.getFullYear(), now.getMonth()+1, 1);
-    if(d) targetMonth = d.getMonth()+1; // 1-12
+    if(d) targetMonth = d.getMonth()+1;
   }
 
   let total = 0;
   RAW_ESTIMASI.data.forEach(r=>{
-    // Filter GH: hanya GH yang tampil di dashboard saat ini
-    if(ghSet.size && !ghSet.has(normalizeGH(r.gh))) return;
-    // Filter Periode
+    // TIDAK filter by GH — estimasi adalah target keseluruhan semua GH
+    // Filter Periode jika aktif
     if(fPeriode && r.periode !== fPeriode) return;
-    // Filter Bulan
+    // Filter Bulan jika aktif
     if(targetMonth !== null){
       const rowMonth = MONTH_EN_MAP[r.month] || 0;
       if(rowMonth !== targetMonth) return;
@@ -716,7 +712,7 @@ function getEstimasiTotal(ghList, fPeriode, activeQuick){
     total += r.total;
   });
 
-  return total;
+  return total > 0 ? total : null;
 }
 
 // ── SANITASI DATASET ──────────────────────────────────────────────────────────
