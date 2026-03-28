@@ -636,11 +636,11 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
       </div>
       <button onclick="closePopupPanen()" style="background:var(--surface2);border:none;border-radius:50%;width:28px;height:28px;font-size:14px;cursor:pointer;color:var(--muted);flex-shrink:0;display:flex;align-items:center;justify-content:center;">✕</button>
     </div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">GH berikut menyelesaikan panen pada hari kemarin:</div>
-    <div id="popup-gh-list" style="margin-bottom:16px;"></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;">
-      <button onclick="downloadPDFPopup()" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 16px;border-radius:20px;border:none;background:var(--green);color:#fff;font-size:12px;font-weight:700;cursor:pointer;">
-        ⬇ Download PDF Laporan Panen
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">GH berikut menyelesaikan panen pada hari kemarin:</div>
+    <div id="popup-gh-list" style="margin-bottom:14px;"></div>
+    <div style="border-top:1px solid var(--border);padding-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+      <button id="popup-btn-all" onclick="downloadPDFPopup(null)" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 16px;border-radius:20px;border:none;background:var(--green);color:#fff;font-size:12px;font-weight:700;cursor:pointer;">
+        ⬇ Download PDF Semua GH
       </button>
       <button onclick="closePopupPanen()" style="padding:9px 16px;border-radius:20px;border:1px solid var(--border-med);background:var(--surface2);color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;">
         Tutup
@@ -3010,21 +3010,37 @@ function checkPopupPanenSelesai(){
     `Hari panen ${hariPanen}, ${tglFormatted}`;
 
   const listEl = document.getElementById('popup-gh-list');
-  listEl.innerHTML = ghSelesai.map(r => {
+  listEl.innerHTML = ghSelesai.map((r, idx) => {
     const tot   = r.premium + r.imperfect + r.outspec;
     const pct   = r.est > 0 ? (tot / r.est * 100).toFixed(0) : '—';
     const prem  = tot > 0 ? (r.premium / tot * 100).toFixed(0) : '—';
     const isOk  = r.est > 0 && (tot / r.est) >= 0.85;
-    return `<div class="popup-gh-item">
-      <div>
+    // Tombol PDF per GH hanya muncul jika ada 2+ GH
+    const pdfBtn = ghSelesai.length > 1
+      ? `<button onclick="downloadPDFPopup('${r.gh}')"
+           style="font-size:10px;padding:4px 10px;border-radius:12px;border:1px solid #97c459;background:#eaf3de;color:#3b6d11;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;">
+           ⬇ PDF
+         </button>`
+      : '';
+    return `<div class="popup-gh-item" style="gap:8px;">
+      <div style="flex:1;min-width:0;">
         <div class="popup-gh-name">🌱 ${r.gh}</div>
         <div class="popup-gh-meta">Periode ${r.periode} · Panen ${fmt(tot)} · Premium ${prem}% · Tercapai ${pct}%</div>
       </div>
       <span class="sbadge ${isOk ? 's-terpenuhi' : 's-tidak'}" style="font-size:9px;flex-shrink:0;">
         ${isOk ? 'Terpenuhi ✓' : 'Tdk Terpenuhi'}
       </span>
+      ${pdfBtn}
     </div>`;
   }).join('');
+
+  // Label tombol "semua" menyesuaikan jumlah GH
+  const btnAll = document.getElementById('popup-btn-all');
+  if(btnAll){
+    btnAll.textContent = ghSelesai.length > 1
+      ? `⬇ Download PDF Semua (${ghSelesai.length} GH)`
+      : '⬇ Download PDF Laporan Panen';
+  }
 
   // Tampilkan popup
   document.getElementById('popup-panen-overlay').style.display = 'flex';
@@ -3035,22 +3051,29 @@ function closePopupPanen(){
   if(overlay) overlay.style.display = 'none';
 }
 
-function downloadPDFPopup(){
+// ghName: null = semua GH selesai, string = hanya GH tertentu
+function downloadPDFPopup(ghName){
   if(!_popupPanenGHs.length) return;
 
-  // Tutup popup dulu
+  // Tentukan GH yang akan di-PDF
+  const targetGHs = ghName
+    ? _popupPanenGHs.filter(r => r.gh === ghName)
+    : _popupPanenGHs;
+  if(!targetGHs.length) return;
+
+  // Tutup popup
   closePopupPanen();
 
-  // Set filter GH ke GH yang selesai (multi-select)
-  const selesaiNames = new Set(_popupPanenGHs.map(r => r.gh));
+  // Set filter GH ke target
+  const targetNames = new Set(targetGHs.map(r => r.gh));
   const allChecks = document.querySelectorAll('#gh-multi-list input[type=checkbox]');
-  allChecks.forEach(chk => { chk.checked = selesaiNames.has(chk.value); });
+  allChecks.forEach(chk => { chk.checked = targetNames.has(chk.value); });
   if(typeof onGHCheckChange === 'function') onGHCheckChange();
 
   // Isi header PDF
-  const ghNames   = _popupPanenGHs.map(r => r.gh + ' (Periode ' + r.periode + ')').join(', ');
-  const tglStr    = _popupPanenGHs[0]?.tgl_akhir
-    ? new Date(_popupPanenGHs[0].tgl_akhir).toLocaleDateString('id-ID', {weekday:'long', day:'numeric', month:'long', year:'numeric'})
+  const ghNames = targetGHs.map(r => r.gh + ' (Periode ' + r.periode + ')').join(', ');
+  const tglStr  = targetGHs[0]?.tgl_akhir
+    ? new Date(targetGHs[0].tgl_akhir).toLocaleDateString('id-ID', {weekday:'long', day:'numeric', month:'long', year:'numeric'})
     : '';
   const subEl = document.getElementById('pdf-popup-header-sub');
   if(subEl) subEl.textContent = (tglStr ? 'Hari panen: ' + tglStr + ' · ' : '') + 'GH: ' + ghNames;
@@ -3058,7 +3081,7 @@ function downloadPDFPopup(){
   // Aktifkan mode PDF popup
   document.body.classList.add('pdf-popup-mode');
 
-  // Tunggu render selesai, lalu print, lalu bersihkan mode
+  // Render lalu print
   setTimeout(() => {
     const btn = document.getElementById('btn-pdf');
     if(btn){ btn.disabled=true; btn.textContent='⏳ Menyiapkan...'; }
