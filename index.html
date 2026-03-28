@@ -689,24 +689,46 @@ function buildEstimasiDataset(rows){
 function getEstimasiTotal(ghList, fPeriode, activeQuick){
   if(!RAW_ESTIMASI || !RAW_ESTIMASI.data.length) return null;
 
-  // Bangun set GH+Periode yang sedang ditampilkan (dari ghList yang sudah difilter)
-  // Jika ghList kosong → tidak filter GH (tampilkan semua)
-  const activeGHPeriodes = new Set(
-    ghList.map(r => (r.gh + '||' + r.periode).toLowerCase())
-  );
-  const hasGHFilter = activeGHPeriodes.size > 0;
+  // Tentukan filter bulan dari activeQuick
+  let targetMonth = null;
+  if(activeQuick && activeQuick !== 'all'){
+    const now = new Date();
+    let d;
+    if(activeQuick === 'this') d = new Date(now.getFullYear(), now.getMonth(), 1);
+    else if(activeQuick === 'prev') d = new Date(now.getFullYear(), now.getMonth()-1, 1);
+    else if(activeQuick === 'next') d = new Date(now.getFullYear(), now.getMonth()+1, 1);
+    if(d) targetMonth = d.getMonth()+1;
+  }
 
-  // Estimasi adalah TARGET TOTAL per GH+Periode — TIDAK dipotong per bulan.
-  // Filter bulan (Lalu/Ini/Depan) hanya berlaku untuk data panen aktual,
-  // bukan untuk target estimasi. Estimasi selalu diambil full per GH+Periode.
+  // Jika filter bulan aktif → filter estimasi per bulan (misal: March = 51.35 Ton).
+  // Jika filter GH spesifik aktif (tanpa filter bulan) → filter per GH+Periode.
+  // Kedua kondisi bisa dikombinasikan.
+
+  // Bangun set GH+Periode yang sedang ditampilkan, tapi HANYA jika filter GH spesifik
+  // (bukan filter bulan yang kebetulan menyempitkan ghList).
+  // Filter GH spesifik = user memilih GH tertentu dari dropdown, bukan karena filter bulan.
+  const selGHsNow   = getSelectedGHs();
+  const totalGHOpts = document.querySelectorAll('#gh-multi-list input[type=checkbox]').length;
+  const hasSpecificGH = selGHsNow.length > 0 && selGHsNow.length < totalGHOpts;
+
+  // Set GH+Periode hanya dipakai saat filter GH spesifik aktif
+  const activeGHPeriodes = hasSpecificGH
+    ? new Set(ghList.map(r => (r.gh + '||' + r.periode).toLowerCase()))
+    : null;
+
   let total = 0;
   RAW_ESTIMASI.data.forEach(r=>{
     // Filter Periode jika aktif
     if(fPeriode && r.periode !== fPeriode) return;
-    // Filter GH+Periode: hanya ambil estimasi untuk GH yang sedang ditampilkan
-    if(hasGHFilter){
+    // Filter GH spesifik jika aktif
+    if(activeGHPeriodes){
       const key = (r.gh + '||' + r.periode).toLowerCase();
       if(!activeGHPeriodes.has(key)) return;
+    }
+    // Filter bulan jika aktif (Lalu/Ini/Depan)
+    if(targetMonth !== null){
+      const rowMonth = MONTH_EN_MAP[r.month] || 0;
+      if(rowMonth !== targetMonth) return;
     }
     total += r.total;
   });
