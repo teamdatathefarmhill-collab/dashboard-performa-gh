@@ -394,7 +394,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
     <div class="kpi"><div class="kpi-lbl">Populasi Tanam</div><div class="kpi-val" id="k-pop">—</div><div class="kpi-sub" id="k-pop-s"></div></div>
     <div class="kpi"><div class="kpi-lbl">Total Panen</div><div class="kpi-val" id="k-tot">—</div><div class="kpi-sub" id="k-tot-s"></div></div>
     <div class="kpi" id="k-pct-card"><div class="kpi-lbl">% Tercapai vs Est</div><div class="kpi-val" id="k-pct">—</div><div class="kpi-sub" id="k-pct-s"></div></div>
-    <div class="kpi"><div class="kpi-lbl">Sisa Panen</div><div class="kpi-val" id="k-sisa">—</div><div class="kpi-sub" id="k-sisa-s"></div></div>
+    <div class="kpi"><div class="kpi-lbl">Total Target</div><div class="kpi-val" id="k-target">—</div><div class="kpi-sub" id="k-target-s"></div></div>
     <div class="kpi" id="k-estbln-card"><div class="kpi-lbl">Est. Akhir Bulan Ini</div><div class="kpi-val" id="k-estbln">—</div><div class="kpi-sub" id="k-estbln-s"></div></div>
     <div class="kpi info"><div class="kpi-lbl">GH Ongoing</div><div class="kpi-val" id="k-ong">—</div><div class="kpi-sub" id="k-ong-s"></div></div>
     <div class="kpi warn"><div class="kpi-lbl">Total Outspec</div><div class="kpi-val" id="k-os">—</div><div class="kpi-sub" id="k-os-s"></div></div>
@@ -414,7 +414,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
     <span id="insight-toggle" style="margin-left:auto;font-size:10px;color:var(--hint);">▲ Sembunyikan</span>
   </div>
   <div id="insight-section">
-    <div class="insight-grid" id="insight-grid"></div>
+    <div id="insight-text" style="font-size:12px;color:var(--muted);line-height:1.85;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 16px;margin-bottom:14px;box-shadow:var(--shadow);"></div>
   </div>
 
   <div class="sec">Status per Greenhouse <span class="blive">&#x25CF; LIVE</span></div>
@@ -1001,10 +1001,12 @@ async function loadData(isRefresh=false){
   }
 
   try {
-    // preserve filter state on refresh — termasuk GH multi-select
-    const prevP  = RAW ? document.getElementById('f-periode').value : null;
-    const prevK  = RAW ? document.getElementById('f-klas').value    : null;
-    const prevGHs = RAW ? getSelectedGHs() : null; // simpan array GH yang dipilih
+    // preserve filter state on refresh — termasuk GH multi-select dan status
+    const prevP    = RAW ? document.getElementById('f-periode').value  : null;
+    const prevK    = RAW ? document.getElementById('f-klas').value     : null;
+    const prevKat  = RAW ? (document.getElementById('f-kategori') ? document.getElementById('f-kategori').value : '') : null;
+    const prevGHs  = RAW ? getSelectedGHs() : null; // simpan array GH yang dipilih
+    const prevQuick= activeQuick; // simpan mode bulan aktif
 
     // ── Cek cache dulu (kecuali force refresh) ────────────────────────────────
     const cachedPanen    = isRefresh ? null : loadCache(CACHE_KEY_PANEN);
@@ -1016,6 +1018,9 @@ async function loadData(isRefresh=false){
       RAW          = buildDataset(parseCSV(cachedPanen));
       RAW_SANITASI = buildSanitasiDataset(parseCSV(cachedSanitasi));
       initFilters(prevP, prevK, prevGHs);
+      // Restore status filter and bulan mode after refresh
+      if(prevKat !== null){ const sel=document.getElementById('f-kategori'); if(sel) sel.value=prevKat; }
+      if(prevQuick) { activeQuick = prevQuick; document.querySelectorAll('.qbtn').forEach(b=>{ b.classList.toggle('active', b.getAttribute('onclick')===`setQuickBulan('${prevQuick}')`); }); }
       if(timerInterval) clearInterval(timerInterval);
       if(!isRefresh){
         const bar=document.getElementById('ld-bar'), status=document.getElementById('ld-status'), timer=document.getElementById('ld-timer');
@@ -1089,6 +1094,9 @@ async function loadData(isRefresh=false){
     }
 
     initFilters(prevP, prevK, prevGHs);
+    // Restore status filter and bulan mode after refresh
+    if(prevKat !== null){ const sel=document.getElementById('f-kategori'); if(sel) sel.value=prevKat; }
+    if(prevQuick) { activeQuick = prevQuick; document.querySelectorAll('.qbtn').forEach(b=>{ b.classList.toggle('active', b.getAttribute('onclick')===`setQuickBulan('${prevQuick}')`); }); }
 
     // Complete progress bar
     if(timerInterval) clearInterval(timerInterval);
@@ -1288,12 +1296,57 @@ function initFilters(prevP, prevK, prevGHs){
     updateGHLabel();
   }
 
-  // Attach cascade listeners
-  ['f-periode','f-klas'].forEach(id=>{
-    document.getElementById(id).addEventListener('change', ()=>cascadeFilters(id));
+  // Attach cascade listeners ONLY ONCE (prevent stacking on auto-refresh)
+  if(!window._listenersAttached){
+    ['f-periode','f-klas'].forEach(id=>{
+      document.getElementById(id).addEventListener('change', ()=>cascadeFilters(id));
+    });
+    window._listenersAttached = true;
+  }
+
+  // Restore filter values BEFORE running cascade
+  if(prevP){ const sel=document.getElementById('f-periode'); if([...sel.options].some(o=>o.value===prevP)) sel.value=prevP; }
+  if(prevK){ const sel=document.getElementById('f-klas');    if([...sel.options].some(o=>o.value===prevK)) sel.value=prevK; }
+
+  // Run cascade to sync GH options with restored filters, without wiping values
+  _cascadeQuiet('f-periode');
+}
+
+// ── _cascadeQuiet: rebuild option lists without resetting selected values ─────
+// Used after restore: just narrow the options, preserve whatever is selected.
+function _cascadeQuiet(fromId){
+  const ids    = ['f-periode','f-klas'];
+  const fields = { 'f-periode':'periode', 'f-klas':'klasifikasi' };
+  const cur    = {};
+  ids.forEach(id => cur[id] = document.getElementById(id).value);
+
+  ids.forEach(targetId => {
+    let rows = RAW.gh_records;
+    ids.forEach(id => {
+      if(id === targetId) return;
+      const val = cur[id];
+      if(val) rows = rows.filter(r => r[fields[id]] === val);
+    });
+    const validVals = unique(rows, fields[targetId]);
+    const sel       = document.getElementById(targetId);
+    const prevVal   = cur[targetId];
+    sel.innerHTML   = '<option value="">Semua</option>';
+    validVals.forEach(v => {
+      const o = document.createElement('option');
+      o.value = v; o.textContent = v; sel.appendChild(o);
+    });
+    // Keep previous value if still valid; otherwise keep empty (Semua)
+    sel.value = validVals.includes(prevVal) ? prevVal : '';
   });
-  // Run initial cascade from periode
-  cascadeFilters('f-periode');
+
+  // Also update GH multi-select options while preserving checked state
+  const GH_WHITELIST = ['tohudan','sawahan','colomadu','bergas'];
+  let ghRows = RAW.gh_records;
+  ids.forEach(id => { const val=cur[id]; if(val) ghRows=ghRows.filter(r=>r[fields[id]]===val); });
+  const validGHs = unique(ghRows,'gh').filter(v => GH_WHITELIST.some(w=>(v||'').toLowerCase().includes(w)));
+  updateGHMultiOptions(validGHs);
+
+  debouncedRender();
 }
 
 // Cascade: when one filter changes, update all others to only show
@@ -1906,131 +1959,88 @@ function toggleInsight(){
 }
 
 function renderInsight(ghList, kpi){
-  const el = document.getElementById('insight-grid');
+  const el = document.getElementById('insight-text');
   if(!el) return;
 
+  const todayStr   = new Date().toISOString().substring(0,10);
   const ongoingList = ghList.filter(r=>r.kategori==='Ongoing');
-  // GH yang sudah selesai panen: bukan ongoing, bukan belum panen,
-  // DAN tgl_akhir sudah lewat (≤ hari ini) — exclude GH yang end date masih di masa depan
-  const todayStr = new Date().toISOString().substring(0,10);
   const selesaiList = ghList.filter(r=>
-    r.kategori!=='Ongoing' &&
-    r.kategori!=='Belum Panen' &&
+    r.kategori!=='Ongoing' && r.kategori!=='Belum Panen' &&
     r.tgl_akhir && r.tgl_akhir <= todayStr
   );
+  const belumList   = ghList.filter(r=>r.kategori==='Belum Panen');
 
-  // ── Card 1: Perlu Perhatian — hanya dari GH yang sudah SELESAI ────────────
-  // Urutkan dari paling baru selesai (tgl_akhir terbesar)
-  const selesaiSorted = [...selesaiList].sort((a,b)=>(b.tgl_akhir||'').localeCompare(a.tgl_akhir||''));
-
-  const perhatian = [];
-
-  selesaiSorted.forEach(r=>{
-    const pct     = r.est ? (r.selesai / r.est * 100) : 0;
-    const tot     = r.premium + r.imperfect + r.outspec;
-    const osPct   = tot > 0 ? (r.outspec / tot * 100) : 0;
-    const issues  = [];
-
-    // Target tidak tercapai (< 85%)
-    if(pct < 85){
-      const gap = r.est - r.selesai;
-      issues.push({
-        gh: r.gh, tgl: r.tgl_akhir, periode: r.periode,
-        label: pct < 60 ? 'Jauh Kurang' : 'Kurang',
-        tag:   pct < 60 ? 'bad' : 'warn',
-        sub:   `${pct.toFixed(0)}% tercapai · gap ${fmt(Math.max(gap,0))} dari est. ${fmt(r.est)}`,
-      });
-    }
-
-    // Outspec tinggi (> 15%) pada GH selesai — tambahkan sebagai masalah terpisah
-    if(osPct > 15){
-      issues.push({
-        gh: r.gh, tgl: r.tgl_akhir, periode: r.periode,
-        label: 'Outspec',
-        tag:   'bad',
-        sub:   `Outspec ${osPct.toFixed(1)}% (${fmt(r.outspec)}) — di atas batas 15%`,
-      });
-    }
-
-    perhatian.push(...issues);
-  });
-
-  // Batasi tampilan 6 item, prioritaskan tag 'bad' dulu
-  perhatian.sort((a,b)=>{
-    const o = {bad:0,warn:1,info:2};
-    if(o[a.tag]!==o[b.tag]) return o[a.tag]-o[b.tag];
-    return (b.tgl||'').localeCompare(a.tgl||''); // terbaru dulu
-  });
-
-  let c1 = `<div class="ins-card">
-    <div class="ins-ttl">⚠️ Perlu Perhatian <span style="font-size:9px;font-weight:400;color:var(--hint);text-transform:none;letter-spacing:0;">(Panen Selesai)</span></div>`;
-
-  if(!perhatian.length){
-    c1 += `<div class="ins-empty">Semua GH yang selesai memenuhi target ✓</div>`;
-  } else {
-    perhatian.slice(0,6).forEach(x=>{
-      c1 += `<div class="ins-item">
-        <div class="ins-dot" style="background:${x.tag==='bad'?'#e24b4a':'#ef9f27'}"></div>
-        <div style="flex:1">
-          <div class="ins-main">${x.gh} <span style="font-size:9px;font-weight:400;color:var(--hint);">${x.tgl||''}</span></div>
-          <div class="ins-sub">${x.sub}</div>
-        </div>
-        <div class="ins-tag tag-${x.tag}">${x.label}</div>
-      </div>`;
-    });
-    if(perhatian.length>6){
-      c1 += `<div style="font-size:10px;color:var(--hint);padding-top:5px;">+${perhatian.length-6} masalah lainnya</div>`;
-    }
-  }
-  c1 += `</div>`;
-
-  // ── Card 2: Ringkasan Kualitas ─────────────────────────────────────────────
-  // Top GH by premium %, bottom by outspec %
+  // Kualitas
+  const avgPremPct  = kpi.totPanen > 0 ? (kpi.totPrem / kpi.totPanen * 100) : 0;
   const qualityGH = ghList.filter(r=>{
     const tot=r.premium+r.imperfect+r.outspec;
-    return tot>100; // minimal 100 kg data
+    return tot>100;
   }).map(r=>{
     const tot=r.premium+r.imperfect+r.outspec||1;
     return {gh:r.gh, premPct:r.premium/tot*100, osPct:r.outspec/tot*100, tot};
-  }).sort((a,b)=>b.premPct-a.premPct);
+  });
+  const topPrem    = [...qualityGH].sort((a,b)=>b.premPct-a.premPct).slice(0,3);
+  const bottomPrem = [...qualityGH].sort((a,b)=>a.premPct-b.premPct).filter(x=>x.osPct>15||x.premPct<50).slice(0,3);
 
-  const avgPremPct = kpi.totPanen>0 ? kpi.totPrem/kpi.totPanen*100 : 0;
-  const totalOsTon = kpi.totOS;
-  const topPrem    = qualityGH.slice(0,2);
-  const bottomPrem = [...qualityGH].sort((a,b)=>a.premPct-b.premPct).slice(0,2);
+  // GH bermasalah (selesai)
+  const masalah = [];
+  selesaiList.forEach(r=>{
+    const pct   = r.est ? (r.selesai/r.est*100) : 0;
+    const tot   = r.premium+r.imperfect+r.outspec;
+    const osPct = tot>0 ? r.outspec/tot*100 : 0;
+    if(pct < 85) masalah.push(`${r.gh} (${pct.toFixed(0)}% tercapai)`);
+    else if(osPct > 15) masalah.push(`${r.gh} (outspec ${osPct.toFixed(1)}%)`);
+  });
 
-  let c2 = `<div class="ins-card">
-    <div class="ins-ttl">🏆 Analisis Kualitas</div>
-    <div class="ins-item" style="border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:4px;">
-      <div class="ins-dot" style="background:#639922"></div>
-      <div style="flex:1">
-        <div class="ins-main">Rata-rata Premium: ${avgPremPct.toFixed(1)}%</div>
-        <div class="ins-sub">Total outspec: ${fmt(totalOsTon)} (${kpi.pctOS.toFixed(1)}%)</div>
-      </div>
-      <div class="ins-tag ${kpi.pctOS<5?'tag-ok':kpi.pctOS<10?'tag-warn':'tag-bad'}">${kpi.pctOS<5?'Bagus':kpi.pctOS<10?'Sedang':'Tinggi'}</div>
-    </div>`;
-  if(topPrem.length){
-    c2 += `<div style="font-size:9px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.04em;margin:5px 0 3px;">Terbaik</div>`;
-    topPrem.forEach(x=>{
-      c2 += `<div class="ins-item"><div class="ins-dot" style="background:#639922"></div>
-        <div style="flex:1"><div class="ins-main">${x.gh}</div>
-        <div class="ins-sub">Premium ${x.premPct.toFixed(1)}% · Outspec ${x.osPct.toFixed(1)}%</div></div>
-        <div class="ins-tag tag-ok">★</div></div>`;
-    });
+  // Susun narasi teks
+  const parts = [];
+
+  // Baris 1: Status keseluruhan
+  const pctTercapaiTxt = kpi.pctTercapai ? kpi.pctTercapai.toFixed(1) : '—';
+  parts.push(
+    `<span style="font-weight:700;color:var(--text);">📊 Status:</span> ` +
+    `Dari <strong>${ghList.length} GH</strong> yang dianalisis — ` +
+    `<strong style="color:var(--green);">${selesaiList.length} selesai</strong>, ` +
+    `<strong style="color:var(--blue);">${ongoingList.length} ongoing</strong>` +
+    (belumList.length ? `, <strong style="color:var(--amber);">${belumList.length} belum panen</strong>` : '') +
+    `. Total panen aktual <strong>${fmt(kpi.totPanen)}</strong> dari estimasi <strong>${fmt(kpi.totEst)}</strong>.`
+  );
+
+  // Baris 2: Kualitas
+  const osTag = kpi.pctOS < 5 ? `<span style="color:var(--green)">✓ rendah (${kpi.pctOS.toFixed(1)}%)</span>` :
+                kpi.pctOS < 10 ? `<span style="color:var(--amber)">sedang (${kpi.pctOS.toFixed(1)}%)</span>` :
+                `<span style="color:var(--red)">⚠ tinggi (${kpi.pctOS.toFixed(1)}%)</span>`;
+  parts.push(
+    `<span style="font-weight:700;color:var(--text);">🏆 Kualitas:</span> ` +
+    `Rata-rata premium <strong>${avgPremPct.toFixed(1)}%</strong>. Outspec ${osTag} dari total panen.` +
+    (topPrem.length ? ` GH terbaik: <strong>${topPrem.map(x=>x.gh+' ('+x.premPct.toFixed(0)+'% prem)').join(', ')}</strong>.` : '')
+  );
+
+  // Baris 3: Perlu perhatian
+  if(masalah.length){
+    parts.push(
+      `<span style="font-weight:700;color:var(--text);">⚠️ Perlu Perhatian:</span> ` +
+      `${masalah.length} GH selesai dengan catatan — ${masalah.slice(0,5).join('; ')}` +
+      (masalah.length > 5 ? ` dan ${masalah.length-5} lainnya` : '') + `.`
+    );
+  } else if(selesaiList.length){
+    parts.push(
+      `<span style="font-weight:700;color:var(--text);">✅ Perhatian:</span> ` +
+      `Semua GH yang selesai memenuhi target (≥85%).`
+    );
   }
-  if(bottomPrem.length&&qualityGH.length>2){
-    c2 += `<div style="font-size:9px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.04em;margin:5px 0 3px;">Perlu Peningkatan</div>`;
-    bottomPrem.forEach(x=>{
-      const tag = x.osPct>15?'bad':x.premPct<60?'warn':'info';
-      c2 += `<div class="ins-item"><div class="ins-dot" style="background:#ef9f27"></div>
-        <div style="flex:1"><div class="ins-main">${x.gh}</div>
-        <div class="ins-sub">Premium ${x.premPct.toFixed(1)}% · Outspec ${x.osPct.toFixed(1)}%</div></div>
-        <div class="ins-tag tag-${tag}">${x.osPct>15?'Outspec↑':'Low Prem'}</div></div>`;
-    });
-  }
-  c2 += `</div>`;
 
-  el.innerHTML = c1 + c2;
+  // Baris 4: Ongoing info
+  if(ongoingList.length){
+    const maxSisa = [...ongoingList].sort((a,b)=>b.sisa-a.sisa)[0];
+    parts.push(
+      `<span style="font-weight:700;color:var(--text);">🌱 Ongoing:</span> ` +
+      `${ongoingList.length} GH masih berjalan.` +
+      (maxSisa ? ` Sisa panen terbesar: <strong>${maxSisa.gh}</strong> (${fmt(maxSisa.sisa)}).` : '')
+    );
+  }
+
+  el.innerHTML = parts.join('<br>');
 }
 
 // ── DEBOUNCE RENDER ───────────────────────────────────────────────────────────
@@ -2187,16 +2197,47 @@ function render(){
   const labelBulanEst = MONTH_LABELS_ID[ymEstM-1] + ' ' + ymEstY;
 
   // KPI
+  // FIX 2: % Tercapai = panen GH yang sudah SELESAI (tgl_akhir <= hari ini) / estimasi GH tsb
+  const todayForPct = new Date().toISOString().substring(0,10);
+  const selesaiDoneList = ghList.filter(r =>
+    r.kategori !== 'Ongoing' && r.kategori !== 'Belum Panen' &&
+    r.tgl_akhir && r.tgl_akhir <= todayForPct
+  );
+  // Panen aktual (premium+imperfect+outspec) dari GH yang sudah selesai saja
+  let totPanenSelesai = 0;
+  let totEstSelesai   = 0;
+  selesaiDoneList.forEach(r => {
+    // Ambil dari monthly agar konsisten
+    let gPrem=0, gImp=0, gOs=0;
+    Object.keys(RAW.monthly||{}).forEach(mk=>{
+      const parts=mk.split('||');
+      if(parts[0]!==r.gh||parts[1]!==r.periode) return;
+      const m=RAW.monthly[mk];
+      if(m){ gPrem+=m.premium; gImp+=m.imperfect; gOs+=m.outspec; }
+    });
+    totPanenSelesai += gPrem + gImp + gOs;
+    totEstSelesai   += r.est || 0;
+  });
+  const pctTercapaiSelesai = totEstSelesai > 0 ? (totPanenSelesai / totEstSelesai * 100) : 0;
+
+  // Total Target = populasi awal × 1 kg per tanaman (dalam gram→kg, pop sudah dalam satuan tanaman)
+  const totTarget = totPop; // 1 kg/tanaman → totPop kg → dalam kg, kita pakai fmt
+  // totPop satuan tanaman, target = totPop * 1 kg = totPop kg
+  const targetKg  = totPop * 1000; // gramasi 1 kg = 1000 g, tapi pop sudah tanaman
+
   document.getElementById('k-pop').textContent   = totPop.toLocaleString('id-ID');
   document.getElementById('k-pop-s').textContent  = 'tanaman';
   document.getElementById('k-tot').textContent   = fmt(totPanen);
   document.getElementById('k-tot-s').textContent  = `sudah terjadi · dari est. ${fmt(totEst)}`;
-  document.getElementById('k-pct').textContent   = pctTercapai.toFixed(1)+'%';
-  document.getElementById('k-pct-s').textContent  = `vs Est. ${fmt(totEst)} (${estSource})`;
+  document.getElementById('k-pct').textContent   = pctTercapaiSelesai.toFixed(1)+'%';
+  document.getElementById('k-pct-s').textContent  = `GH selesai: ${fmt(totPanenSelesai)} / est. ${fmt(totEstSelesai)}`;
   const pctCard = document.getElementById('k-pct-card');
-  pctCard.className = 'kpi'+(pctTercapai>=80?' ok':pctTercapai<50?' warn':'');
-  document.getElementById('k-sisa').textContent  = fmt(totSisa);
-  document.getElementById('k-sisa-s').textContent = `dari target`;
+  pctCard.className = 'kpi'+(pctTercapaiSelesai>=80?' ok':pctTercapaiSelesai<50?' warn':'');
+  // Total Target: populasi awal × 1 kg/tanaman
+  // Total Target: populasi awal × 1 kg/tanaman. fmt expects kg value.
+  // totPop = jumlah tanaman; target = totPop × 1 kg = totPop kg → fmt(totPop)
+  document.getElementById('k-target').textContent  = fmt(totPop);
+  document.getElementById('k-target-s').textContent = `${totPop.toLocaleString('id-ID')} pop × 1 kg`;
 
   // Est. Akhir Bulan card
   const estBlnEl   = document.getElementById('k-estbln');
@@ -2213,15 +2254,15 @@ function render(){
   document.getElementById('k-os').textContent    = fmt(totOS);
   document.getElementById('k-os-s').textContent   = `${pctOS.toFixed(1)}% dari total`;
 
-  // OVERALL PROGRESS
-  const op = Math.min(pctTercapai,100);
+  // OVERALL PROGRESS — gunakan panen total (semua GH) vs estimasi total
+  const op = Math.min(totEst > 0 ? totPanen/totEst*100 : 0, 100);
   document.getElementById('op-fill').style.width = op+'%';
   document.getElementById('op1').textContent = fmt(totPanen);
   document.getElementById('op2').textContent = op.toFixed(1)+'% dari estimasi';
   document.getElementById('op3').textContent = fmt(totEst);
 
   // ── INSIGHT MANAGER ──
-  renderInsight(ghList, {totSelesai, totSisa, totEst, totPanen, totOS, totPrem, pctOS, pctTercapai, ongoingCount});
+  renderInsight(ghList, {totSelesai, totEst, totPanen, totOS, totPrem, pctOS, pctTercapai: pctTercapaiSelesai, ongoingCount});
 
   // DONUT labels
   document.getElementById('lp').textContent = pctPrem.toFixed(1)+'%';
