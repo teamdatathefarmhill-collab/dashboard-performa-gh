@@ -749,41 +749,53 @@ body {
 /* PDF popup header */
 #pdf-popup-header { display: none; }
 
+/* Hide AI eval from print always */
+.no-print { display: block; }
+
 @media print{
-  body{background:#fff;font-size:11px;}
-  #loading-screen,#err-screen,#popup-panen-overlay{display:none!important;}
-  .filters,#btn-refresh,#btn-pdf,#quick-bulan-btns{display:none!important;}
-  .page{max-width:100%;padding:8px 12px;}
-  .header{margin-bottom:8px;border:none;box-shadow:none;padding:6px 0;}
-  .alert-bar{margin-bottom:8px;padding:7px 11px;}
-  .card,.kpi,.gh-card,.ins-card{box-shadow:none;border:1px solid #ddd;break-inside:avoid;}
-  canvas{max-width:100%!important;}
-  .sec{margin-top:8px;}
-  @page{margin:10mm 10mm;size:A4 landscape;}
+  body { background:#fff; font-size:10.5px; }
+  #loading-screen,#err-screen,#popup-panen-overlay { display:none!important; }
+  .filters,#btn-refresh,#btn-pdf,#quick-bulan-btns { display:none!important; }
+  .no-print { display:none!important; }
+  #ai-eval-card, #ai-eval-standalone, #ai-eval-output, #ai-eval-placeholder,
+  #ai-eval-output-sa, #ai-eval-placeholder-sa { display:none!important; }
+  .page { max-width:100%; padding:6px 10px; }
+  .header { margin-bottom:6px; border:none; box-shadow:none; padding:6px 0 4px; }
+  .alert-bar { margin-bottom:6px; padding:5px 10px; }
+  .card,.kpi,.gh-card,.ins-card { box-shadow:none; border:1px solid #ddd; break-inside:avoid; }
+  canvas { max-width:100%!important; }
+  .sec { margin-top:6px; }
+  @page { margin:8mm 8mm; size:A4 landscape; }
 
-  /* ── MODE NORMAL (bukan popup PDF) ── */
-  body:not(.pdf-popup-mode) .kpi-row{grid-template-columns:repeat(3,1fr);gap:6px;}
-  body:not(.pdf-popup-mode) .gh-row{grid-template-columns:repeat(3,1fr);gap:6px;}
-  body:not(.pdf-popup-mode) .chart-row{grid-template-columns:1fr 1fr;gap:8px;}
-  body:not(.pdf-popup-mode) .bot-grid{grid-template-columns:1fr 1fr;gap:8px;}
-  body:not(.pdf-popup-mode) .insight-grid{grid-template-columns:1fr 1fr;gap:6px;}
+  /* KPI + GH cards */
+  body:not(.pdf-popup-mode) .kpi-row { grid-template-columns:repeat(4,1fr); gap:5px; }
+  body:not(.pdf-popup-mode) .gh-row { grid-template-columns:repeat(4,1fr); gap:5px; }
+  body:not(.pdf-popup-mode) .chart-row { grid-template-columns:1fr 1fr; gap:7px; }
+  body:not(.pdf-popup-mode) .bot-grid { grid-template-columns:1fr 1fr; gap:7px; }
+  body:not(.pdf-popup-mode) .insight-grid { grid-template-columns:1fr 1fr; gap:6px; }
 
-  /* ── MODE PDF POPUP (laporan panen selesai) ── */
-  body.pdf-popup-mode #pdf-popup-header{display:block!important;margin-bottom:10px;padding:10px 14px;background:var(--green-bg);border:1px solid var(--green-border);border-radius:8px;}
-  body.pdf-popup-mode .kpi-row{grid-template-columns:repeat(6,1fr);gap:6px;}
-  body.pdf-popup-mode #k-ong-card{display:none!important;}
-  body.pdf-popup-mode .sec-gh-status{display:none!important;}
-  body.pdf-popup-mode #gh-cards{display:none!important;}
-  body.pdf-popup-mode #ai-eval-card{display:none!important;}
-  body.pdf-popup-mode #ai-eval-standalone{display:none!important;}
-  body.pdf-popup-mode #sanitasi-kategori-section{display:block!important;}
-  body.pdf-popup-mode #sanitasi-kategori-section > div:last-child{grid-template-columns:1fr!important;}
-  body.pdf-popup-mode .chart-row{grid-template-columns:1fr 1fr;gap:8px;}
-  body.pdf-popup-mode .bot-grid{grid-template-columns:1fr 1fr;gap:8px;}
-  body.pdf-popup-mode #tbl-periode{font-size:9px;}
-  body.pdf-popup-mode #tbl-periode td,
-  body.pdf-popup-mode #tbl-periode th{padding:3px 5px;}
-  body.pdf-popup-mode #insight-text{font-size:11.5px;line-height:1.75;}
+  /* Tabel periode — font kecil supaya tidak terpotong */
+  #tbl-periode { font-size:8.5px; table-layout:auto; width:100%; }
+  #tbl-periode td, #tbl-periode th { padding:4px 6px; white-space:nowrap; }
+  .tbl-pct-chip { padding:1px 4px; font-size:8px; }
+  .sbadge { font-size:8px; padding:1px 5px; }
+
+  /* Sanitasi + insight: 2 kolom berdampingan */
+  #sanitasi-insight-grid { grid-template-columns:1fr 1fr!important; gap:8px!important; }
+  #sanitasi-kategori-section { display:block!important; }
+
+  /* Standalone insight fallback */
+  #insight-section-standalone { break-inside:avoid; }
+
+  /* ── MODE PDF POPUP ── */
+  body.pdf-popup-mode #pdf-popup-header { display:block!important; margin-bottom:8px; padding:8px 12px; background:var(--green-bg); border:1px solid var(--green-border); border-radius:8px; }
+  body.pdf-popup-mode .kpi-row { grid-template-columns:repeat(6,1fr); gap:5px; }
+  body.pdf-popup-mode #k-ong-card { display:none!important; }
+  body.pdf-popup-mode .sec-gh-status { display:none!important; }
+  body.pdf-popup-mode #gh-cards { display:none!important; }
+  body.pdf-popup-mode .chart-row { grid-template-columns:1fr 1fr; gap:7px; }
+  body.pdf-popup-mode .bot-grid { grid-template-columns:1fr 1fr; gap:7px; }
+  body.pdf-popup-mode #insight-text { font-size:11px; line-height:1.7; }
 }
 </style>
 </head>
@@ -900,12 +912,18 @@ body {
           <span class="gh-arrow">▼</span>
         </div>
         <div class="gh-multi-dropdown" id="gh-multi-dropdown">
+          <!-- Search -->
+          <div style="padding:8px 10px 6px;border-bottom:1px solid var(--border);">
+            <input id="gh-search" type="text" placeholder="Cari GH..." oninput="filterGHSearch(this.value)"
+              style="width:100%;padding:5px 9px;border:1px solid var(--border-med);border-radius:7px;font-size:11px;outline:none;background:var(--surface2);color:var(--text);"
+              onclick="event.stopPropagation()">
+          </div>
           <div class="gh-multi-item gh-multi-all" onclick="selectAllGH(event)">
             <input type="checkbox" id="gh-chk-all" checked onchange="selectAllGH(event)">
             <label for="gh-chk-all">Semua GH</label>
           </div>
           <div class="gh-multi-divider"></div>
-          <div id="gh-multi-list"></div>
+          <div id="gh-multi-list" style="max-height:220px;overflow-y:auto;"></div>
         </div>
       </div>
       <div class="fpill"><label>Status</label><select id="f-kategori" onchange="render()">
@@ -1052,12 +1070,12 @@ body {
     </div>
   </div>
 
-  <!-- SANITASI + AI EVAL — 2 kolom: kiri donut, kanan AI -->
+  <!-- SANITASI + INSIGHT — kiri pie, kanan insight text -->
   <div id="sanitasi-kategori-section" style="display:none;margin-bottom:14px;">
-    <div class="sec" style="margin-top:0;">Distribusi Kategori Sanitasi &amp; Evaluasi AI <span class="bnew">AI</span></div>
-    <div style="display:grid;grid-template-columns:320px 1fr;gap:10px;align-items:start;">
+    <div class="sec" style="margin-top:0;">Distribusi Kategori Sanitasi <span class="bnew">AI</span></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start;" id="sanitasi-insight-grid">
 
-      <!-- KIRI: Donut chart sanitasi -->
+      <!-- KIRI: Donut chart sanitasi + keterangan -->
       <div class="card" style="display:flex;flex-direction:column;justify-content:flex-start;">
         <div class="card-ttl" style="margin-bottom:10px;">Distribusi Kategori Sanitasi</div>
         <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
@@ -1075,33 +1093,40 @@ body {
         </div>
       </div>
 
-      <!-- KANAN: AI Evaluasi -->
-      <div class="card" id="ai-eval-card" style="display:flex;flex-direction:column;">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
-          <div>
-            <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;">Evaluasi &amp; Rekomendasi AI</div>
-            <div style="font-size:11px;color:var(--hint);line-height:1.6;">
-              Analisis pencapaian target, kualitas, dan trend antar periode — untuk Management &amp; Tim Lapangan.
-            </div>
-          </div>
-          <button id="btn-ai-eval" onclick="generateAIEval()"
-            style="display:flex;align-items:center;gap:6px;padding:7px 15px;border-radius:20px;border:1px solid #85b7eb;background:var(--blue-bg);color:var(--blue);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;">
-            ✨ Generate Evaluasi
-          </button>
-        </div>
-        <div id="ai-eval-output" style="display:none;flex:1;">
-          <div style="border-top:1px solid var(--border);padding-top:12px;" id="ai-eval-content"></div>
-        </div>
-        <div id="ai-eval-placeholder" style="flex:1;display:flex;align-items:center;justify-content:center;text-align:center;padding:16px 0;color:var(--hint);font-size:12px;font-style:italic;">
-          Klik <strong style="color:var(--blue);">✨ Generate Evaluasi</strong> untuk mendapatkan analisis &amp; rekomendasi dari AI berdasarkan data yang sedang ditampilkan.
-        </div>
+      <!-- KANAN: Ringkasan Insight teks -->
+      <div class="card" id="insight-beside-pie">
+        <div class="card-ttl" style="margin-bottom:10px;">Ringkasan Insight <span class="bnew">AI</span></div>
+        <div id="insight-text" style="font-size:11.5px;color:var(--muted);line-height:1.85;"></div>
       </div>
 
     </div>
+
+    <!-- AI Evaluasi — hanya tampil di layar, tidak di print -->
+    <div id="ai-eval-card" class="card no-print" style="margin-top:10px;display:flex;flex-direction:column;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;">Evaluasi &amp; Rekomendasi AI</div>
+          <div style="font-size:11px;color:var(--hint);line-height:1.6;">
+            Analisis pencapaian target, kualitas, dan trend antar periode — untuk Management &amp; Tim Lapangan.
+          </div>
+        </div>
+        <button id="btn-ai-eval" onclick="generateAIEval()"
+          style="display:flex;align-items:center;gap:6px;padding:7px 15px;border-radius:20px;border:1px solid var(--blue-border);background:var(--blue-bg);color:var(--blue);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;">
+          ✨ Generate Evaluasi
+        </button>
+      </div>
+      <div id="ai-eval-output" style="display:none;flex:1;">
+        <div style="border-top:1px solid var(--border);padding-top:12px;" id="ai-eval-content"></div>
+      </div>
+      <div id="ai-eval-placeholder" style="flex:1;display:flex;align-items:center;justify-content:center;text-align:center;padding:16px 0;color:var(--hint);font-size:12px;font-style:italic;">
+        Klik <strong style="color:var(--blue);">✨ Generate Evaluasi</strong> untuk mendapatkan analisis &amp; rekomendasi dari AI berdasarkan data yang sedang ditampilkan.
+      </div>
+    </div>
+
   </div>
 
   <!-- Fallback AI eval card jika sanitasi tidak tersedia -->
-  <div id="ai-eval-standalone" style="display:none;margin-bottom:14px;">
+  <div id="ai-eval-standalone" class="no-print" style="display:none;margin-bottom:14px;">
     <div class="sec" style="margin-top:16px;">Evaluasi &amp; Rekomendasi AI <span class="bnew">AI</span></div>
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
@@ -1109,7 +1134,7 @@ body {
           Analisis otomatis dari data panen yang sedang ditampilkan — mencakup pencapaian target, kualitas, dan trend antar periode. Ditujukan untuk Management &amp; Tim Lapangan.
         </div>
         <button onclick="generateAIEval()"
-          style="display:flex;align-items:center;gap:6px;padding:7px 15px;border-radius:20px;border:1px solid #85b7eb;background:var(--blue-bg);color:var(--blue);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;">
+          style="display:flex;align-items:center;gap:6px;padding:7px 15px;border-radius:20px;border:1px solid var(--blue-border);background:var(--blue-bg);color:var(--blue);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;">
           ✨ Generate Evaluasi
         </button>
       </div>
@@ -1122,17 +1147,14 @@ body {
     </div>
   </div>
 
+  <!-- Insight fallback jika sanitasi tidak tersedia -->
+  <div id="insight-section-standalone" style="display:none;margin-bottom:14px;">
+    <div class="sec" style="margin-top:16px;">Ringkasan Insight <span class="bnew">AI</span></div>
+    <div id="insight-text-standalone" style="font-size:12px;color:var(--muted);line-height:1.85;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 16px;box-shadow:var(--shadow);"></div>
+  </div>
+
   <!-- SANITASI per Varietas: dihapus per permintaan -->
   <div id="sanitasi-section" style="display:none;"></div>
-
-  <!-- RINGKASAN INSIGHT — paling bawah, dekat sanitasi -->
-  <div class="sec" id="sec-insight" style="cursor:pointer;user-select:none;margin-top:16px;" onclick="toggleInsight()">
-    Ringkasan Insight <span class="bnew">AI</span>
-    <span id="insight-toggle" style="margin-left:auto;font-size:10px;color:var(--hint);">▲ Sembunyikan</span>
-  </div>
-  <div id="insight-section">
-    <div id="insight-text" style="font-size:12px;color:var(--muted);line-height:1.85;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 16px;margin-bottom:14px;box-shadow:var(--shadow);"></div>
-  </div>
 
   <div style="text-align:center;font-size:10px;color:var(--hint);padding:14px 0 2px" id="footer"></div>
 </div>
@@ -1786,6 +1808,21 @@ function toggleGHDropdown(e){
   e.stopPropagation();
   const dd = document.getElementById('gh-multi-dropdown');
   if(dd) dd.classList.toggle('open');
+  // Reset search saat buka
+  if(dd && dd.classList.contains('open')){
+    const s = document.getElementById('gh-search');
+    if(s){ s.value=''; filterGHSearch(''); setTimeout(()=>s.focus(),50); }
+  }
+}
+
+function filterGHSearch(q){
+  const lower = q.trim().toLowerCase();
+  const items = document.querySelectorAll('#gh-multi-list .gh-multi-item');
+  items.forEach(item=>{
+    const lbl = item.querySelector('label');
+    if(!lbl) return;
+    item.style.display = !lower || lbl.textContent.toLowerCase().includes(lower) ? '' : 'none';
+  });
 }
 
 // Tutup dropdown jika klik di luar
@@ -1794,6 +1831,8 @@ document.addEventListener('click', function(e){
   if(wrap && !wrap.contains(e.target)){
     const dd = document.getElementById('gh-multi-dropdown');
     if(dd) dd.classList.remove('open');
+    const s = document.getElementById('gh-search');
+    if(s){ s.value=''; filterGHSearch(''); }
   }
 });
 
@@ -2728,6 +2767,9 @@ function renderInsight(ghList, kpi){
   }
 
   el.innerHTML = para;
+  // Mirror ke standalone fallback jika ada
+  const elSa = document.getElementById('insight-text-standalone');
+  if(elSa) elSa.innerHTML = para;
 }
 
 // ── DEBOUNCE RENDER ───────────────────────────────────────────────────────────
@@ -2854,11 +2896,9 @@ function render(){
     hdrSubEl.textContent = selGHsHdr.join(' · ');
   }
 
-  // ALERT — hanya belum panen & sisa terbesar (outspec sudah tampil di KPI card)
+  // ALERT — hanya belum panen
   const alerts=[];
   if(belumList.length) alerts.push(`<strong>${belumList.map(r=>r.gh).join(', ')}</strong> belum mulai panen.`);
-  const maxSisaGH = ghList.filter(r=>r.kategori==='Ongoing').sort((a,b)=>b.sisa-a.sisa)[0];
-  if(maxSisaGH) alerts.push(`<strong>${maxSisaGH.gh}</strong> sisa panen terbesar (${fmt(maxSisaGH.sisa)}).`);
   const alertEl = document.getElementById('alert-bar');
   if(alerts.length){ alertEl.style.display='flex'; document.getElementById('alert-txt').innerHTML=alerts.join(' '); }
   else alertEl.style.display='none';
@@ -3533,11 +3573,15 @@ function renderSanitasiKategoriChart(){
     section.style.display = 'none';
     const sa = document.getElementById('ai-eval-standalone');
     if(sa) sa.style.display = 'block';
+    const isaSec = document.getElementById('insight-section-standalone');
+    if(isaSec) isaSec.style.display = 'block';
     return;
   }
   section.style.display = 'block';
   const sa = document.getElementById('ai-eval-standalone');
   if(sa) sa.style.display = 'none';
+  const isaSec = document.getElementById('insight-section-standalone');
+  if(isaSec) isaSec.style.display = 'none';
 
   const pieColors = ['#e24b4a','#ef9f27','#5aac1a','#378add','#1d9e75','#d85a30','#9c59c2','#185fa5','#854f0b','#3b6d11'];
 
