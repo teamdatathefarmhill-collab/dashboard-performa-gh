@@ -701,8 +701,37 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   POPUP PANEN SELESAI
+   TAB NAVIGATION
 ═══════════════════════════════════════════════════════════ */
+.tab-nav {
+  display: flex;
+  gap: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 5px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow);
+}
+.tab-btn {
+  flex: 1;
+  padding: 7px 16px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all .15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.tab-btn:hover { background: var(--surface2); color: var(--text); }
+.tab-btn.active { background: var(--blue); color: #fff; box-shadow: 0 2px 8px rgba(30,64,175,.2); }
 #popup-panen-overlay {
   position: fixed;
   inset: 0;
@@ -896,7 +925,14 @@ body {
   <button onclick="loadData()" style="margin-top:8px;padding:8px 18px;border-radius:8px;border:1px solid rgba(0,0,0,0.13);background:#fff;font-size:12px;cursor:pointer;color:#185fa5;font-weight:600;">Coba Lagi</button>
 </div>
 
-<div class="page" id="dashboard" style="display:none">
+<div class="page" style="padding-bottom:0;padding-top:16px;display:none;" id="tab-nav-wrap">
+  <div class="tab-nav">
+    <button class="tab-btn active" id="tab-dashboard" onclick="switchTab('dashboard')">📊 Dashboard</button>
+    <button class="tab-btn" id="tab-harian" onclick="switchTab('harian')">📅 Data Harian</button>
+  </div>
+</div>
+
+<div class="page" id="dashboard" style="display:none;padding-top:4px;">
   <div class="header" style="flex-direction:column;align-items:center;text-align:center;padding:18px 24px 14px;gap:4px;">
     <h1 style="font-size:20px;letter-spacing:-.5px;justify-content:center;">Performa Greenhouse The Farmhill</h1>
     <div id="hdr-sub" style="font-size:12px;color:var(--muted);font-weight:500;margin-top:2px;">—</div>
@@ -938,31 +974,6 @@ body {
         <button class="qbtn" onclick="setQuickBulan('this')" title="Bulan ini">Ini</button>
         <button class="qbtn" onclick="setQuickBulan('next')" title="Bulan depan">Depan →</button>
         <button class="qbtn active" onclick="setQuickBulan('all')" title="Semua">Semua</button>
-        <!-- Date range picker trigger -->
-        <div style="position:relative;display:inline-block;">
-          <button class="qbtn" id="btn-daterange" onclick="toggleDateRange(event)" title="Pilih rentang tanggal" style="display:flex;align-items:center;gap:4px;">
-            📅 <span id="daterange-label">Rentang</span>
-          </button>
-          <div id="daterange-popup" style="display:none;position:absolute;top:calc(100% + 6px);left:0;z-index:300;background:var(--surface);border:1px solid var(--border-med);border-radius:var(--r);box-shadow:var(--shadow-md);padding:12px 14px;min-width:260px;white-space:nowrap;">
-            <div style="font-size:10px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Rentang Tanggal Panen</div>
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-              <div style="flex:1;">
-                <label style="font-size:10px;color:var(--muted);font-weight:600;display:block;margin-bottom:3px;">Dari</label>
-                <input type="date" id="dr-from" style="width:100%;padding:5px 8px;border:1px solid var(--border-med);border-radius:7px;font-size:11px;outline:none;color:var(--text);background:var(--surface2);">
-              </div>
-              <div style="font-size:13px;color:var(--hint);padding-top:14px;">→</div>
-              <div style="flex:1;">
-                <label style="font-size:10px;color:var(--muted);font-weight:600;display:block;margin-bottom:3px;">Sampai</label>
-                <input type="date" id="dr-to" style="width:100%;padding:5px 8px;border:1px solid var(--border-med);border-radius:7px;font-size:11px;outline:none;color:var(--text);background:var(--surface2);">
-              </div>
-            </div>
-            <div style="font-size:9.5px;color:var(--hint);margin-bottom:8px;">Filter berdasarkan Tanggal Ref di Google Sheets. Angka panen mencerminkan data tepat dalam rentang tersebut.</div>
-            <div style="display:flex;gap:6px;">
-              <button onclick="applyDateRange()" style="flex:1;padding:5px 10px;border-radius:7px;border:none;background:var(--blue);color:#fff;font-size:11px;font-weight:700;cursor:pointer;">Terapkan</button>
-              <button onclick="clearDateRange()" style="padding:5px 10px;border-radius:7px;border:1px solid var(--border-med);background:var(--surface2);color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;">Reset</button>
-            </div>
-          </div>
-        </div>
       </div>
       <button class="rbtn" id="btn-refresh">↻ Refresh Data</button>
       <button class="rbtn" id="btn-pdf" onclick="downloadPDF()" style="color:var(--red);border-color:var(--red-border);">⬇ Download PDF</button>
@@ -1182,6 +1193,119 @@ body {
   <div id="sanitasi-section" style="display:none;"></div>
 
   <div style="text-align:center;font-size:10px;color:var(--hint);padding:14px 0 2px" id="footer"></div>
+</div>
+
+<!-- ══ TAB: DATA HARIAN ══════════════════════════════════════════════════════ -->
+<div id="page-harian" class="page" style="display:none;">
+
+  <!-- Header sama -->
+  <div class="header" style="flex-direction:column;align-items:center;text-align:center;padding:18px 24px 14px;gap:4px;">
+    <h1 style="font-size:20px;letter-spacing:-.5px;justify-content:center;">Performa Greenhouse The Farmhill</h1>
+    <div style="font-size:12px;color:var(--muted);font-weight:500;margin-top:2px;">Data Panen Harian</div>
+    <div style="width:100%;height:1px;background:var(--border);margin:10px 0 8px;"></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;align-items:center;">
+      <!-- Filter GH -->
+      <div class="gh-multi-wrap" id="dh-gh-wrap">
+        <div class="gh-multi-btn" onclick="toggleDHDropdown(event)">
+          <label>GH</label>
+          <span id="dh-gh-val" class="gh-multi-val">Semua</span>
+          <span class="gh-arrow">▼</span>
+        </div>
+        <div class="gh-multi-dropdown" id="dh-gh-dropdown">
+          <div style="padding:8px 10px 6px;border-bottom:1px solid var(--border);">
+            <input id="dh-gh-search" type="text" placeholder="Cari GH..." oninput="filterDHSearch(this.value)"
+              style="width:100%;padding:5px 9px;border:1px solid var(--border-med);border-radius:7px;font-size:11px;outline:none;background:var(--surface2);color:var(--text);"
+              onclick="event.stopPropagation()">
+          </div>
+          <div class="gh-multi-item gh-multi-all" onclick="selectAllDHGH(event)">
+            <input type="checkbox" id="dh-chk-all" checked onchange="selectAllDHGH(event)">
+            <label for="dh-chk-all">Semua GH</label>
+          </div>
+          <div class="gh-multi-divider"></div>
+          <div id="dh-gh-list" style="max-height:220px;overflow-y:auto;"></div>
+        </div>
+      </div>
+      <!-- Tanggal dari -->
+      <div class="fpill">
+        <label>Dari</label>
+        <input type="date" id="dh-from" onchange="renderHarian()"
+          style="border:none;background:transparent;font-size:11px;color:var(--text);font-weight:600;cursor:pointer;outline:none;">
+      </div>
+      <!-- Tanggal sampai -->
+      <div class="fpill">
+        <label>Sampai</label>
+        <input type="date" id="dh-to" onchange="renderHarian()"
+          style="border:none;background:transparent;font-size:11px;color:var(--text);font-weight:600;cursor:pointer;outline:none;">
+      </div>
+      <button class="rbtn" onclick="resetDHFilter()">↺ Reset</button>
+    </div>
+  </div>
+
+  <!-- Summary KPI -->
+  <div id="dh-kpi" class="kpi-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px;"></div>
+
+  <!-- Chart bar harian -->
+  <div class="card" style="margin-bottom:12px;">
+    <div class="card-ttl">Total Panen per Hari</div>
+    <div style="position:relative;height:200px;"><canvas id="dh-bar-chart"></canvas></div>
+    <div class="leg" style="margin-top:8px;">
+      <div class="leg-item"><div class="leg-sq" style="background:#639922"></div>Premium</div>
+      <div class="leg-item"><div class="leg-sq" style="background:#ef9f27"></div>Imperfect</div>
+      <div class="leg-item"><div class="leg-sq" style="background:#e24b4a"></div>Outspec</div>
+    </div>
+  </div>
+
+  <!-- Summary per GH -->
+  <div class="card" style="margin-bottom:12px;overflow-x:auto;padding:0;">
+    <div style="padding:14px 18px 12px;border-bottom:1px solid var(--border);">
+      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px;">Rekapitulasi per GH</div>
+      <div style="font-size:11px;color:var(--hint);">Total panen dalam rentang tanggal yang dipilih</div>
+    </div>
+    <table id="dh-summary-table" style="width:100%;border-collapse:collapse;font-size:11px;">
+      <thead>
+        <tr style="background:var(--surface2);">
+          <th style="padding:8px 12px;text-align:left;font-size:9.5px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">GH</th>
+          <th style="padding:8px 12px;text-align:right;font-size:9.5px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">Premium</th>
+          <th style="padding:8px 12px;text-align:right;font-size:9.5px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">Imperfect</th>
+          <th style="padding:8px 12px;text-align:right;font-size:9.5px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">Outspec</th>
+          <th style="padding:8px 12px;text-align:right;font-size:9.5px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">Total</th>
+          <th style="padding:8px 12px;text-align:center;font-size:9.5px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">% Premium</th>
+          <th style="padding:8px 12px;text-align:center;font-size:9.5px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">% Outspec</th>
+        </tr>
+      </thead>
+      <tbody id="dh-summary-body">
+        <tr><td colspan="7" style="text-align:center;padding:24px;color:var(--hint);">Pilih rentang tanggal untuk melihat data</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Tabel detail per tanggal -->
+  <div class="card" style="overflow-x:auto;padding:0;">
+    <div style="padding:14px 18px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px;">Detail Panen per Tanggal</div>
+        <div style="font-size:11px;color:var(--hint);">Data Tanggal Ref dari Google Sheets</div>
+      </div>
+      <button onclick="exportDHCSV()" style="display:flex;align-items:center;gap:5px;padding:6px 13px;border-radius:8px;border:1px solid var(--green-border);background:var(--green-bg);color:var(--green);font-size:11px;font-weight:700;cursor:pointer;">⬇ Export CSV</button>
+    </div>
+    <table id="dh-detail-table" style="width:100%;border-collapse:collapse;font-size:11px;">
+      <thead>
+        <tr style="background:var(--surface2);">
+          <th style="padding:8px 12px;text-align:left;font-size:9.5px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">Tanggal</th>
+          <th style="padding:8px 12px;text-align:left;font-size:9.5px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">GH</th>
+          <th style="padding:8px 12px;text-align:right;font-size:9.5px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">Premium</th>
+          <th style="padding:8px 12px;text-align:right;font-size:9.5px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">Imperfect</th>
+          <th style="padding:8px 12px;text-align:right;font-size:9.5px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">Outspec</th>
+          <th style="padding:8px 12px;text-align:right;font-size:9.5px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">Total</th>
+        </tr>
+      </thead>
+      <tbody id="dh-detail-body">
+        <tr><td colspan="6" style="text-align:center;padding:24px;color:var(--hint);">Pilih rentang tanggal untuk melihat data</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div style="text-align:center;font-size:10px;color:var(--hint);padding:14px 0 2px" id="dh-footer"></div>
 </div>
 
 
@@ -1720,6 +1844,18 @@ async function loadData(isRefresh=false){
     }
 
     initFilters(prevP, prevK, prevGHs);
+    // Build GH list for daily page too
+    const GH_WHITELIST_DH = ['tohudan','sawahan','colomadu','bergas'];
+    const dhGHs = RAW.filters.ghs.filter(g=>GH_WHITELIST_DH.some(w=>g.toLowerCase().includes(w)));
+    buildDHGHSelect(dhGHs);
+    // Set default date range = 7 hari terakhir
+    if(!document.getElementById('dh-from').value){
+      const today = new Date().toISOString().substring(0,10);
+      const week  = new Date(Date.now()-6*86400000).toISOString().substring(0,10);
+      document.getElementById('dh-from').value = week;
+      document.getElementById('dh-to').value   = today;
+    }
+
     // Restore status filter and bulan mode after refresh
     if(prevKat !== null){ const sel=document.getElementById('f-kategori'); if(sel) sel.value=prevKat; }
     if(prevQuick) { activeQuick = prevQuick; document.querySelectorAll('.qbtn').forEach(b=>{ b.classList.toggle('active', b.getAttribute('onclick')===`setQuickBulan('${prevQuick}')`); }); }
@@ -1734,10 +1870,18 @@ async function loadData(isRefresh=false){
       if(bar) bar.style.width = '100%';
       if(status) status.textContent = 'Selesai!';
       if(timer) timer.textContent = elapsed + ' detik';
-      await new Promise(r=>setTimeout(r,400)); // brief flash of 100%
+      await new Promise(r=>setTimeout(r,400));
     }
     document.getElementById('loading-screen').style.display = 'none';
-    document.getElementById('dashboard').style.display      = 'block';
+    document.getElementById('tab-nav-wrap').style.display   = 'block';
+    // Show the active tab page
+    if(activeTab === 'harian'){
+      document.getElementById('page-harian').style.display = '';
+      document.getElementById('dashboard').style.display   = 'none';
+    } else {
+      document.getElementById('dashboard').style.display   = 'block';
+      document.getElementById('page-harian').style.display = 'none';
+    }
 
     // Cek popup panen selesai (hanya saat load pertama, bukan refresh)
     if(!isRefresh) checkPopupPanenSelesai();
@@ -1876,72 +2020,19 @@ function getYearMonth(dateStr){
   return dateStr.substring(0,7);
 }
 
-// Quick bulan filter — mode: 'all' | 'prev' | 'this' | 'next' | 'range'
+// Quick bulan filter — mode: 'all' | 'prev' | 'this' | 'next'
 let activeQuick = 'all';
-let activeDateRange = null; // {from:'YYYY-MM-DD', to:'YYYY-MM-DD'} or null
 
 function setQuickBulan(mode){
   activeQuick = mode;
-  activeDateRange = null;
   document.querySelectorAll('.qbtn').forEach(b=>{
     b.classList.toggle('active', b.getAttribute('onclick')===`setQuickBulan('${mode}')`);
   });
-  // Reset date range button style
-  const btn = document.getElementById('btn-daterange');
-  if(btn){ btn.classList.remove('active'); }
-  document.getElementById('daterange-label').textContent = 'Rentang';
   debouncedRender();
 }
 
-function toggleDateRange(e){
-  e.stopPropagation();
-  const popup = document.getElementById('daterange-popup');
-  popup.style.display = popup.style.display === 'none' ? 'block' : 'none';
-}
-
-function applyDateRange(){
-  const from = document.getElementById('dr-from').value;
-  const to   = document.getElementById('dr-to').value;
-  if(!from && !to){ clearDateRange(); return; }
-  activeDateRange = {from: from||null, to: to||null};
-  activeQuick = 'range';
-  // Deactivate quick buttons
-  document.querySelectorAll('.qbtn').forEach(b=> b.classList.remove('active'));
-  const btn = document.getElementById('btn-daterange');
-  if(btn) btn.classList.add('active');
-  // Update label
-  const fmtD = s => s ? s.split('-').slice(1).reverse().join('/') : '…';
-  document.getElementById('daterange-label').textContent = `${fmtD(from)} – ${fmtD(to)}`;
-  document.getElementById('daterange-popup').style.display = 'none';
-  debouncedRender();
-}
-
-function clearDateRange(){
-  activeDateRange = null;
-  document.getElementById('dr-from').value = '';
-  document.getElementById('dr-to').value   = '';
-  document.getElementById('daterange-popup').style.display = 'none';
-  setQuickBulan('all');
-}
-
-// Tutup date range popup jika klik di luar
-document.addEventListener('click', function(e){
-  const popup = document.getElementById('daterange-popup');
-  const btn   = document.getElementById('btn-daterange');
-  if(popup && btn && !btn.contains(e.target) && !popup.contains(e.target)){
-    popup.style.display = 'none';
-  }
-});
-
-// Kembalikan YM range {ymDari, ymSampai} berdasarkan activeQuick / date range
+// Kembalikan YM range {ymDari, ymSampai} berdasarkan activeQuick
 function getActiveYMRange(){
-  // Mode date range — konversi ke YM
-  if(activeQuick === 'range' && activeDateRange){
-    const toYM = s => s ? s.substring(0,7) : null;
-    const ymDari   = toYM(activeDateRange.from);
-    const ymSampai = toYM(activeDateRange.to) || ymDari;
-    if(ymDari || ymSampai) return {ymDari: ymDari||ymSampai, ymSampai: ymSampai||ymDari};
-  }
   const now = new Date();
   const pad = n => String(n).padStart(2,'0');
   const ym  = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}`;
@@ -1963,6 +2054,291 @@ function getActiveYMRange(){
 }
 
 // ── FILTER HELPERS END ───────────────────────────────────────────────────────
+
+// ── TAB NAVIGATION ────────────────────────────────────────────────────────────
+let activeTab = 'dashboard';
+function switchTab(tab){
+  activeTab = tab;
+  document.getElementById('page-harian').style.display  = tab==='harian'    ? '' : 'none';
+  document.getElementById('dashboard').style.display    = tab==='dashboard' ? '' : 'none';
+  document.getElementById('tab-dashboard').classList.toggle('active', tab==='dashboard');
+  document.getElementById('tab-harian').classList.toggle('active', tab==='harian');
+  if(tab==='harian') renderHarian();
+}
+
+// ── DATA HARIAN — GH MULTI-SELECT ────────────────────────────────────────────
+let _dhAllGHs = [];
+
+function buildDHGHSelect(ghs){
+  _dhAllGHs = ghs;
+  const list = document.getElementById('dh-gh-list');
+  if(!list) return;
+  list.innerHTML = ghs.map(gh=>`
+    <div class="gh-multi-item">
+      <input type="checkbox" id="dh-chk-${gh.replace(/\s+/g,'_')}" value="${gh}" checked onchange="onDHGHChange()">
+      <label for="dh-chk-${gh.replace(/\s+/g,'_')}">${gh}</label>
+    </div>`).join('');
+  updateDHLabel();
+}
+
+function getDHSelectedGHs(){
+  return Array.from(document.querySelectorAll('#dh-gh-list input[type=checkbox]:checked')).map(c=>c.value);
+}
+
+function onDHGHChange(){
+  const all = document.querySelectorAll('#dh-gh-list input[type=checkbox]');
+  const chk = document.querySelectorAll('#dh-gh-list input[type=checkbox]:checked');
+  const allChk = document.getElementById('dh-chk-all');
+  if(allChk) allChk.checked = all.length === chk.length;
+  updateDHLabel();
+  renderHarian();
+}
+
+function selectAllDHGH(e){
+  e.stopPropagation();
+  const state = document.getElementById('dh-chk-all')?.checked ?? true;
+  document.querySelectorAll('#dh-gh-list input[type=checkbox]').forEach(c=>c.checked=state);
+  updateDHLabel();
+  renderHarian();
+}
+
+function updateDHLabel(){
+  const all = document.querySelectorAll('#dh-gh-list input[type=checkbox]');
+  const chk = document.querySelectorAll('#dh-gh-list input[type=checkbox]:checked');
+  const val = document.getElementById('dh-gh-val');
+  if(!val) return;
+  if(!chk.length || chk.length===all.length) val.textContent='Semua';
+  else if(chk.length<=2) val.textContent=Array.from(chk).map(c=>c.value).join(', ');
+  else val.textContent=chk.length+' GH dipilih';
+}
+
+function toggleDHDropdown(e){
+  e.stopPropagation();
+  const dd = document.getElementById('dh-gh-dropdown');
+  if(dd) dd.classList.toggle('open');
+  if(dd && dd.classList.contains('open')){
+    const s = document.getElementById('dh-gh-search');
+    if(s){ s.value=''; filterDHSearch(''); setTimeout(()=>s.focus(),50); }
+  }
+}
+
+function filterDHSearch(q){
+  const lower = q.trim().toLowerCase();
+  document.querySelectorAll('#dh-gh-list .gh-multi-item').forEach(item=>{
+    const lbl = item.querySelector('label');
+    if(!lbl) return;
+    item.style.display = !lower || lbl.textContent.toLowerCase().includes(lower) ? '' : 'none';
+  });
+}
+
+// Tutup dropdown dh jika klik di luar
+document.addEventListener('click', function(e){
+  const wrap = document.getElementById('dh-gh-wrap');
+  if(wrap && !wrap.contains(e.target)){
+    const dd = document.getElementById('dh-gh-dropdown');
+    if(dd) dd.classList.remove('open');
+  }
+});
+
+function resetDHFilter(){
+  document.querySelectorAll('#dh-gh-list input[type=checkbox]').forEach(c=>c.checked=true);
+  const allChk = document.getElementById('dh-chk-all');
+  if(allChk) allChk.checked = true;
+  updateDHLabel();
+  // Set default ke 7 hari terakhir
+  const today = new Date().toISOString().substring(0,10);
+  const week  = new Date(Date.now() - 6*86400000).toISOString().substring(0,10);
+  document.getElementById('dh-from').value = week;
+  document.getElementById('dh-to').value   = today;
+  renderHarian();
+}
+
+// ── RENDER DATA HARIAN ────────────────────────────────────────────────────────
+function renderHarian(){
+  if(!RAW || !RAW.daily) return;
+
+  const from    = document.getElementById('dh-from').value;
+  const to      = document.getElementById('dh-to').value;
+  const selGHs  = getDHSelectedGHs();
+
+  // Filter daily entries
+  const GH_WHITELIST = ['tohudan','sawahan','colomadu','bergas'];
+  const entries = Object.entries(RAW.daily).filter(([dk, d])=>{
+    const tgl = dk.split('||')[2]||'';
+    if(from && tgl < from) return false;
+    if(to   && tgl > to)   return false;
+    if(selGHs.length && !selGHs.includes(d.gh)) return false;
+    if(!GH_WHITELIST.some(w=>d.gh.toLowerCase().includes(w))) return false;
+    return true;
+  }).map(([dk,d])=>({...d, tgl: dk.split('||')[2]}));
+
+  if(!entries.length){
+    document.getElementById('dh-detail-body').innerHTML =
+      '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--hint);font-size:12px;">Tidak ada data untuk filter yang dipilih.</td></tr>';
+    document.getElementById('dh-summary-body').innerHTML =
+      '<tr><td colspan="7" style="text-align:center;padding:16px;color:var(--hint);">—</td></tr>';
+    renderDHKPI(0,0,0,0);
+    destroyChart('dh-bar');
+    return;
+  }
+
+  // ── KPI ──
+  const totPrem = entries.reduce((a,d)=>a+d.premium,0);
+  const totImp  = entries.reduce((a,d)=>a+d.imperfect,0);
+  const totOS   = entries.reduce((a,d)=>a+d.outspec,0);
+  const totAll  = entries.reduce((a,d)=>a+d.total,0);
+  renderDHKPI(totPrem, totImp, totOS, totAll);
+
+  // ── Summary per GH ──
+  const byGH = {};
+  entries.forEach(d=>{
+    if(!byGH[d.gh]) byGH[d.gh]={gh:d.gh, prem:0, imp:0, os:0, total:0};
+    byGH[d.gh].prem  += d.premium;
+    byGH[d.gh].imp   += d.imperfect;
+    byGH[d.gh].os    += d.outspec;
+    byGH[d.gh].total += d.total;
+  });
+  const sumRows = Object.values(byGH).sort((a,b)=>b.total-a.total);
+  document.getElementById('dh-summary-body').innerHTML = sumRows.map((r,i)=>{
+    const premPct = r.total>0 ? (r.prem/r.total*100).toFixed(1) : '0.0';
+    const osPct   = r.total>0 ? (r.os/r.total*100).toFixed(1)   : '0.0';
+    const osCls   = parseFloat(osPct)>15?'chip-bad':parseFloat(osPct)>8?'chip-mid':'chip-ok';
+    return `<tr style="${i%2?'background:var(--surface2);':''}">
+      <td style="padding:7px 12px;font-weight:600;">${r.gh}</td>
+      <td style="padding:7px 12px;text-align:right;color:var(--green);">${fmtKg(r.prem)}</td>
+      <td style="padding:7px 12px;text-align:right;color:var(--amber);">${fmtKg(r.imp)}</td>
+      <td style="padding:7px 12px;text-align:right;color:var(--red);">${fmtKg(r.os)}</td>
+      <td style="padding:7px 12px;text-align:right;font-weight:700;">${fmtKg(r.total)}</td>
+      <td style="padding:7px 12px;text-align:center;"><span class="tbl-pct-chip chip-ok">${premPct}%</span></td>
+      <td style="padding:7px 12px;text-align:center;"><span class="tbl-pct-chip ${osCls}">${osPct}%</span></td>
+    </tr>`;
+  }).join('');
+
+  // ── Daily chart ──
+  const byDay = {};
+  entries.forEach(d=>{
+    if(!byDay[d.tgl]) byDay[d.tgl]={prem:0,imp:0,os:0};
+    byDay[d.tgl].prem += d.premium;
+    byDay[d.tgl].imp  += d.imperfect;
+    byDay[d.tgl].os   += d.outspec;
+  });
+  const dayKeys = Object.keys(byDay).sort();
+  const fmtTgl  = s => { const [y,m,dd]=s.split('-'); return `${dd}/${m}`; };
+
+  destroyChart('dh-bar');
+  const cvs = document.getElementById('dh-bar-chart');
+  if(cvs){
+    charts['dh-bar'] = new Chart(cvs.getContext('2d'),{
+      type:'bar',
+      data:{
+        labels: dayKeys.map(fmtTgl),
+        datasets:[
+          {label:'Premium',   data:dayKeys.map(k=>byDay[k].prem/1000), backgroundColor:'#639922', stack:'a', borderRadius:2},
+          {label:'Imperfect', data:dayKeys.map(k=>byDay[k].imp/1000),  backgroundColor:'#ef9f27', stack:'a'},
+          {label:'Outspec',   data:dayKeys.map(k=>byDay[k].os/1000),   backgroundColor:'#e24b4a', stack:'a', borderRadius:{topLeft:2,topRight:2}}
+        ]
+      },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{
+          legend:{display:false},
+          tooltip:{callbacks:{
+            title: c => `Tanggal: ${dayKeys[c[0].dataIndex]}`,
+            label: c => ` ${c.dataset.label}: ${(c.raw).toFixed(3)} Ton`
+          }}
+        },
+        scales:{
+          x:{stacked:true,grid:{display:false},ticks:{font:{size:9},color:'#9ca3af'}},
+          y:{stacked:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{font:{size:9},color:'#9ca3af',callback:v=>v+' T'}}
+        }
+      }
+    });
+  }
+
+  // ── Detail table — group by tanggal, lalu GH ──
+  const byTgl = {};
+  entries.forEach(d=>{
+    if(!byTgl[d.tgl]) byTgl[d.tgl]=[];
+    // merge same GH on same date
+    const ex = byTgl[d.tgl].find(x=>x.gh===d.gh);
+    if(ex){ ex.prem+=d.premium; ex.imp+=d.imperfect; ex.os+=d.outspec; ex.total+=d.total; }
+    else   byTgl[d.tgl].push({gh:d.gh, prem:d.premium, imp:d.imperfect, os:d.outspec, total:d.total});
+  });
+  const sortedDays = Object.keys(byTgl).sort((a,b)=>b.localeCompare(a)); // newest first
+
+  let rows = '';
+  sortedDays.forEach(tgl=>{
+    const ghRows = byTgl[tgl].sort((a,b)=>b.total-a.total);
+    const dayTotal = ghRows.reduce((a,r)=>a+r.total,0);
+    const [y,m,dd] = tgl.split('-');
+    const tglFmt = `${dd}/${m}/${y}`;
+    // Day separator row
+    rows += `<tr style="background:var(--surface2);">
+      <td colspan="6" style="padding:6px 12px;font-weight:700;font-size:11px;color:var(--muted);">
+        📅 ${tglFmt} — <span style="color:var(--text);">Total: ${fmtKg(dayTotal)}</span>
+      </td>
+    </tr>`;
+    ghRows.forEach((r,i)=>{
+      rows += `<tr style="${i%2===1?'background:var(--blue-bg);opacity:.7;':''}">
+        <td style="padding:6px 12px 6px 24px;color:var(--hint);font-size:10px;">${tglFmt}</td>
+        <td style="padding:6px 12px;font-weight:600;">${r.gh}</td>
+        <td style="padding:6px 12px;text-align:right;color:var(--green);">${fmtKg(r.prem)}</td>
+        <td style="padding:6px 12px;text-align:right;color:var(--amber);">${fmtKg(r.imp)}</td>
+        <td style="padding:6px 12px;text-align:right;color:var(--red);">${fmtKg(r.os)}</td>
+        <td style="padding:6px 12px;text-align:right;font-weight:700;">${fmtKg(r.total)}</td>
+      </tr>`;
+    });
+  });
+  document.getElementById('dh-detail-body').innerHTML = rows || '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--hint);">Tidak ada data.</td></tr>';
+
+  // Footer
+  const dhFoot = document.getElementById('dh-footer');
+  if(dhFoot) dhFoot.textContent = `${entries.length} entri · ${dayKeys.length} hari · ${sumRows.length} GH`;
+}
+
+function renderDHKPI(prem, imp, os, total){
+  const el = document.getElementById('dh-kpi');
+  if(!el) return;
+  const pct = total>0;
+  const premPct = pct ? (prem/total*100).toFixed(1) : '0.0';
+  const osPct   = pct ? (os/total*100).toFixed(1)   : '0.0';
+  el.innerHTML = `
+    <div class="kpi ok"><div class="kpi-lbl">Total Panen</div><div class="kpi-val">${fmt(total)}</div><div class="kpi-sub">dalam rentang dipilih</div></div>
+    <div class="kpi"><div class="kpi-lbl">Premium</div><div class="kpi-val" style="color:var(--green);">${fmtKg(prem)}</div><div class="kpi-sub">${premPct}% dari total</div></div>
+    <div class="kpi"><div class="kpi-lbl">Imperfect</div><div class="kpi-val" style="color:var(--amber);">${fmtKg(imp)}</div><div class="kpi-sub">${pct?(imp/total*100).toFixed(1):0}% dari total</div></div>
+    <div class="kpi ${parseFloat(osPct)>10?'warn':''}"><div class="kpi-lbl">Outspec</div><div class="kpi-val">${fmtKg(os)}</div><div class="kpi-sub">${osPct}% dari total</div></div>`;
+}
+
+// Export CSV
+function exportDHCSV(){
+  if(!RAW||!RAW.daily) return;
+  const from   = document.getElementById('dh-from').value;
+  const to     = document.getElementById('dh-to').value;
+  const selGHs = getDHSelectedGHs();
+  const GH_WHITELIST = ['tohudan','sawahan','colomadu','bergas'];
+
+  const entries = Object.entries(RAW.daily).filter(([dk,d])=>{
+    const tgl=dk.split('||')[2]||'';
+    if(from&&tgl<from) return false;
+    if(to&&tgl>to) return false;
+    if(selGHs.length&&!selGHs.includes(d.gh)) return false;
+    if(!GH_WHITELIST.some(w=>d.gh.toLowerCase().includes(w))) return false;
+    return true;
+  }).map(([dk,d])=>({tgl:dk.split('||')[2], ...d}));
+
+  const header = 'Tanggal,GH,Periode,Premium (g),Imperfect (g),Outspec (g),Total (g)\n';
+  const body = entries.sort((a,b)=>a.tgl.localeCompare(b.tgl)).map(d=>
+    `${d.tgl},${d.gh},${d.periode},${d.premium.toFixed(0)},${d.imperfect.toFixed(0)},${d.outspec.toFixed(0)},${d.total.toFixed(0)}`
+  ).join('\n');
+
+  const blob = new Blob(['\ufeff'+header+body], {type:'text/csv;charset=utf-8;'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = `data-panen-harian${from?'-'+from:''}${to?'_'+to:''}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 function initFilters(prevP, prevK, prevGHs){
   const GH_WHITELIST = ['tohudan','sawahan','colomadu','bergas'];
@@ -2110,27 +2486,10 @@ function getFiltered(){
     });
   }
 
-  // ── Filter tanggal / bulan ────────────────────────────────────────────────
-  if(activeQuick === 'range' && activeDateRange && (activeDateRange.from || activeDateRange.to) && RAW && RAW.daily){
-    // Mode rentang HARIAN — filter GH berdasarkan Tanggal Ref yang tepat jatuh dalam range
-    const {from, to} = activeDateRange;
-    const activeGPK = new Set(
-      Object.keys(RAW.daily)
-        .filter(dk=>{
-          const tgl = dk.split('||')[2]||'';
-          if(from && tgl < from) return false;
-          if(to   && tgl > to)   return false;
-          return true;
-        })
-        .map(dk=>dk.split('||')[0]+'||'+dk.split('||')[1])
-    );
-    rows = rows.filter(r => activeGPK.has(r.gh+'||'+r.periode));
-
-  } else {
-    // Mode bulan (Lalu/Ini/Depan/Semua)
-    const ymRange = getActiveYMRange();
-    if(ymRange && RAW){
-      const {ymDari, ymSampai} = ymRange;
+  // ── Filter bulan (Lalu/Ini/Depan/Semua) ──────────────────────────────────
+  const ymRange = getActiveYMRange();
+  if(ymRange && RAW){
+    const {ymDari, ymSampai} = ymRange;
       const hasActivity = new Set(
         Object.keys(RAW.monthly||{})
           .filter(mk=>{ const ym=mk.split('||')[2]||''; return ym>=ymDari&&ym<=ymSampai; })
@@ -2151,7 +2510,6 @@ function getFiltered(){
         return false;
       });
     }
-  }
 
   return rows;
 }
