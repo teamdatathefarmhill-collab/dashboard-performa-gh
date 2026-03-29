@@ -464,8 +464,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
       <thead>
         <tr style="background:var(--surface2);text-align:center;">
           <th style="padding:6px 9px;font-weight:700;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;border-bottom:1px solid var(--border-med);text-align:left;">GH</th>
-          <th style="padding:6px 9px;font-weight:700;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;border-bottom:1px solid var(--border-med);">Periode Sblm</th>
-          <th style="padding:6px 9px;font-weight:700;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;border-bottom:1px solid var(--border-med);">Periode Skrg</th>
+          <th style="padding:6px 9px;font-weight:700;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;border-bottom:1px solid var(--border-med);">Periode</th>
           <th style="padding:6px 9px;font-weight:700;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;border-bottom:1px solid var(--border-med);">Pop. Awal</th>
           <th style="padding:6px 9px;font-weight:700;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;border-bottom:1px solid var(--border-med);">Pop. Akhir</th>
           <th style="padding:6px 9px;font-weight:700;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;border-bottom:1px solid var(--border-med);">Sanitasi</th>
@@ -480,7 +479,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--
         </tr>
       </thead>
       <tbody id="tbl-periode-body">
-        <tr><td colspan="14" style="text-align:center;padding:20px;color:var(--hint);font-size:11px;">Memuat data...</td></tr>
+        <tr><td colspan="13" style="text-align:center;padding:20px;color:var(--hint);font-size:11px;">Memuat data...</td></tr>
       </tbody>
     </table>
   </div>
@@ -1773,7 +1772,7 @@ function renderPeriodeTable(){
   });
 
   if(!rows.length){
-    tbody.innerHTML = '<tr><td colspan="14" style="text-align:center;padding:20px;color:var(--hint);font-size:11px;">Tidak ada data GH untuk filter yang dipilih.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:20px;color:var(--hint);font-size:11px;">Tidak ada data GH untuk filter yang dipilih.</td></tr>';
     return;
   }
 
@@ -1856,20 +1855,25 @@ function renderPeriodeTable(){
       ? `<span style="font-weight:700;color:${sanitasiVal>0?'var(--red)':'var(--green)'}">${sanitasiVal.toLocaleString('id-ID')}</span>`
       : '<span style="color:var(--hint);">—</span>';
 
-    // Status badge
-    const statusMap = {
-      'Ongoing':        ['s-ongoing','Ongoing'],
-      'Belum Panen':    ['s-belum','Belum Panen'],
-      'Terpenuhi':      ['s-terpenuhi','Terpenuhi'],
-      'Tidak Terpenuhi':['s-tidak','Tdk Terpenuhi'],
-    };
-    const [sCls, sLbl] = statusMap[r.curr.kategori] || ['chip-neu', r.curr.kategori||'—'];
+    // Status badge — hanya dua: Selesai atau Ongoing
+    const kat = r.curr.kategori || '';
+    let sCls, sLbl;
+    if(kat === 'Ongoing'){
+      sCls = 's-ongoing'; sLbl = 'Ongoing';
+    } else {
+      // Semua non-ongoing = Selesai, warna sesuai pencapaian
+      const tercapai = r.cPctEst >= 85;
+      sCls = tercapai ? 's-terpenuhi' : 's-tidak';
+      sLbl = 'Selesai';
+    }
     const statusHtml = `<span class="sbadge ${sCls}" style="font-size:9px;">${sLbl}</span>`;
 
     return `<tr style="${bgRow}">
       <td style="font-weight:600;white-space:nowrap;">${r.gh}</td>
-      <td style="text-align:center;color:var(--hint);white-space:nowrap;">${r.prev ? r.prev.periode : '—'}</td>
-      <td style="text-align:center;font-weight:600;white-space:nowrap;">${r.curr.periode}</td>
+      <td style="text-align:center;white-space:nowrap;">
+        <div style="font-weight:700;color:var(--text);">${r.curr.periode}</div>
+        ${r.prev ? `<div style="font-size:9px;color:var(--hint);margin-top:1px;">sblm: ${r.prev.periode}</div>` : ''}
+      </td>
       <td style="text-align:center;color:var(--muted);white-space:nowrap;">${r.pop_awal > 0 ? r.pop_awal.toLocaleString('id-ID') : '—'}</td>
       <td style="text-align:center;color:var(--muted);white-space:nowrap;">${r.pop_akhir > 0 ? r.pop_akhir.toLocaleString('id-ID') : '—'}</td>
       <td style="text-align:center;white-space:nowrap;">${sanitasiHtml}</td>
