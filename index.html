@@ -885,13 +885,11 @@ body {
 </div>
 
 <div class="page" id="dashboard" style="display:none">
-  <div class="header">
-    <div>
-      <h1>Performa Greenhouse</h1>
-      <div class="header-sub" id="hdr-sub">Dashboard Monitoring Panen</div>
-      <div style="font-size:11px;color:var(--hint);margin-top:2px;">Terakhir panen: <strong id="last-panen" style="color:var(--text);">—</strong></div>
-    </div>
-    <div class="filters">
+  <div class="header" style="flex-direction:column;align-items:center;text-align:center;padding:18px 24px 14px;gap:4px;">
+    <h1 style="font-size:20px;letter-spacing:-.5px;justify-content:center;">Performa Greenhouse The Farmhill</h1>
+    <div id="hdr-sub" style="font-size:12px;color:var(--muted);font-weight:500;margin-top:2px;">—</div>
+    <div style="width:100%;height:1px;background:var(--border);margin:10px 0 8px;"></div>
+    <div class="filters" style="justify-content:center;">
       <div class="fpill"><label>Periode</label><select id="f-periode"><option value="">Semua</option></select></div>
       <div class="fpill"><label>Klasifikasi GH</label><select id="f-klas" onchange="cascadeFilters('f-klas')"><option value="">Semua</option></select></div>
       <!-- GH Multi-Select -->
@@ -924,7 +922,7 @@ body {
         <button class="qbtn active" onclick="setQuickBulan('all')" title="Semua">Semua</button>
       </div>
       <button class="rbtn" id="btn-refresh">↻ Refresh Data</button>
-      <button class="rbtn" id="btn-pdf" onclick="downloadPDF()" style="color:var(--red);border-color:#f09595;">⬇ Download PDF</button>
+      <button class="rbtn" id="btn-pdf" onclick="downloadPDF()" style="color:var(--red);border-color:var(--red-border);">⬇ Download PDF</button>
     </div>
   </div>
 
@@ -2276,6 +2274,18 @@ function renderPeriodeTable(){
 
   const allSelesaiRecs = filteredRecs;
 
+  // ── Semua records untuk GH ini (tidak difilter YM) — untuk lookup periode sebelumnya ──
+  const allRecsForGH = {};
+  RAW.gh_records.filter(r=>{
+    if(!matchKlas(r)) return false;
+    if(selGHs.length && !selGHs.includes(r.gh)) return false;
+    if(!isWhitelisted(r.gh)) return false;
+    return true;
+  }).forEach(r=>{
+    if(!allRecsForGH[r.gh]) allRecsForGH[r.gh] = [];
+    allRecsForGH[r.gh].push(r);
+  });
+
   // Kelompokkan per GH
   const ghGroups = {};
   allSelesaiRecs.forEach(r=>{
@@ -2300,7 +2310,15 @@ function renderPeriodeTable(){
     }
 
     const curr = recs[currIdx];
-    const prev = currIdx >= 1 ? recs[currIdx - 1] : null;
+
+    // ── Fix: cari periode sebelumnya dari SEMUA records GH (bukan hanya yang tampil) ──
+    // Ini memastikan perbandingan periode tetap muncul meskipun filter bulan aktif
+    const allGHRecs = (allRecsForGH[gh] || []).slice().sort((a,b)=>{
+      const na = parseFloat(a.periode)||0, nb = parseFloat(b.periode)||0;
+      return na !== nb ? na - nb : (a.periode||'').localeCompare(b.periode||'');
+    });
+    const currIdxFull = allGHRecs.findIndex(r => r.periode === curr.periode);
+    const prev = currIdxFull >= 1 ? allGHRecs[currIdxFull - 1] : null;
 
     // ── Fix: terapkan filter status (f-kategori) ke periode saat ini ─────
     if(fKategori){
@@ -2823,19 +2841,24 @@ function render(){
   const ongoingCount  = (kategoriCount['Ongoing']||0);
   const belumList     = ghList.filter(r=>r.kategori==='Belum Panen');
 
-  // HEADER
-  const p = document.getElementById('f-periode').value||'Semua Periode';
-  const k = document.getElementById('f-klas').value||'Semua Klasifikasi';
+  // HEADER — tampilkan hanya nama GH yang aktif
   const selGHsHdr = getSelectedGHs();
-  const ghLabel = !selGHsHdr.length ? 'Semua GH' : selGHsHdr.length <= 2 ? selGHsHdr.join(', ') : selGHsHdr.length + ' GH';
-  document.getElementById('hdr-sub').textContent = `Monitoring Panen · ${p} · ${k} · ${ghLabel} · ${ghList.length} GH`;
+  const _totalGHOptsHdr = document.querySelectorAll('#gh-multi-list input[type=checkbox]').length;
+  const isAllGH = !selGHsHdr.length || selGHsHdr.length === _totalGHOptsHdr;
+  const hdrSubEl = document.getElementById('hdr-sub');
+  if(isAllGH){
+    hdrSubEl.textContent = 'Semua Greenhouse';
+  } else if(selGHsHdr.length === 1){
+    hdrSubEl.textContent = selGHsHdr[0];
+  } else {
+    hdrSubEl.textContent = selGHsHdr.join(' · ');
+  }
 
-  // ALERT
+  // ALERT — hanya belum panen & sisa terbesar (outspec sudah tampil di KPI card)
   const alerts=[];
   if(belumList.length) alerts.push(`<strong>${belumList.map(r=>r.gh).join(', ')}</strong> belum mulai panen.`);
   const maxSisaGH = ghList.filter(r=>r.kategori==='Ongoing').sort((a,b)=>b.sisa-a.sisa)[0];
   if(maxSisaGH) alerts.push(`<strong>${maxSisaGH.gh}</strong> sisa panen terbesar (${fmt(maxSisaGH.sisa)}).`);
-  if(pctOS>10) alerts.push(`Outspec tinggi: <strong>${pctOS.toFixed(1)}%</strong> dari total.`);
   const alertEl = document.getElementById('alert-bar');
   if(alerts.length){ alertEl.style.display='flex'; document.getElementById('alert-txt').innerHTML=alerts.join(' '); }
   else alertEl.style.display='none';
@@ -2908,7 +2931,12 @@ function render(){
   document.getElementById('k-ong').textContent   = ongoingCount;
   document.getElementById('k-ong-s').textContent  = `dari ${ghList.length} GH`;
   document.getElementById('k-os').textContent    = fmt(totOS);
-  document.getElementById('k-os-s').textContent   = `${pctOS.toFixed(1)}% dari total`;
+  const osSubEl = document.getElementById('k-os-s');
+  if(pctOS > 10){
+    osSubEl.innerHTML = `<span style="color:var(--red);font-weight:700;">⚠ ${pctOS.toFixed(1)}% dari total — perlu perhatian</span>`;
+  } else {
+    osSubEl.textContent = `${pctOS.toFixed(1)}% dari total`;
+  }
 
   // OVERALL PROGRESS — gunakan panen total (semua GH) vs estimasi total
   const op = Math.min(totEst > 0 ? totPanen/totEst*100 : 0, 100);
