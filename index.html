@@ -465,9 +465,10 @@ body {
 ═══════════════════════════════════════════════════════════ */
 #tbl-periode {
   width: 100%;
-  border-collapse: separate;
+  border-collapse: collapse;
   border-spacing: 0;
-  font-size: 11.5px;
+  font-size: 10.5px;
+  table-layout: fixed;
 }
 
 #tbl-periode thead th {
@@ -477,16 +478,17 @@ body {
   background: var(--surface2);
   font-weight: 700;
   color: var(--hint);
-  font-size: 9.5px;
+  font-size: 9px;
   text-transform: uppercase;
-  letter-spacing: .06em;
-  white-space: nowrap;
-  padding: 8px 10px;
+  letter-spacing: .05em;
+  white-space: normal;
+  word-break: break-word;
+  padding: 7px 6px;
   border-bottom: 2px solid var(--border-med);
   user-select: none;
 }
-#tbl-periode thead th:first-child { text-align: left; border-radius: var(--rs) 0 0 0; }
-#tbl-periode thead th:last-child { border-radius: 0 var(--rs) 0 0; }
+#tbl-periode thead th:first-child { text-align: left; }
+#tbl-periode thead th:last-child { }
 
 #tbl-periode tbody tr { transition: background .1s; }
 #tbl-periode tbody tr:nth-child(even) { background: var(--surface2); }
@@ -494,9 +496,11 @@ body {
 #tbl-periode tbody tr { border-bottom: 1px solid var(--border); }
 
 #tbl-periode td {
-  padding: 9px 12px;
+  padding: 7px 6px;
   vertical-align: middle;
   border-bottom: 1px solid var(--border);
+  word-break: break-word;
+  overflow: hidden;
 }
 
 /* Status & pct chips */
@@ -926,9 +930,21 @@ body {
 </div>
 
 <div class="page" style="padding-bottom:0;padding-top:16px;display:none;" id="tab-nav-wrap">
-  <div class="tab-nav">
+  <!-- Tab nav disembunyikan, navigasi lewat kode -->
+  <div class="tab-nav" style="display:none;">
     <button class="tab-btn active" id="tab-dashboard" onclick="switchTab('dashboard')">📊 Dashboard</button>
     <button class="tab-btn" id="tab-harian" onclick="switchTab('harian')">📅 Data Harian</button>
+  </div>
+  <!-- Tombol navigasi sederhana tanpa styling tab -->
+  <div style="display:flex;gap:6px;justify-content:center;margin-bottom:4px;">
+    <button id="nav-dashboard" onclick="switchTab('dashboard')"
+      style="padding:7px 20px;border-radius:8px;border:1px solid var(--border-med);background:var(--blue);color:#fff;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;">
+      📊 Dashboard
+    </button>
+    <button id="nav-harian" onclick="switchTab('harian')"
+      style="padding:7px 20px;border-radius:8px;border:1px solid var(--border-med);background:var(--surface2);color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;">
+      📅 Data Harian
+    </button>
   </div>
 </div>
 
@@ -976,7 +992,6 @@ body {
         <button class="qbtn active" onclick="setQuickBulan('all')" title="Semua">Semua</button>
       </div>
       <button class="rbtn" id="btn-refresh">↻ Refresh Data</button>
-      <button class="rbtn" id="btn-pdf" onclick="downloadPDF()" style="color:var(--red);border-color:var(--red-border);">⬇ Download PDF</button>
     </div>
   </div>
 
@@ -985,13 +1000,12 @@ body {
   </div>
 
   <div class="sec">Ringkasan KPI</div>
-  <div class="kpi-row" style="grid-template-columns:repeat(7,1fr)">
+  <div class="kpi-row" style="grid-template-columns:repeat(6,1fr)">
     <div class="kpi"><div class="kpi-lbl">Populasi Tanam</div><div class="kpi-val" id="k-pop">—</div><div class="kpi-sub" id="k-pop-s"></div></div>
     <div class="kpi"><div class="kpi-lbl">Total Panen</div><div class="kpi-val" id="k-tot">—</div><div class="kpi-sub" id="k-tot-s"></div></div>
     <div class="kpi" id="k-pct-card"><div class="kpi-lbl">% Tercapai vs Est</div><div class="kpi-val" id="k-pct">—</div><div class="kpi-sub" id="k-pct-s"></div></div>
     <div class="kpi"><div class="kpi-lbl">Total Target</div><div class="kpi-val" id="k-target">—</div><div class="kpi-sub" id="k-target-s"></div></div>
     <div class="kpi" id="k-estbln-card"><div class="kpi-lbl">Est. Akhir Bulan Ini</div><div class="kpi-val" id="k-estbln">—</div><div class="kpi-sub" id="k-estbln-s"></div></div>
-    <div class="kpi info" id="k-ong-card"><div class="kpi-lbl">GH Ongoing</div><div class="kpi-val" id="k-ong">—</div><div class="kpi-sub" id="k-ong-s"></div></div>
     <div class="kpi warn"><div class="kpi-lbl">Total Outspec</div><div class="kpi-val" id="k-os">—</div><div class="kpi-sub" id="k-os-s"></div></div>
   </div>
 
@@ -1010,11 +1024,8 @@ body {
     <div id="pdf-popup-header-sub" style="font-size:11px;color:#6b6b66;margin-top:3px;"></div>
   </div>
 
-  <div class="sec sec-gh-status">Status per Greenhouse <span class="blive">&#x25CF; LIVE</span></div>
-  <div class="gh-row" id="gh-cards"></div>
-
   <div class="sec" style="margin-top:20px;">Perbandingan Antar Periode per GH <span class="bnew">BARU</span></div>
-  <div class="card" style="overflow-x:auto;padding:0;margin-bottom:14px;">
+  <div class="card" style="padding:0;margin-bottom:14px;">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px 12px;flex-wrap:wrap;gap:8px;border-bottom:1px solid var(--border);">
       <div>
         <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px;">Riwayat & Kualitas Panen per GH</div>
@@ -1027,22 +1038,37 @@ body {
         <button id="tbl-sort-pct" onclick="setTblSort('pct')" style="font-size:10px;padding:4px 10px;border-radius:6px;border:1px solid var(--border-med);background:var(--surface2);color:var(--muted);font-weight:600;cursor:pointer;transition:all .15s;">% Tercapai</button>
       </div>
     </div>
-    <table id="tbl-periode" style="width:100%;border-collapse:collapse;font-size:11px;">
+    <table id="tbl-periode" style="width:100%;border-collapse:collapse;font-size:10.5px;table-layout:fixed;">
+      <colgroup>
+        <col style="width:10%">  <!-- GH -->
+        <col style="width:6%">   <!-- Periode -->
+        <col style="width:6%">   <!-- Pop Awal -->
+        <col style="width:6%">   <!-- Pop Akhir -->
+        <col style="width:6%">   <!-- Sanitasi -->
+        <col style="width:8%">   <!-- Panen Sblm -->
+        <col style="width:8%">   <!-- Total Panen -->
+        <col style="width:7%">   <!-- Trend -->
+        <col style="width:7%">   <!-- % Premium -->
+        <col style="width:7%">   <!-- % Imperfect -->
+        <col style="width:7%">   <!-- % Outspec -->
+        <col style="width:8%">   <!-- Status -->
+        <col style="width:8%">   <!-- % Tercapai -->
+      </colgroup>
       <thead>
         <tr style="background:var(--surface2);text-align:center;">
-          <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;border-bottom:2px solid var(--border-med);text-align:left;">GH</th>
-          <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;border-bottom:2px solid var(--border-med);">Periode</th>
-          <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;border-bottom:2px solid var(--border-med);">Pop. Awal</th>
-          <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;border-bottom:2px solid var(--border-med);">Pop. Akhir</th>
-          <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;border-bottom:2px solid var(--border-med);">Sanitasi</th>
-          <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;border-bottom:2px solid var(--border-med);">Panen Sblm</th>
-          <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;border-bottom:2px solid var(--border-med);">Total Panen</th>
-          <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;border-bottom:2px solid var(--border-med);">Trend</th>
-          <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;border-bottom:2px solid var(--border-med);">% Premium</th>
-          <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;border-bottom:2px solid var(--border-med);">% Imperfect</th>
-          <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;border-bottom:2px solid var(--border-med);">% Outspec</th>
-          <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;border-bottom:2px solid var(--border-med);">Status</th>
-          <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;border-bottom:2px solid var(--border-med);">% Tercapai</th>
+          <th style="padding:8px 8px;font-weight:700;color:var(--hint);font-size:9px;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">GH</th>
+          <th style="padding:8px 6px;font-weight:700;color:var(--hint);font-size:9px;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">Periode</th>
+          <th style="padding:8px 6px;font-weight:700;color:var(--hint);font-size:9px;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">Pop. Awal</th>
+          <th style="padding:8px 6px;font-weight:700;color:var(--hint);font-size:9px;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">Pop. Akhir</th>
+          <th style="padding:8px 6px;font-weight:700;color:var(--hint);font-size:9px;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">Sanitasi</th>
+          <th style="padding:8px 6px;font-weight:700;color:var(--hint);font-size:9px;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">Panen Sblm</th>
+          <th style="padding:8px 6px;font-weight:700;color:var(--hint);font-size:9px;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">Total Panen</th>
+          <th style="padding:8px 6px;font-weight:700;color:var(--hint);font-size:9px;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">Trend</th>
+          <th style="padding:8px 6px;font-weight:700;color:var(--hint);font-size:9px;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">% Prem</th>
+          <th style="padding:8px 6px;font-weight:700;color:var(--hint);font-size:9px;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">% Imp</th>
+          <th style="padding:8px 6px;font-weight:700;color:var(--hint);font-size:9px;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">% OS</th>
+          <th style="padding:8px 6px;font-weight:700;color:var(--hint);font-size:9px;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">Status</th>
+          <th style="padding:8px 6px;font-weight:700;color:var(--hint);font-size:9px;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">% Tercapai</th>
         </tr>
       </thead>
       <tbody id="tbl-periode-body">
@@ -1115,8 +1141,8 @@ body {
       <div class="card" style="display:flex;flex-direction:column;justify-content:flex-start;">
         <div class="card-ttl" style="margin-bottom:10px;">Distribusi Kategori Sanitasi</div>
         <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
-          <div style="flex:0 0 150px;position:relative;height:150px;">
-            <canvas id="c-sanitasi-kategori-pie"></canvas>
+          <div style="flex:0 0 170px;width:170px;height:170px;position:relative;">
+            <canvas id="c-sanitasi-kategori-pie" style="display:block;width:170px!important;height:170px!important;"></canvas>
             <div id="sanitasi-donut-center" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;">
               <div style="font-size:9px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Total</div>
               <div id="sanitasi-donut-total" style="font-size:18px;font-weight:700;color:var(--red);line-height:1.1;">—</div>
@@ -2091,6 +2117,11 @@ function switchTab(tab){
   document.getElementById('dashboard').style.display    = tab==='dashboard' ? '' : 'none';
   document.getElementById('tab-dashboard').classList.toggle('active', tab==='dashboard');
   document.getElementById('tab-harian').classList.toggle('active', tab==='harian');
+  // Update tombol nav baru
+  const nd = document.getElementById('nav-dashboard');
+  const nh = document.getElementById('nav-harian');
+  if(nd){ nd.style.background = tab==='dashboard'?'var(--blue)':'var(--surface2)'; nd.style.color = tab==='dashboard'?'#fff':'var(--muted)'; nd.style.fontWeight = tab==='dashboard'?'700':'600'; nd.style.borderColor = tab==='dashboard'?'var(--blue)':'var(--border-med)'; }
+  if(nh){ nh.style.background = tab==='harian'?'var(--blue)':'var(--surface2)'; nh.style.color = tab==='harian'?'#fff':'var(--muted)'; nh.style.fontWeight = tab==='harian'?'700':'600'; nh.style.borderColor = tab==='harian'?'var(--blue)':'var(--border-med)'; }
   if(tab==='harian') renderHarian();
 }
 
