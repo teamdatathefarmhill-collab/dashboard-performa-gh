@@ -956,7 +956,7 @@ body {
                 <input type="date" id="dr-to" style="width:100%;padding:5px 8px;border:1px solid var(--border-med);border-radius:7px;font-size:11px;outline:none;color:var(--text);background:var(--surface2);">
               </div>
             </div>
-            <div style="font-size:9.5px;color:var(--hint);margin-bottom:8px;">Termasuk estimasi panen mendatang (belum terjadi)</div>
+            <div style="font-size:9.5px;color:var(--hint);margin-bottom:8px;">Filter berdasarkan Tanggal Ref di Google Sheets. Angka panen mencerminkan data tepat dalam rentang tersebut.</div>
             <div style="display:flex;gap:6px;">
               <button onclick="applyDateRange()" style="flex:1;padding:5px 10px;border-radius:7px;border:none;background:var(--blue);color:#fff;font-size:11px;font-weight:700;cursor:pointer;">Terapkan</button>
               <button onclick="clearDateRange()" style="padding:5px 10px;border-radius:7px;border:1px solid var(--border-med);background:var(--surface2);color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;">Reset</button>
@@ -1422,14 +1422,12 @@ function buildDataset(rows){
 
   // Step 2: Aggregate per GH+Periode+YearMonth from DATA KEBUN + Tanggal Ref
   const monthly={};
+  const daily={};   // key: GH||Periode||YYYY-MM-DD
   const future={};  // DATA KEBUN dengan Tanggal Ref > hari ini (sisa panen terjadwal)
   const tglRefMap={};
   const _todayStr = new Date().toISOString().substring(0,10);
-  // Track first ACTUAL panen date (PERFECT or IMPERFECT only, NOT outspec)
-  // This is used to determine if a GH has truly started harvesting
-  const firstActualPanenMap={}; // gpk -> first tgl with PERFECT or IMPERFECT
+  const firstActualPanenMap={};
   rows.forEach(r=>{
-    // Track first/last Tanggal Ref per GH+Periode regardless of DATA KEBUN value
     if(r['GH']&&r['Tanggal Ref']){
       const tgl=r['Tanggal Ref'].substring(0,10);
       const gpk=r['GH']+'||'+r['Periode'];
@@ -1438,7 +1436,6 @@ function buildDataset(rows){
         if(tgl<tglRefMap[gpk].first) tglRefMap[gpk].first=tgl;
         if(tgl>tglRefMap[gpk].last)  tglRefMap[gpk].last=tgl;
       }
-      // Track first actual panen (PERFECT/IMPERFECT only, skip OUTSPEC)
       const grade=(r['GRADE']||'').toUpperCase();
       const val=parseFloat(r['DATA KEBUN']||0);
       if((grade==='PERFECT'||grade==='IMPERFECT')&&val>0){
@@ -1452,22 +1449,34 @@ function buildDataset(rows){
     const ym=tglRef.substring(0,7);
     const grade=(r['GRADE']||'').toUpperCase();
     if(tglRef > _todayStr){
-      // Data masa depan → masuk future (sisa panen terjadwal)
       const mk=r['GH']+'||'+r['Periode']+'||'+ym;
       if(!future[mk]) future[mk]={premium:0,imperfect:0,outspec:0,total:0,ym,gh:r['GH'],periode:r['Periode']};
       if(grade==='PERFECT')        future[mk].premium   += val;
       else if(grade==='IMPERFECT') future[mk].imperfect += val;
       else if(grade==='OUTSPEC')   future[mk].outspec   += val;
       future[mk].total += val;
+      // Juga simpan di daily future (key dengan tanggal)
+      const dk=r['GH']+'||'+r['Periode']+'||'+tglRef;
+      if(!daily[dk]) daily[dk]={premium:0,imperfect:0,outspec:0,total:0,tgl:tglRef,gh:r['GH'],periode:r['Periode'],isFuture:true};
+      if(grade==='PERFECT')        daily[dk].premium   += val;
+      else if(grade==='IMPERFECT') daily[dk].imperfect += val;
+      else if(grade==='OUTSPEC')   daily[dk].outspec   += val;
+      daily[dk].total += val;
       return;
     }
-    // Data sudah terjadi (<= hari ini) → masuk monthly
     const mk=r['GH']+'||'+r['Periode']+'||'+ym;
     if(!monthly[mk]) monthly[mk]={premium:0,imperfect:0,outspec:0,total:0,ym,gh:r['GH'],periode:r['Periode']};
     if(grade==='PERFECT')        monthly[mk].premium   += val;
     else if(grade==='IMPERFECT') monthly[mk].imperfect += val;
     else if(grade==='OUTSPEC')   monthly[mk].outspec   += val;
     monthly[mk].total += val;
+    // Juga simpan di daily (key dengan tanggal harian)
+    const dk=r['GH']+'||'+r['Periode']+'||'+tglRef;
+    if(!daily[dk]) daily[dk]={premium:0,imperfect:0,outspec:0,total:0,tgl:tglRef,gh:r['GH'],periode:r['Periode'],isFuture:false};
+    if(grade==='PERFECT')        daily[dk].premium   += val;
+    else if(grade==='IMPERFECT') daily[dk].imperfect += val;
+    else if(grade==='OUTSPEC')   daily[dk].outspec   += val;
+    daily[dk].total += val;
   });
 
   // Step 3: Merge monthly totals into gh_records
@@ -1553,7 +1562,7 @@ function buildDataset(rows){
   });
 
   return{
-    gh_records:ghRecords, monthly, future, tglRefMap, outspec_notes_map, outspec_note_map, notes_note_map,
+    gh_records:ghRecords, monthly, daily, future, tglRefMap, outspec_notes_map, outspec_note_map, notes_note_map,
     filters:{
       periodes:  [...new Set(ghRecords.map(r=>r.periode).filter(Boolean))].sort(),
       klasifikasis:[...new Set(ghRecords.map(r=>r.klasifikasi).filter(Boolean))].sort(),
@@ -1953,13 +1962,7 @@ function getActiveYMRange(){
   return null; // 'all' — no filter
 }
 
-// Kembalikan date range aktual {from, to} dalam format YYYY-MM-DD (untuk filter tgl_akhir/tgl_mulai)
-function getActiveDateFilter(){
-  if(activeQuick === 'range' && activeDateRange){
-    return activeDateRange; // {from, to} bisa null jika salah satu kosong
-  }
-  return null;
-}
+// ── FILTER HELPERS END ───────────────────────────────────────────────────────
 
 function initFilters(prevP, prevK, prevGHs){
   const GH_WHITELIST = ['tohudan','sawahan','colomadu','bergas'];
@@ -2107,62 +2110,47 @@ function getFiltered(){
     });
   }
 
-  // Filter bulan aktif (Lalu/Ini/Depan) berdasarkan YM dari monthly data
-  const ymRange = getActiveYMRange();
-  if(ymRange && RAW){
-    const {ymDari, ymSampai} = ymRange;
-    // GH yang punya aktivitas panen di bulan tersebut
-    const hasActivity = new Set(
-      Object.keys(RAW.monthly||{})
-        .filter(mk=>{
-          const ym = mk.split('||')[2]||'';
-          return ym >= ymDari && ym <= ymSampai;
+  // ── Filter tanggal / bulan ────────────────────────────────────────────────
+  if(activeQuick === 'range' && activeDateRange && (activeDateRange.from || activeDateRange.to) && RAW && RAW.daily){
+    // Mode rentang HARIAN — filter GH berdasarkan Tanggal Ref yang tepat jatuh dalam range
+    const {from, to} = activeDateRange;
+    const activeGPK = new Set(
+      Object.keys(RAW.daily)
+        .filter(dk=>{
+          const tgl = dk.split('||')[2]||'';
+          if(from && tgl < from) return false;
+          if(to   && tgl > to)   return false;
+          return true;
         })
-        .map(mk=>mk.split('||')[0]+'||'+mk.split('||')[1])
+        .map(dk=>dk.split('||')[0]+'||'+dk.split('||')[1])
     );
-    // Sertakan juga RAW.future untuk mode depan / range yang mencakup estimasi
-    const hasFuture = new Set(
-      Object.keys(RAW.future||{})
-        .filter(mk=>{
-          const ym = mk.split('||')[2]||'';
-          return ym >= ymDari && ym <= ymSampai;
-        })
-        .map(mk=>mk.split('||')[0]+'||'+mk.split('||')[1])
-    );
-    rows = rows.filter(r=>{
-      const gpk = r.gh+'||'+r.periode;
-      if(hasActivity.has(gpk) || hasFuture.has(gpk)) return true;
-      // Sertakan Belum Panen jika tgl_mulai ada di bulan tsb
-      if((r.kategori==='Belum Panen'||r.ket_panen==='BELUM PANEN') && r.tgl_mulai){
-        const tglYM = r.tgl_mulai.substring(0,7);
-        return tglYM >= ymDari && tglYM <= ymSampai;
-      }
-      // Sertakan Ongoing jika tgl_akhir ada di rentang bulan tsb
-      if(r.kategori==='Ongoing' && r.tgl_akhir){
-        const tglYM = r.tgl_akhir.substring(0,7);
-        return tglYM >= ymDari && tglYM <= ymSampai;
-      }
-      return false;
-    });
-  }
+    rows = rows.filter(r => activeGPK.has(r.gh+'||'+r.periode));
 
-  // ── Filter tanggal harian (mode "Rentang") ──────────────────────────────
-  // Menyertakan GH yang tgl_akhir atau tgl_mulai jatuh dalam rentang tersebut
-  const drFilter = getActiveDateFilter();
-  if(drFilter && (drFilter.from || drFilter.to)){
-    const {from, to} = drFilter;
-    rows = rows.filter(r=>{
-      // Tanggal aktual selesai panen
-      const tglAkhir = r.tgl_akhir || '';
-      // Tanggal mulai panen (estimasi Belum Panen)
-      const tglMulai = r.tgl_mulai || '';
-      // Cek overlap: GH relevan jika salah satu tanggalnya dalam range
-      const refDate = tglAkhir || tglMulai;
-      if(!refDate) return false;
-      if(from && refDate < from) return false;
-      if(to   && refDate > to)   return false;
-      return true;
-    });
+  } else {
+    // Mode bulan (Lalu/Ini/Depan/Semua)
+    const ymRange = getActiveYMRange();
+    if(ymRange && RAW){
+      const {ymDari, ymSampai} = ymRange;
+      const hasActivity = new Set(
+        Object.keys(RAW.monthly||{})
+          .filter(mk=>{ const ym=mk.split('||')[2]||''; return ym>=ymDari&&ym<=ymSampai; })
+          .map(mk=>mk.split('||')[0]+'||'+mk.split('||')[1])
+      );
+      const hasFuture = new Set(
+        Object.keys(RAW.future||{})
+          .filter(mk=>{ const ym=mk.split('||')[2]||''; return ym>=ymDari&&ym<=ymSampai; })
+          .map(mk=>mk.split('||')[0]+'||'+mk.split('||')[1])
+      );
+      rows = rows.filter(r=>{
+        const gpk = r.gh+'||'+r.periode;
+        if(hasActivity.has(gpk) || hasFuture.has(gpk)) return true;
+        if((r.kategori==='Belum Panen'||r.ket_panen==='BELUM PANEN') && r.tgl_mulai){
+          const tglYM = r.tgl_mulai.substring(0,7);
+          return tglYM>=ymDari && tglYM<=ymSampai;
+        }
+        return false;
+      });
+    }
   }
 
   return rows;
@@ -2944,9 +2932,10 @@ function render(){
     return a.gh.localeCompare(b.gh);
   });
 
-  // Agregasi dari RAW.monthly — satu-satunya sumber data yang konsisten
-  // Filter bulan jika Lalu/Ini/Depan aktif, else semua bulan
+  // Agregasi — gunakan daily jika mode rentang harian, monthly jika mode bulan
   const ymRange = getActiveYMRange();
+  const isRangeMode = activeQuick === 'range' && activeDateRange && (activeDateRange.from || activeDateRange.to);
+
   function sumMonthly(ghList, ymDari, ymSampai){
     if(!RAW||!RAW.monthly) return {prem:0,imp:0,os:0,total:0};
     let prem=0,imp=0,os=0,total=0;
@@ -2963,9 +2952,30 @@ function render(){
     });
     return {prem,imp,os,total};
   }
+
+  // Agregasi harian — untuk mode Rentang, hitung hanya baris Tanggal Ref dalam range
+  function sumDaily(ghList, from, to){
+    if(!RAW||!RAW.daily) return {prem:0,imp:0,os:0,total:0};
+    let prem=0,imp=0,os=0,total=0;
+    ghList.forEach(r=>{
+      Object.keys(RAW.daily).forEach(dk=>{
+        const parts=dk.split('||');
+        if(parts[0]!==r.gh||parts[1]!==r.periode) return;
+        const tgl=parts[2]||'';
+        if(from && tgl<from) return;
+        if(to   && tgl>to)   return;
+        const d=RAW.daily[dk];
+        if(d){ prem+=d.premium; imp+=d.imperfect; os+=d.outspec; total+=d.total; }
+      });
+    });
+    return {prem,imp,os,total};
+  }
+
   const ymD = ymRange ? ymRange.ymDari  : null;
   const ymS = ymRange ? ymRange.ymSampai : null;
-  const mt  = sumMonthly(ghList, ymD, ymS);
+  const mt  = isRangeMode
+    ? sumDaily(ghList, activeDateRange.from, activeDateRange.to)
+    : sumMonthly(ghList, ymD, ymS);
 
   // Totals — selalu dari RAW.monthly agar konsisten antara mode Semua/Lalu/Ini/Depan
   const totEstGH    = ghList.reduce((a,r)=>a+r.est,0);
@@ -3001,7 +3011,7 @@ function render(){
     });
     return {prem,imp,os,total};
   }
-  const ftSisa  = sumFuture(ghList, ymD, ymS);
+  const ftSisa  = isRangeMode ? {prem:0,imp:0,os:0,total:0} : sumFuture(ghList, ymD, ymS);
   const totSisa = Math.max(0, ftSisa.prem + ftSisa.imp);
   const pctPrem    = totPanen ? totPrem/totPanen*100 : 0;
   const pctImp     = totPanen ? totImp/totPanen*100 : 0;
