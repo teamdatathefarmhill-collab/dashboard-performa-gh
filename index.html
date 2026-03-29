@@ -3459,46 +3459,57 @@ function downloadPDF(){
 }
 
 // ── AI EVALUASI & REKOMENDASI ─────────────────────────────────────────────────
-async function generateAIEval(){
+let _aiEvalAccumulated = ''; // simpan teks yang sudah digenerate untuk lanjut
+let _aiEvalPromptSnapshot = ''; // simpan prompt awal untuk keperluan lanjut
+
+async function generateAIEval(isContinuation){
   if(!RAW) return;
-  const btn = document.getElementById('btn-ai-eval');
-  const output  = document.getElementById('ai-eval-output');
-  const content = document.getElementById('ai-eval-content');
+  const btn         = document.getElementById('btn-ai-eval');
+  const output      = document.getElementById('ai-eval-output');
+  const content     = document.getElementById('ai-eval-content');
   const placeholder = document.getElementById('ai-eval-placeholder');
 
-  btn.disabled = true;
+  btn.disabled    = true;
   btn.textContent = '⏳ Menganalisis...';
   placeholder.style.display = 'none';
-  output.style.display = 'block';
-  content.innerHTML = `<div style="display:flex;align-items:center;gap:8px;color:var(--hint);font-size:12px;padding:8px 0;">
-    <div style="width:14px;height:14px;border:2px solid var(--blue-mid);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0;"></div>
-    AI sedang membaca data panen dan menyusun evaluasi...
-  </div>`;
+  output.style.display      = 'block';
+
+  if(!isContinuation){
+    _aiEvalAccumulated = '';
+    content.innerHTML = `<div style="display:flex;align-items:center;gap:8px;color:var(--hint);font-size:12px;padding:8px 0;">
+      <div style="width:14px;height:14px;border:2px solid var(--blue-mid);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0;"></div>
+      AI sedang membaca data panen dan menyusun evaluasi...
+    </div>`;
+  } else {
+    // mode lanjut — tampilkan spinner di bawah konten existing
+    const contDiv = document.getElementById('ai-continue-spinner');
+    if(contDiv) contDiv.innerHTML = `<div style="display:flex;align-items:center;gap:8px;color:var(--hint);font-size:12px;padding:8px 0;">
+      <div style="width:14px;height:14px;border:2px solid var(--blue-mid);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0;"></div>
+      Melanjutkan analisis...
+    </div>`;
+  }
 
   try {
-    // ── Kumpulkan data snapshot dari filter aktif ──
     const rows   = getFiltered();
     const ghMap  = {};
     rows.forEach(r=>{ const k=r.gh+'||'+r.periode; if(!ghMap[k]) ghMap[k]={...r}; });
     const ghList = Object.values(ghMap);
 
-    // Ringkasan KPI
-    const totPanen   = ghList.reduce((a,r)=>a+(r.premium+r.imperfect+r.outspec),0);
-    const totPrem    = ghList.reduce((a,r)=>a+r.premium,0);
-    const totImp     = ghList.reduce((a,r)=>a+r.imperfect,0);
-    const totOS      = ghList.reduce((a,r)=>a+r.outspec,0);
-    const totEst     = ghList.reduce((a,r)=>a+r.est,0);
-    const totPop     = ghList.reduce((a,r)=>a+r.pop,0);
+    const totPanen  = ghList.reduce((a,r)=>a+(r.premium+r.imperfect+r.outspec),0);
+    const totPrem   = ghList.reduce((a,r)=>a+r.premium,0);
+    const totImp    = ghList.reduce((a,r)=>a+r.imperfect,0);
+    const totOS     = ghList.reduce((a,r)=>a+r.outspec,0);
+    const totEst    = ghList.reduce((a,r)=>a+r.est,0);
+    const totPop    = ghList.reduce((a,r)=>a+r.pop,0);
     const pctTercapai = totEst>0 ? (totPanen/totEst*100).toFixed(1) : '—';
-    const pctPrem    = totPanen>0 ? (totPrem/totPanen*100).toFixed(1) : '—';
-    const pctImp     = totPanen>0 ? (totImp/totPanen*100).toFixed(1) : '—';
-    const pctOS      = totPanen>0 ? (totOS/totPanen*100).toFixed(1) : '—';
+    const pctPrem   = totPanen>0 ? (totPrem/totPanen*100).toFixed(1) : '—';
+    const pctImp    = totPanen>0 ? (totImp/totPanen*100).toFixed(1) : '—';
+    const pctOS     = totPanen>0 ? (totOS/totPanen*100).toFixed(1) : '—';
 
-    const ongoingList  = ghList.filter(r=>r.kategori==='Ongoing');
-    const selesaiList  = ghList.filter(r=>r.kategori!=='Ongoing'&&r.kategori!=='Belum Panen');
-    const belumList    = ghList.filter(r=>r.kategori==='Belum Panen');
+    const ongoingList = ghList.filter(r=>r.kategori==='Ongoing');
+    const selesaiList = ghList.filter(r=>r.kategori!=='Ongoing'&&r.kategori!=='Belum Panen');
+    const belumList   = ghList.filter(r=>r.kategori==='Belum Panen');
 
-    // Per-GH detail (top 20 saja agar prompt tidak terlalu panjang)
     const ghDetail = ghList.slice(0,20).map(r=>{
       const tot = r.premium+r.imperfect+r.outspec||1;
       const pPct = (r.premium/tot*100).toFixed(1);
@@ -3508,25 +3519,20 @@ async function generateAIEval(){
       return `${r.gh} (Periode ${r.periode}): Panen ${fmt(r.premium+r.imperfect+r.outspec)}, Est ${fmt(r.est)}, Tercapai ${tPct}%, Premium ${pPct}%, Imperfect ${iPct}%, Outspec ${oPct}%, Status: ${r.kategori}`;
     }).join('\n');
 
-    // Top outspec issues
-    const topOS = [...ghList].filter(r=>{
-      const tot=r.premium+r.imperfect+r.outspec;
-      return tot>0 && (r.outspec/tot*100)>10;
-    }).sort((a,b)=>(b.outspec/(b.premium+b.imperfect+b.outspec))-(a.outspec/(a.premium+a.imperfect+a.outspec)))
-    .slice(0,5).map(r=>{
-      const tot=r.premium+r.imperfect+r.outspec;
-      return `${r.gh}: Outspec ${(r.outspec/tot*100).toFixed(1)}%`;
-    }).join(', ');
+    const topOS = [...ghList].filter(r=>{ const tot=r.premium+r.imperfect+r.outspec; return tot>0&&(r.outspec/tot*100)>10; })
+      .sort((a,b)=>(b.outspec/(b.premium+b.imperfect+b.outspec))-(a.outspec/(a.premium+a.imperfect+a.outspec)))
+      .slice(0,5).map(r=>{ const tot=r.premium+r.imperfect+r.outspec; return `${r.gh}: Outspec ${(r.outspec/tot*100).toFixed(1)}%`; }).join(', ');
 
-    // GH tidak tercapai
     const tidakTercapai = selesaiList.filter(r=>r.est>0&&((r.premium+r.imperfect+r.outspec)/r.est)<0.85)
-      .map(r=>`${r.gh} (${((r.premium+r.imperfect+r.outspec)/r.est*100).toFixed(0)}%)`)
-      .join(', ') || 'Tidak ada';
+      .map(r=>`${r.gh} (${((r.premium+r.imperfect+r.outspec)/r.est*100).toFixed(0)}%)`).join(', ') || 'Tidak ada';
 
     const fPeriode = document.getElementById('f-periode').value || 'Semua';
     const fKlas    = document.getElementById('f-klas').value    || 'Semua';
 
-    const prompt = `Kamu adalah konsultan agrikultur yang menganalisis data panen greenhouse melon. Berikan evaluasi mendalam dan rekomendasi actionable dalam Bahasa Indonesia.
+    let prompt;
+    if(!isContinuation){
+      // Prompt pertama — lengkap
+      _aiEvalPromptSnapshot = `Kamu adalah konsultan agrikultur yang menganalisis data panen greenhouse melon. Berikan evaluasi mendalam dan rekomendasi actionable dalam Bahasa Indonesia.
 
 DATA PANEN GREENHOUSE:
 Filter aktif: Periode=${fPeriode}, Klasifikasi=${fKlas}
@@ -3541,7 +3547,7 @@ ${ghDetail}
 GH dengan outspec tinggi (>10%): ${topOS || 'Tidak ada'}
 GH selesai tidak mencapai target (<85%): ${tidakTercapai}
 
-Tulis evaluasi dengan format berikut (gunakan markdown):
+Tulis evaluasi LENGKAP dengan format berikut (gunakan markdown):
 
 ## 📊 Ringkasan Eksekutif
 [2-3 kalimat ringkasan kondisi panen secara keseluruhan untuk management]
@@ -3558,35 +3564,67 @@ Tulis evaluasi dengan format berikut (gunakan markdown):
 ## 📈 Rekomendasi Management
 [Keputusan strategis: alokasi sumber daya, target periode berikutnya, prioritas]
 
-Gunakan data aktual yang diberikan, sebutkan nama GH spesifik, dan beri angka nyata dalam rekomendasi.`;
+Gunakan data aktual yang diberikan, sebutkan nama GH spesifik, dan beri angka nyata dalam rekomendasi. Pastikan evaluasi SELESAI sampai bagian Rekomendasi Management.`;
+      prompt = _aiEvalPromptSnapshot;
+    } else {
+      // Prompt lanjutan — sertakan teks yang sudah ada
+      prompt = `${_aiEvalPromptSnapshot}
 
-    // SESUDAH — hapus headers
-const response = await fetch(PROXY_URL, {
-  method: 'POST',
-  body: JSON.stringify({ prompt })
-});
+--- JAWABAN SEBELUMNYA (BELUM SELESAI) ---
+${_aiEvalAccumulated}
+
+--- INSTRUKSI ---
+Lanjutkan dari bagian yang terpotong di atas. Jangan ulangi yang sudah ada. Langsung lanjutkan kalimat atau bagian yang belum selesai.`;
+    }
+
+    const response = await fetch(PROXY_URL, {
+      method: 'POST',
+      body: JSON.stringify({ prompt, max_tokens: 4000 })
+    });
 
     const data = await response.json();
     if(data.error) throw new Error(data.error);
-    const text = data.text || '';
+    const newText = data.text || '';
 
-    // Render markdown sederhana
-    const html = text
+    // Gabungkan teks lama + baru
+    _aiEvalAccumulated = isContinuation
+      ? (_aiEvalAccumulated + '\n' + newText).trim()
+      : newText;
+
+    // Deteksi apakah terpotong: tidak diakhiri dengan kalimat/section yang lengkap
+    const lastChar  = _aiEvalAccumulated.trimEnd().slice(-1);
+    const isCut     = !['.',  '!', '?', ']', '-', '*'].includes(lastChar) && !_aiEvalAccumulated.includes('## 📈 Rekomendasi Management');
+    const hasAllSec = _aiEvalAccumulated.includes('Rekomendasi Management');
+
+    // Render markdown
+    const html = _aiEvalAccumulated
       .replace(/^## (.+)$/gm, '<h3 style="font-size:12px;font-weight:700;color:var(--text);margin:14px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--border);">$1</h3>')
+      .replace(/^### (.+)$/gm, '<div style="font-size:11.5px;font-weight:700;color:var(--text);margin:10px 0 4px;">$1</div>')
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/^> (.+)$/gm, '<div style="border-left:3px solid var(--blue-mid);padding:4px 10px;margin:6px 0;font-size:11px;color:var(--muted);">$1</div>')
       .replace(/^- (.+)$/gm, '<div style="display:flex;gap:7px;margin-bottom:5px;font-size:11px;line-height:1.6;"><span style="color:var(--green-mid);flex-shrink:0;margin-top:1px;">•</span><span>$1</span></div>')
+      .replace(/^\d+\. (.+)$/gm, '<div style="display:flex;gap:7px;margin-bottom:5px;font-size:11px;line-height:1.6;"><span style="color:var(--blue-mid);flex-shrink:0;font-weight:700;margin-top:1px;">→</span><span>$1</span></div>')
       .replace(/\n\n/g, '<div style="margin-bottom:6px;"></div>')
       .replace(/\n/g, ' ');
 
     const now = new Date().toLocaleString('id-ID');
+
+    const continueBtn = (!hasAllSec)
+      ? `<button onclick="generateAIEval(true)" style="display:flex;align-items:center;gap:5px;margin-top:10px;padding:5px 13px;border-radius:8px;border:1px solid var(--blue-border);background:var(--blue-bg);color:var(--blue);font-size:11px;font-weight:700;cursor:pointer;">
+          ▶ Lanjutkan Analisis
+        </button>`
+      : '';
+
     content.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:6px;">
         <div style="font-size:10px;color:var(--hint);">🤖 Dibuat oleh Claude AI · ${now} · Filter: Periode ${fPeriode}, Klasifikasi ${fKlas}</div>
-        <button onclick="generateAIEval()" style="font-size:10px;padding:3px 10px;border-radius:10px;border:1px solid var(--border-med);background:var(--surface2);color:var(--muted);cursor:pointer;font-weight:600;">↻ Refresh</button>
+        <button onclick="generateAIEval(false)" style="font-size:10px;padding:3px 10px;border-radius:10px;border:1px solid var(--border-med);background:var(--surface2);color:var(--muted);cursor:pointer;font-weight:600;">↻ Refresh</button>
       </div>
-      <div style="font-size:11px;line-height:1.7;color:var(--text);">${html}</div>`;
+      <div style="font-size:11px;line-height:1.7;color:var(--text);">${html}</div>
+      <div id="ai-continue-spinner"></div>
+      ${continueBtn}`;
 
-  } catch(e) {
+  } catch(e){
     content.innerHTML = `<div style="color:var(--red);font-size:11px;padding:6px 0;">Gagal generate evaluasi: ${e.message}</div>`;
   } finally {
     btn.disabled = false;
