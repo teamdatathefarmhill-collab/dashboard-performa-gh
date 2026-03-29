@@ -938,6 +938,31 @@ body {
         <button class="qbtn" onclick="setQuickBulan('this')" title="Bulan ini">Ini</button>
         <button class="qbtn" onclick="setQuickBulan('next')" title="Bulan depan">Depan →</button>
         <button class="qbtn active" onclick="setQuickBulan('all')" title="Semua">Semua</button>
+        <!-- Date range picker trigger -->
+        <div style="position:relative;display:inline-block;">
+          <button class="qbtn" id="btn-daterange" onclick="toggleDateRange(event)" title="Pilih rentang tanggal" style="display:flex;align-items:center;gap:4px;">
+            📅 <span id="daterange-label">Rentang</span>
+          </button>
+          <div id="daterange-popup" style="display:none;position:absolute;top:calc(100% + 6px);left:0;z-index:300;background:var(--surface);border:1px solid var(--border-med);border-radius:var(--r);box-shadow:var(--shadow-md);padding:12px 14px;min-width:260px;white-space:nowrap;">
+            <div style="font-size:10px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Rentang Tanggal Panen</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+              <div style="flex:1;">
+                <label style="font-size:10px;color:var(--muted);font-weight:600;display:block;margin-bottom:3px;">Dari</label>
+                <input type="date" id="dr-from" style="width:100%;padding:5px 8px;border:1px solid var(--border-med);border-radius:7px;font-size:11px;outline:none;color:var(--text);background:var(--surface2);">
+              </div>
+              <div style="font-size:13px;color:var(--hint);padding-top:14px;">→</div>
+              <div style="flex:1;">
+                <label style="font-size:10px;color:var(--muted);font-weight:600;display:block;margin-bottom:3px;">Sampai</label>
+                <input type="date" id="dr-to" style="width:100%;padding:5px 8px;border:1px solid var(--border-med);border-radius:7px;font-size:11px;outline:none;color:var(--text);background:var(--surface2);">
+              </div>
+            </div>
+            <div style="font-size:9.5px;color:var(--hint);margin-bottom:8px;">Termasuk estimasi panen mendatang (belum terjadi)</div>
+            <div style="display:flex;gap:6px;">
+              <button onclick="applyDateRange()" style="flex:1;padding:5px 10px;border-radius:7px;border:none;background:var(--blue);color:#fff;font-size:11px;font-weight:700;cursor:pointer;">Terapkan</button>
+              <button onclick="clearDateRange()" style="padding:5px 10px;border-radius:7px;border:1px solid var(--border-med);background:var(--surface2);color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;">Reset</button>
+            </div>
+          </div>
+        </div>
       </div>
       <button class="rbtn" id="btn-refresh">↻ Refresh Data</button>
       <button class="rbtn" id="btn-pdf" onclick="downloadPDF()" style="color:var(--red);border-color:var(--red-border);">⬇ Download PDF</button>
@@ -1842,18 +1867,72 @@ function getYearMonth(dateStr){
   return dateStr.substring(0,7);
 }
 
-// Quick bulan filter — mode: 'all' | 'prev' | 'this' | 'next'
+// Quick bulan filter — mode: 'all' | 'prev' | 'this' | 'next' | 'range'
 let activeQuick = 'all';
+let activeDateRange = null; // {from:'YYYY-MM-DD', to:'YYYY-MM-DD'} or null
+
 function setQuickBulan(mode){
   activeQuick = mode;
+  activeDateRange = null;
   document.querySelectorAll('.qbtn').forEach(b=>{
     b.classList.toggle('active', b.getAttribute('onclick')===`setQuickBulan('${mode}')`);
   });
+  // Reset date range button style
+  const btn = document.getElementById('btn-daterange');
+  if(btn){ btn.classList.remove('active'); }
+  document.getElementById('daterange-label').textContent = 'Rentang';
   debouncedRender();
 }
 
-// Kembalikan YM range {ymDari, ymSampai} berdasarkan activeQuick
+function toggleDateRange(e){
+  e.stopPropagation();
+  const popup = document.getElementById('daterange-popup');
+  popup.style.display = popup.style.display === 'none' ? 'block' : 'none';
+}
+
+function applyDateRange(){
+  const from = document.getElementById('dr-from').value;
+  const to   = document.getElementById('dr-to').value;
+  if(!from && !to){ clearDateRange(); return; }
+  activeDateRange = {from: from||null, to: to||null};
+  activeQuick = 'range';
+  // Deactivate quick buttons
+  document.querySelectorAll('.qbtn').forEach(b=> b.classList.remove('active'));
+  const btn = document.getElementById('btn-daterange');
+  if(btn) btn.classList.add('active');
+  // Update label
+  const fmtD = s => s ? s.split('-').slice(1).reverse().join('/') : '…';
+  document.getElementById('daterange-label').textContent = `${fmtD(from)} – ${fmtD(to)}`;
+  document.getElementById('daterange-popup').style.display = 'none';
+  debouncedRender();
+}
+
+function clearDateRange(){
+  activeDateRange = null;
+  document.getElementById('dr-from').value = '';
+  document.getElementById('dr-to').value   = '';
+  document.getElementById('daterange-popup').style.display = 'none';
+  setQuickBulan('all');
+}
+
+// Tutup date range popup jika klik di luar
+document.addEventListener('click', function(e){
+  const popup = document.getElementById('daterange-popup');
+  const btn   = document.getElementById('btn-daterange');
+  if(popup && btn && !btn.contains(e.target) && !popup.contains(e.target)){
+    popup.style.display = 'none';
+  }
+});
+
+// Kembalikan YM range {ymDari, ymSampai} berdasarkan activeQuick / date range
 function getActiveYMRange(){
+  // Mode date range — konversi ke YM
+  if(activeQuick === 'range' && activeDateRange){
+    const toYM = s => s ? s.substring(0,7) : null;
+    const ymDari   = toYM(activeDateRange.from);
+    const ymSampai = toYM(activeDateRange.to) || ymDari;
+    if(ymDari || ymSampai) return {ymDari: ymDari||ymSampai, ymSampai: ymSampai||ymDari};
+  }
   const now = new Date();
   const pad = n => String(n).padStart(2,'0');
   const ym  = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}`;
@@ -1872,6 +1951,14 @@ function getActiveYMRange(){
     return {ymDari:m, ymSampai:m};
   }
   return null; // 'all' — no filter
+}
+
+// Kembalikan date range aktual {from, to} dalam format YYYY-MM-DD (untuk filter tgl_akhir/tgl_mulai)
+function getActiveDateFilter(){
+  if(activeQuick === 'range' && activeDateRange){
+    return activeDateRange; // {from, to} bisa null jika salah satu kosong
+  }
+  return null;
 }
 
 function initFilters(prevP, prevK, prevGHs){
@@ -2033,17 +2120,51 @@ function getFiltered(){
         })
         .map(mk=>mk.split('||')[0]+'||'+mk.split('||')[1])
     );
+    // Sertakan juga RAW.future untuk mode depan / range yang mencakup estimasi
+    const hasFuture = new Set(
+      Object.keys(RAW.future||{})
+        .filter(mk=>{
+          const ym = mk.split('||')[2]||'';
+          return ym >= ymDari && ym <= ymSampai;
+        })
+        .map(mk=>mk.split('||')[0]+'||'+mk.split('||')[1])
+    );
     rows = rows.filter(r=>{
       const gpk = r.gh+'||'+r.periode;
-      if(hasActivity.has(gpk)) return true;
+      if(hasActivity.has(gpk) || hasFuture.has(gpk)) return true;
       // Sertakan Belum Panen jika tgl_mulai ada di bulan tsb
       if((r.kategori==='Belum Panen'||r.ket_panen==='BELUM PANEN') && r.tgl_mulai){
         const tglYM = r.tgl_mulai.substring(0,7);
         return tglYM >= ymDari && tglYM <= ymSampai;
       }
+      // Sertakan Ongoing jika tgl_akhir ada di rentang bulan tsb
+      if(r.kategori==='Ongoing' && r.tgl_akhir){
+        const tglYM = r.tgl_akhir.substring(0,7);
+        return tglYM >= ymDari && tglYM <= ymSampai;
+      }
       return false;
     });
   }
+
+  // ── Filter tanggal harian (mode "Rentang") ──────────────────────────────
+  // Menyertakan GH yang tgl_akhir atau tgl_mulai jatuh dalam rentang tersebut
+  const drFilter = getActiveDateFilter();
+  if(drFilter && (drFilter.from || drFilter.to)){
+    const {from, to} = drFilter;
+    rows = rows.filter(r=>{
+      // Tanggal aktual selesai panen
+      const tglAkhir = r.tgl_akhir || '';
+      // Tanggal mulai panen (estimasi Belum Panen)
+      const tglMulai = r.tgl_mulai || '';
+      // Cek overlap: GH relevan jika salah satu tanggalnya dalam range
+      const refDate = tglAkhir || tglMulai;
+      if(!refDate) return false;
+      if(from && refDate < from) return false;
+      if(to   && refDate > to)   return false;
+      return true;
+    });
+  }
+
   return rows;
 }
 
@@ -2669,8 +2790,8 @@ function renderInsight(ghList, kpi){
     r.tgl_akhir && r.tgl_akhir <= todayStr
   );
   const belumList   = ghList.filter(r=>r.kategori==='Belum Panen');
+  const single      = ghList.length === 1;
 
-  // Kualitas per GH
   const avgPremPct = kpi.totPanen > 0 ? (kpi.totPrem / kpi.totPanen * 100) : 0;
   const avgImpPct  = kpi.totPanen > 0 ? (kpi.totImp  / kpi.totPanen * 100) : 0;
   const avgOsPct   = kpi.totPanen > 0 ? (kpi.totOS   / kpi.totPanen * 100) : 0;
@@ -2683,91 +2804,100 @@ function renderInsight(ghList, kpi){
       impPct:  r.imperfect/tot*100,
       osPct:   r.outspec/tot*100,
       tot,
-      pctEst:  r.est > 0 ? (r.selesai/r.est*100) : null,
+      pctEst: r.est > 0 ? (r.selesai/r.est*100) : null,
     };
   });
 
-  const topPrem    = [...qualityGH].sort((a,b)=>b.premPct-a.premPct).slice(0,3);
-  const worstOS    = [...qualityGH].filter(x=>x.osPct>10).sort((a,b)=>b.osPct-a.osPct).slice(0,3);
-
-  // GH selesai: terpenuhi vs tidak
-  const terpenuhi     = selesaiList.filter(r => r.est > 0 && (r.selesai/r.est) >= 0.85);
-  const tidakTerpenuhi= selesaiList.filter(r => r.est > 0 && (r.selesai/r.est) < 0.85);
-
-  // Detail GH bermasalah (selesai, tidak terpenuhi atau outspec tinggi)
-  const masalahDetail = [];
-  selesaiList.forEach(r => {
-    const tot   = r.premium+r.imperfect+r.outspec;
-    const osPct = tot > 0 ? r.outspec/tot*100 : 0;
-    const pct   = r.est > 0 ? (r.selesai/r.est*100) : null;
-    const issues = [];
-    if(pct !== null && pct < 85) issues.push(`target ${pct.toFixed(0)}%`);
-    if(osPct > 15) issues.push(`outspec ${osPct.toFixed(1)}%`);
-    if(issues.length) masalahDetail.push(`<strong>${r.gh}</strong> (${issues.join(', ')})`);
-  });
-
-  // Ongoing: detail sisa
-  const ongoingDetail = [...ongoingList]
-    .filter(r => r.sisa > 0)
-    .sort((a,b) => b.sisa - a.sisa)
-    .slice(0, 5)
-    .map(r => `<strong>${r.gh}</strong> sisa ${fmt(r.sisa)}`);
+  const topPrem  = [...qualityGH].sort((a,b)=>b.premPct-a.premPct).slice(0,3);
+  const worstOS  = [...qualityGH].filter(x=>x.osPct>10).sort((a,b)=>b.osPct-a.osPct).slice(0,3);
+  const terpenuhi      = selesaiList.filter(r => r.est > 0 && (r.selesai/r.est) >= 0.85);
+  const tidakTerpenuhi = selesaiList.filter(r => r.est > 0 && (r.selesai/r.est) < 0.85);
+  const ongoingDetail  = [...ongoingList].filter(r=>r.sisa>0).sort((a,b)=>b.sisa-a.sisa).slice(0,5);
 
   const pctTercapaiTxt = kpi.pctTercapai ? kpi.pctTercapai.toFixed(1) : '—';
-  const osLabel = avgOsPct < 5
-    ? `<span style="color:var(--green);font-weight:700;">rendah (${avgOsPct.toFixed(1)}%)</span>`
-    : avgOsPct < 15
-    ? `<span style="color:var(--amber);font-weight:700;">sedang (${avgOsPct.toFixed(1)}%)</span>`
-    : `<span style="color:var(--red);font-weight:700;">tinggi (${avgOsPct.toFixed(1)}%)</span>`;
+  const osColor = avgOsPct < 5 ? 'var(--green)' : avgOsPct < 15 ? 'var(--amber)' : 'var(--red)';
+  const osKata  = avgOsPct < 5 ? 'rendah' : avgOsPct < 15 ? 'cukup terkendali' : 'cukup tinggi dan perlu perhatian';
+  const osLabel = `<span style="color:${osColor};font-weight:700;">${avgOsPct.toFixed(1)}% (${osKata})</span>`;
 
-  // ── Susun paragraf ──
   let para = '';
 
-  // § 1 — Ringkasan pencapaian
-  para += `Dari <strong>${ghList.length} GH</strong> yang dianalisis periode ini, `;
-  if(selesaiList.length && ongoingList.length){
-    para += `<strong style="color:var(--green);">${selesaiList.length} GH telah selesai panen</strong> dan <strong style="color:var(--blue);">${ongoingList.length} GH masih berjalan</strong>`;
-  } else if(selesaiList.length){
-    para += `<strong style="color:var(--green);">seluruhnya (${selesaiList.length} GH) telah selesai panen</strong>`;
-  } else if(ongoingList.length){
-    para += `<strong style="color:var(--blue);">seluruhnya (${ongoingList.length} GH) masih berjalan</strong>`;
+  // ── § 1: Status umum & pencapaian ──
+  if(single){
+    // 1 GH — langsung cerita tentang GH tersebut
+    const r   = ghList[0];
+    const ghNm = `<strong>${r.gh}</strong>`;
+    if(r.kategori === 'Ongoing'){
+      const pct = r.est > 0 ? (r.selesai/r.est*100).toFixed(0) : null;
+      para += `${ghNm} saat ini sedang dalam proses panen dengan total aktual <strong>${fmt(kpi.totPanen)}</strong>`;
+      if(pct) para += ` — sudah mencapai ${pct}% dari estimasi <strong>${fmt(r.est)}</strong>`;
+      if(r.sisa > 0) para += `, dengan estimasi sisa <strong>${fmt(r.sisa)}</strong> lagi hingga selesai`;
+      para += `. `;
+    } else if(r.kategori === 'Belum Panen'){
+      para += `${ghNm} belum memulai panen`;
+      if(r.tgl_mulai) para += `, dijadwalkan mulai pada <strong>${r.tgl_mulai}</strong>`;
+      para += `. `;
+    } else {
+      const pct = r.est > 0 ? (r.selesai/r.est*100) : null;
+      para += `${ghNm} telah menyelesaikan panen dengan total <strong>${fmt(kpi.totPanen)}</strong> dari estimasi <strong>${fmt(r.est)}</strong>`;
+      if(pct !== null) para += ` — tercapai <strong>${pct.toFixed(0)}%</strong> dari target`;
+      para += r.selesai >= r.est * 0.85
+        ? `, dan <strong style="color:var(--green);">target terpenuhi</strong>. `
+        : `, <strong style="color:var(--red);">target tidak terpenuhi</strong>. `;
+    }
+  } else {
+    // Multi GH
+    const n = ghList.length;
+    if(selesaiList.length && ongoingList.length){
+      para += `Dari <strong>${n} GH</strong> yang dianalisis, <strong style="color:var(--green);">${selesaiList.length} telah selesai</strong> dan <strong style="color:var(--blue);">${ongoingList.length} masih berjalan</strong>`;
+    } else if(selesaiList.length === n){
+      para += `Seluruh <strong>${n} GH</strong> yang dianalisis telah menyelesaikan panen`;
+    } else if(ongoingList.length === n){
+      para += `Seluruh <strong>${n} GH</strong> masih dalam proses panen`;
+    } else {
+      para += `Dari <strong>${n} GH</strong> yang dianalisis`;
+      if(selesaiList.length) para += `, <strong style="color:var(--green);">${selesaiList.length} selesai</strong>`;
+      if(ongoingList.length) para += `, <strong style="color:var(--blue);">${ongoingList.length} ongoing</strong>`;
+      if(belumList.length)   para += `, <strong style="color:var(--amber);">${belumList.length} belum mulai</strong>`;
+    }
+    para += `. Total panen aktual <strong>${fmt(kpi.totPanen)}</strong> dari estimasi <strong>${fmt(kpi.totEst)}</strong>`;
+    if(kpi.pctTercapai) para += ` (${pctTercapaiTxt}%)`;
+    para += `. `;
+    if(terpenuhi.length && selesaiList.length > 0){
+      if(tidakTerpenuhi.length === 0){
+        para += `Semua GH yang telah selesai berhasil memenuhi target (≥85%). `;
+      } else {
+        para += `${terpenuhi.length} dari ${selesaiList.length} GH selesai memenuhi target; <strong style="color:var(--red);">${tidakTerpenuhi.length} tidak terpenuhi</strong> (${tidakTerpenuhi.map(r=>`<strong>${r.gh}</strong>`).join(', ')}). `;
+      }
+    }
   }
-  if(belumList.length) para += `, serta <strong style="color:var(--amber);">${belumList.length} GH belum mulai panen</strong>`;
-  para += `. `;
 
-  para += `Total panen aktual mencapai <strong>${fmt(kpi.totPanen)}</strong> dari estimasi <strong>${fmt(kpi.totEst)}</strong>`;
-  if(kpi.pctTercapai) para += ` — <strong>${pctTercapaiTxt}%</strong> dari target`;
-  if(terpenuhi.length || tidakTerpenuhi.length){
-    para += `. Dari ${selesaiList.length} GH selesai, <strong style="color:var(--green);">${terpenuhi.length} terpenuhi (≥85%)</strong>`;
-    if(tidakTerpenuhi.length) para += ` dan <strong style="color:var(--red);">${tidakTerpenuhi.length} tidak terpenuhi</strong>`;
-  }
-  para += `. `;
-
-  // § 2 — Kualitas grade
-  para += `Komposisi grade keseluruhan: premium <strong>${avgPremPct.toFixed(1)}%</strong>, imperfect <strong>${avgImpPct.toFixed(1)}%</strong>, outspec ${osLabel}. `;
-  if(topPrem.length){
-    para += `GH dengan premium tertinggi: ${topPrem.map(x=>`<strong>${x.gh}</strong> (${x.premPct.toFixed(1)}%)`).join(', ')}. `;
-  }
-  if(worstOS.length){
-    para += `GH dengan outspec perlu perhatian: ${worstOS.map(x=>`<strong>${x.gh}</strong> (${x.osPct.toFixed(1)}%)`).join(', ')}. `;
-  }
-
-  // § 3 — GH bermasalah
-  if(masalahDetail.length){
-    para += `GH yang selesai dengan catatan: ${masalahDetail.join('; ')}. `;
-  } else if(selesaiList.length){
-    para += `Semua GH yang telah selesai memenuhi target panen (≥85%). `;
+  // ── § 2: Kualitas grade ──
+  if(kpi.totPanen > 0){
+    if(single){
+      para += `Komposisi grade: premium <strong>${avgPremPct.toFixed(1)}%</strong>, imperfect <strong>${avgImpPct.toFixed(1)}%</strong>, outspec ${osLabel}. `;
+    } else {
+      para += `Rata-rata komposisi grade: premium <strong>${avgPremPct.toFixed(1)}%</strong>, imperfect <strong>${avgImpPct.toFixed(1)}%</strong>, outspec ${osLabel}. `;
+      if(!single && topPrem.length > 1){
+        para += `Premium tertinggi dicapai oleh ${topPrem.map(x=>`<strong>${x.gh}</strong> (${x.premPct.toFixed(1)}%)`).join(' dan ')}. `;
+      }
+    }
+    if(worstOS.length){
+      if(single){
+        para += `Outspec perlu diperhatikan dan menjadi area perbaikan utama. `;
+      } else {
+        para += `${worstOS.map(x=>`<strong>${x.gh}</strong> (outspec ${x.osPct.toFixed(1)}%)`).join(', ')} perlu perhatian khusus pada kualitas buah. `;
+      }
+    }
   }
 
-  // § 4 — Ongoing detail
-  if(ongoingList.length && ongoingDetail.length){
-    para += `GH yang masih berjalan dengan sisa panen terbesar: ${ongoingDetail.join(', ')}.`;
-  } else if(ongoingList.length){
-    para += `${ongoingList.length} GH masih dalam proses panen.`;
+  // ── § 3: Ongoing progress ──
+  if(!single && ongoingDetail.length){
+    para += `GH yang masih berjalan: ${ongoingDetail.map(r=>`<strong>${r.gh}</strong> sisa ${fmt(r.sisa)}`).join(', ')}. `;
+  } else if(single && ongoingList.length && ongoingDetail.length){
+    // Sudah tercover di §1
   }
 
   el.innerHTML = para;
-  // Mirror ke standalone fallback jika ada
   const elSa = document.getElementById('insight-text-standalone');
   if(elSa) elSa.innerHTML = para;
 }
