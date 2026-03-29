@@ -1409,6 +1409,10 @@ function buildEstimasiDataset(rows){
 function getEstimasiTotal(ghList, fPeriode, activeQuick){
   if(!RAW_ESTIMASI || !RAW_ESTIMASI.data.length) return null;
 
+  // Whitelist GH sendiri (exclude mitra) — sama dengan dashboard
+  const GH_WHITELIST = ['tohudan','sawahan','colomadu','bergas'];
+  const isWhitelisted = gh => GH_WHITELIST.some(w => (gh||'').toLowerCase().includes(w));
+
   // Tentukan filter bulan dari activeQuick
   let targetMonth = null;
   if(activeQuick && activeQuick !== 'all'){
@@ -1438,6 +1442,8 @@ function getEstimasiTotal(ghList, fPeriode, activeQuick){
 
   let total = 0;
   RAW_ESTIMASI.data.forEach(r=>{
+    // Exclude GH mitra
+    if(!isWhitelisted(r.gh)) return;
     // Filter Periode jika aktif
     if(fPeriode && r.periode !== fPeriode) return;
     // Filter GH spesifik jika aktif
@@ -3331,9 +3337,6 @@ function render(){
 
   // Totals — selalu dari RAW.monthly agar konsisten antara mode Semua/Lalu/Ini/Depan
   const totEstGH    = ghList.reduce((a,r)=>a+r.est,0);
-  // % Tercapai vs Est: selalu pakai estimasi dari populasi × 1kg per GH (totEstGH)
-  // agar konsisten dan tidak tergantung sheet estimasi eksternal
-  const totEst      = totEstGH;
   const totPop     = ghList.reduce((a,r)=>a+r.pop,0);
   const totPrem    = mt.prem;
   const totImp     = mt.imp;
@@ -3363,7 +3366,7 @@ function render(){
   const pctPrem    = totPanen ? totPrem/totPanen*100 : 0;
   const pctImp     = totPanen ? totImp/totPanen*100 : 0;
   const pctOS      = totPanen ? totOS/totPanen*100 : 0;
-  const pctTercapai= totEst   ? totSelesai/totEst*100 : 0;
+  // pctTercapai dihitung setelah totEst tersedia (di bawah, setelah estAkhirBulan)
 
   const kategoriCount = {};
   ghList.forEach(r=>{ kategoriCount[r.kategori]=(kategoriCount[r.kategori]||0)+1; });
@@ -3422,6 +3425,12 @@ function render(){
   const totSisaBulan = Math.max(0, ftSisaBulan.prem + ftSisaBulan.imp + ftSisaBulan.os);
 
   const estAkhirBulan = totSelesaiBulan + totSisaBulan;
+
+  // totEst: estimasi yang dipakai untuk % Tercapai & progress bar
+  // Kalau filter bulan aktif (Lalu/Ini/Depan) → pakai estAkhirBulan (sudah include mitra, ~54T)
+  // Kalau filter "Semua" → pakai totEstGH (populasi × 1kg dari GH yang tampil)
+  const totEst = (ymRange && estAkhirBulan > 0) ? estAkhirBulan : totEstGH;
+  const pctTercapai = totEst ? totSelesai/totEst*100 : 0;
 
   // Kelas warna: bandingkan vs estimasi total
   const estBulanPct = totEst > 0 ? (estAkhirBulan / totEst * 100) : 0;
