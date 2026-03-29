@@ -1776,6 +1776,7 @@ async function loadData(isRefresh=false){
         const bar=document.getElementById('ld-bar'), status=document.getElementById('ld-status'), timer=document.getElementById('ld-timer');
         const elapsed=((Date.now()-t0)/1000).toFixed(1);
         if(bar) bar.style.width='100%'; if(status) status.textContent='Selesai!'; if(timer) timer.textContent=elapsed+' detik';
+        await new Promise(r=>setTimeout(r,300));
       }
       document.getElementById('loading-screen').style.display='none';
       document.getElementById('tab-nav-wrap').style.display='block';
@@ -1847,8 +1848,8 @@ async function loadData(isRefresh=false){
 
     initFilters(prevP, prevK, prevGHs);
     // Build GH list for daily page too
-    const GH_WHITELIST_DH = ['tohudan','sawahan','colomadu','bergas'];
-    const dhGHs = RAW.filters.ghs.filter(g=>GH_WHITELIST_DH.some(w=>g.toLowerCase().includes(w)));
+    // Data Harian: include semua GH termasuk GH Mitra
+    const dhGHs = RAW.filters.ghs;
     buildDHGHSelect(dhGHs);
     // Set default date range = 7 hari terakhir
     if(!document.getElementById('dh-from').value){
@@ -1872,6 +1873,7 @@ async function loadData(isRefresh=false){
       if(bar) bar.style.width = '100%';
       if(status) status.textContent = 'Selesai!';
       if(timer) timer.textContent = elapsed + ' detik';
+      await new Promise(r=>setTimeout(r,400));
     }
     document.getElementById('loading-screen').style.display = 'none';
     document.getElementById('tab-nav-wrap').style.display   = 'block';
@@ -2162,14 +2164,12 @@ function renderHarian(){
   const to      = document.getElementById('dh-to').value;
   const selGHs  = getDHSelectedGHs();
 
-  // Filter daily entries
-  const GH_WHITELIST = ['tohudan','sawahan','colomadu','bergas'];
+  // Filter daily entries — semua GH termasuk GH Mitra
   const entries = Object.entries(RAW.daily).filter(([dk, d])=>{
     const tgl = dk.split('||')[2]||'';
     if(from && tgl < from) return false;
     if(to   && tgl > to)   return false;
     if(selGHs.length && !selGHs.includes(d.gh)) return false;
-    if(!GH_WHITELIST.some(w=>d.gh.toLowerCase().includes(w))) return false;
     return true;
   }).map(([dk,d])=>({...d, tgl: dk.split('||')[2]}));
 
@@ -2316,14 +2316,12 @@ function exportDHCSV(){
   const from   = document.getElementById('dh-from').value;
   const to     = document.getElementById('dh-to').value;
   const selGHs = getDHSelectedGHs();
-  const GH_WHITELIST = ['tohudan','sawahan','colomadu','bergas'];
-
+  // Export semua GH termasuk GH Mitra
   const entries = Object.entries(RAW.daily).filter(([dk,d])=>{
     const tgl=dk.split('||')[2]||'';
     if(from&&tgl<from) return false;
     if(to&&tgl>to) return false;
     if(selGHs.length&&!selGHs.includes(d.gh)) return false;
-    if(!GH_WHITELIST.some(w=>d.gh.toLowerCase().includes(w))) return false;
     return true;
   }).map(([dk,d])=>({tgl:dk.split('||')[2], ...d}));
 
