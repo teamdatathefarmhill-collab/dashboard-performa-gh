@@ -1238,22 +1238,44 @@ body {
           style="border:none;background:transparent;font-size:11px;color:var(--text);font-weight:600;cursor:pointer;outline:none;">
       </div>
       <button class="rbtn" onclick="resetDHFilter()">↺ Reset</button>
+      <button id="btn-filter-panen" onclick="filterOnlyPanenDays()" style="display:flex;align-items:center;gap:5px;padding:6px 13px;border-radius:8px;border:1px solid var(--green-border);background:var(--green-bg);color:var(--green);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">🌿 Hanya Hari Panen</button>
     </div>
   </div>
 
   <!-- Summary KPI -->
   <div id="dh-kpi" class="kpi-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px;"></div>
 
-  <!-- Chart bar harian -->
-  <div class="card" style="margin-bottom:12px;">
-    <div class="card-ttl">Total Panen per Hari</div>
-    <div style="position:relative;height:200px;"><canvas id="dh-bar-chart"></canvas></div>
-    <div class="leg" style="margin-top:8px;">
-      <div class="leg-item"><div class="leg-sq" style="background:#639922"></div>Premium</div>
-      <div class="leg-item"><div class="leg-sq" style="background:#ef9f27"></div>Imperfect</div>
-      <div class="leg-item"><div class="leg-sq" style="background:#e24b4a"></div>Outspec</div>
+  <!-- Chart bar + pie grade -->
+  <div style="display:grid;grid-template-columns:1fr 260px;gap:10px;margin-bottom:12px;" id="dh-chart-row">
+    <div class="card">
+      <div class="card-ttl">Total Panen per Hari</div>
+      <div style="position:relative;height:200px;"><canvas id="dh-bar-chart"></canvas></div>
+      <div class="leg" style="margin-top:8px;">
+        <div class="leg-item"><div class="leg-sq" style="background:#639922"></div>Premium</div>
+        <div class="leg-item"><div class="leg-sq" style="background:#ef9f27"></div>Imperfect</div>
+        <div class="leg-item"><div class="leg-sq" style="background:#e24b4a"></div>Outspec</div>
+        <div class="leg-item" style="margin-left:auto;">
+          <div style="width:10px;height:10px;border-radius:3px;background:rgba(90,172,26,0.15);border:1px solid #22c55e;flex-shrink:0;"></div>
+          <span style="color:#166534;font-weight:600;">🌿 Hari Panen (Rabu/Minggu)</span>
+        </div>
+      </div>
+    </div>
+    <!-- Pie chart distribusi grade -->
+    <div class="card" style="display:flex;flex-direction:column;align-items:center;justify-content:center;">
+      <div class="card-ttl" style="align-self:flex-start;">Distribusi Grade</div>
+      <div style="position:relative;width:160px;height:160px;flex-shrink:0;">
+        <canvas id="dh-grade-pie"></canvas>
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;">
+          <div style="font-size:9px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.03em;">Total</div>
+          <div id="dh-pie-total" style="font-size:15px;font-weight:800;color:var(--text);line-height:1.1;">—</div>
+        </div>
+      </div>
+      <div id="dh-pie-legend" style="display:flex;flex-direction:column;gap:5px;margin-top:10px;width:100%;"></div>
     </div>
   </div>
+  <style>
+    @media(max-width:800px){ #dh-chart-row { grid-template-columns:1fr !important; } }
+  </style>
 
   <!-- Summary per GH -->
   <div class="card" style="margin-bottom:12px;overflow-x:auto;padding:0;">
@@ -1270,11 +1292,12 @@ body {
           <th style="padding:8px 12px;text-align:right;font-size:9.5px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">Outspec</th>
           <th style="padding:8px 12px;text-align:right;font-size:9.5px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">Total</th>
           <th style="padding:8px 12px;text-align:center;font-size:9.5px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">% Premium</th>
+          <th style="padding:8px 12px;text-align:center;font-size:9.5px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">% Imperfect</th>
           <th style="padding:8px 12px;text-align:center;font-size:9.5px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">% Outspec</th>
         </tr>
       </thead>
       <tbody id="dh-summary-body">
-        <tr><td colspan="7" style="text-align:center;padding:24px;color:var(--hint);">Pilih rentang tanggal untuk melihat data</td></tr>
+        <tr><td colspan="8" style="text-align:center;padding:24px;color:var(--hint);">Pilih rentang tanggal untuk melihat data</td></tr>
       </tbody>
     </table>
   </div>
@@ -1768,6 +1791,13 @@ async function loadData(isRefresh=false){
       RAW          = buildDataset(parseCSV(cachedPanen));
       RAW_SANITASI = buildSanitasiDataset(parseCSV(cachedSanitasi));
       initFilters(prevP, prevK, prevGHs);
+      buildDHGHSelect(RAW.filters.ghs);
+      if(!document.getElementById('dh-from').value){
+        const today = new Date().toISOString().substring(0,10);
+        const week  = new Date(Date.now()-6*86400000).toISOString().substring(0,10);
+        document.getElementById('dh-from').value = week;
+        document.getElementById('dh-to').value   = today;
+      }
       // Restore status filter and bulan mode after refresh
       if(prevKat !== null){ const sel=document.getElementById('f-kategori'); if(sel) sel.value=prevKat; }
       if(prevQuick) { activeQuick = prevQuick; document.querySelectorAll('.qbtn').forEach(b=>{ b.classList.toggle('active', b.getAttribute('onclick')===`setQuickBulan('${prevQuick}')`); }); }
@@ -1844,10 +1874,8 @@ async function loadData(isRefresh=false){
     }
 
     initFilters(prevP, prevK, prevGHs);
-    // Build GH list for daily page too
-    const GH_WHITELIST_DH = ['tohudan','sawahan','colomadu','bergas'];
-    const dhGHs = RAW.filters.ghs.filter(g=>GH_WHITELIST_DH.some(w=>g.toLowerCase().includes(w)));
-    buildDHGHSelect(dhGHs);
+    // Build GH list for daily page — tampilkan SEMUA GH termasuk mitra
+    buildDHGHSelect(RAW.filters.ghs);
     // Set default date range = 7 hari terakhir
     if(!document.getElementById('dh-from').value){
       const today = new Date().toISOString().substring(0,10);
@@ -2150,25 +2178,235 @@ function resetDHFilter(){
   const week  = new Date(Date.now() - 6*86400000).toISOString().substring(0,10);
   document.getElementById('dh-from').value = week;
   document.getElementById('dh-to').value   = today;
+  // Reset tombol filter panen
+  const btnP = document.getElementById('btn-filter-panen');
+  if(btnP){ btnP.style.background='var(--green-bg)'; btnP.style.color='var(--green)'; btnP.style.borderColor='var(--green-border)'; btnP.textContent='🌿 Hanya Hari Panen'; btnP._active=false; }
   renderHarian();
+}
+
+// ── FILTER HANYA HARI PANEN (Rabu/Minggu) ────────────────────────────────────
+function filterOnlyPanenDays(){
+  const btn = document.getElementById('btn-filter-panen');
+  if(!RAW || !RAW.daily) return;
+  const isActive = btn && btn._active;
+  if(isActive){
+    // Toggle off — kembali ke 7 hari terakhir
+    const today = new Date().toISOString().substring(0,10);
+    const week  = new Date(Date.now() - 6*86400000).toISOString().substring(0,10);
+    document.getElementById('dh-from').value = week;
+    document.getElementById('dh-to').value   = today;
+    if(btn){ btn.style.background='var(--green-bg)'; btn.style.color='var(--green)'; btn.style.borderColor='var(--green-border)'; btn.textContent='🌿 Hanya Hari Panen'; btn._active=false; }
+    renderHarian();
+    return;
+  }
+  // Toggle on — set rentang ke seluruh data, lalu filter di renderHarian
+  const allDates = Object.keys(RAW.daily).map(dk=>dk.split('||')[2]).filter(Boolean).sort();
+  if(!allDates.length) return;
+  document.getElementById('dh-from').value = allDates[0];
+  document.getElementById('dh-to').value   = allDates[allDates.length-1];
+  if(btn){ btn.style.background='var(--green)'; btn.style.color='#fff'; btn.style.borderColor='var(--green)'; btn.textContent='✕ Tampilkan Semua Hari'; btn._active=true; }
+  renderHarianPanenOnly();
+}
+
+function renderHarianPanenOnly(){
+  if(!RAW || !RAW.daily) return;
+  const from   = document.getElementById('dh-from').value;
+  const to     = document.getElementById('dh-to').value;
+  const selGHs = getDHSelectedGHs();
+  const HARVEST_DAYS = [0, 3];
+  const isHD = tgl => HARVEST_DAYS.includes(new Date(tgl+'T00:00:00').getDay());
+
+  const entries = Object.entries(RAW.daily).filter(([dk,d])=>{
+    const tgl = dk.split('||')[2]||'';
+    if(from && tgl < from) return false;
+    if(to   && tgl > to)   return false;
+    if(!isHD(tgl)) return false;
+    if(selGHs.length && !selGHs.includes(d.gh)) return false;
+    return true;
+  }).map(([dk,d])=>({...d, tgl: dk.split('||')[2]}));
+
+  if(!entries.length){
+    document.getElementById('dh-detail-body').innerHTML =
+      '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--hint);font-size:12px;">Tidak ada data hari panen (Rabu/Minggu) di rentang yang dipilih.</td></tr>';
+    document.getElementById('dh-summary-body').innerHTML =
+      '<tr><td colspan="8" style="text-align:center;padding:16px;color:var(--hint);">—</td></tr>';
+    renderDHKPI(0,0,0,0); renderDHGradePie(0,0,0); destroyChart("dh-bar");
+    destroyChart('dh-bar');
+    return;
+  }
+  // Delegasi ke renderHarian dengan patch sementara agar filter "hanya hari panen" aktif
+  // Inject entries yang sudah difilter ke renderer
+  _renderDHFromEntries(entries);
+}
+
+// Shared renderer dari entries yang sudah difilter
+function _renderDHFromEntries(entries){
+  const totPrem = entries.reduce((a,d)=>a+d.premium,0);
+  const totImp  = entries.reduce((a,d)=>a+d.imperfect,0);
+  const totOS   = entries.reduce((a,d)=>a+d.outspec,0);
+  const totAll  = entries.reduce((a,d)=>a+d.total,0);
+  renderDHKPI(totPrem, totImp, totOS, totAll);
+
+  const HARVEST_DAYS = [0, 3];
+  const isHarvestDay = tgl => HARVEST_DAYS.includes(new Date(tgl+'T00:00:00').getDay());
+
+  // Summary per GH
+  const byGH = {};
+  entries.forEach(d=>{
+    if(!byGH[d.gh]) byGH[d.gh]={gh:d.gh,prem:0,imp:0,os:0,total:0};
+    byGH[d.gh].prem+=d.premium; byGH[d.gh].imp+=d.imperfect;
+    byGH[d.gh].os+=d.outspec; byGH[d.gh].total+=d.total;
+  });
+  const sumRows = Object.values(byGH).sort((a,b)=>b.total-a.total);
+  document.getElementById('dh-summary-body').innerHTML = sumRows.map((r,i)=>{
+    const premPct = r.total>0?(r.prem/r.total*100).toFixed(1):'0.0';
+    const impPct  = r.total>0?(r.imp/r.total*100).toFixed(1):'0.0';
+    const osPct   = r.total>0?(r.os/r.total*100).toFixed(1):'0.0';
+    const osCls   = parseFloat(osPct)>15?'chip-bad':parseFloat(osPct)>8?'chip-mid':'chip-ok';
+    const impCls  = parseFloat(impPct)>40?'chip-bad':parseFloat(impPct)>25?'chip-mid':'chip-ok';
+    return `<tr style="${i%2?'background:var(--surface2);':''}">
+      <td style="padding:7px 12px;font-weight:600;">${r.gh}</td>
+      <td style="padding:7px 12px;text-align:right;color:var(--green);">${fmtKg(r.prem)}</td>
+      <td style="padding:7px 12px;text-align:right;color:var(--amber);">${fmtKg(r.imp)}</td>
+      <td style="padding:7px 12px;text-align:right;color:var(--red);">${fmtKg(r.os)}</td>
+      <td style="padding:7px 12px;text-align:right;font-weight:700;">${fmtKg(r.total)}</td>
+      <td style="padding:7px 12px;text-align:center;"><span class="tbl-pct-chip chip-ok">${premPct}%</span></td>
+      <td style="padding:7px 12px;text-align:center;"><span class="tbl-pct-chip ${impCls}">${impPct}%</span></td>
+      <td style="padding:7px 12px;text-align:center;"><span class="tbl-pct-chip ${osCls}">${osPct}%</span></td>
+    </tr>`;
+  }).join('');
+
+  renderDHGradePie(totPrem, totImp, totOS);
+
+  // Chart
+  const byDay = {};
+  entries.forEach(d=>{
+    if(!byDay[d.tgl]) byDay[d.tgl]={prem:0,imp:0,os:0};
+    byDay[d.tgl].prem+=d.premium; byDay[d.tgl].imp+=d.imperfect; byDay[d.tgl].os+=d.outspec;
+  });
+  const dayKeys = Object.keys(byDay).sort();
+
+  destroyChart('dh-bar');
+  const cvs = document.getElementById('dh-bar-chart');
+  if(cvs){
+    const harvestHighlightPlugin = {
+      id:'harvestHighlight',
+      beforeDraw(chart){
+        const{ctx,chartArea:{top,bottom,left,width},scales:{x}}=chart;
+        if(!x) return;
+        ctx.save();
+        dayKeys.forEach((dk,i)=>{
+          if(!isHarvestDay(dk)) return;
+          const barWidth=width/dayKeys.length;
+          const xPos=x.getPixelForValue(i);
+          ctx.fillStyle='rgba(90,172,26,0.1)';
+          ctx.fillRect(xPos-barWidth/2,top,barWidth,bottom-top);
+        });
+        ctx.restore();
+      }
+    };
+    charts['dh-bar'] = new Chart(cvs.getContext('2d'),{
+      type:'bar', plugins:[harvestHighlightPlugin, {
+        id:'totalLabel',
+        afterDatasetsDraw(chart){
+          const{ctx,scales:{x,y}}=chart;
+          if(!x) return;
+          ctx.save();
+          dayKeys.forEach((dk,i)=>{
+            const tot=(byDay[dk].prem+byDay[dk].imp+byDay[dk].os)/1000;
+            if(!tot) return;
+            const xPos=x.getPixelForValue(i);
+            const yPos=y.getPixelForValue(tot);
+            ctx.fillStyle='#166534';
+            ctx.font='bold 9px Inter,system-ui,sans-serif';
+            ctx.textAlign='center';
+            ctx.textBaseline='bottom';
+            ctx.fillText(tot>=1?tot.toFixed(2)+'T':(tot*1000).toFixed(0)+'kg', xPos, yPos);
+          });
+          ctx.restore();
+        }
+      }],
+      data:{
+        labels:dayKeys.map(dk=>{ const[y,m,dd]=dk.split('-'); return `${dd}/${m} 🌿`; }),
+        datasets:[
+          {label:'Premium',   data:dayKeys.map(k=>byDay[k].prem/1000),backgroundColor:'#639922',stack:'a',borderRadius:2},
+          {label:'Imperfect', data:dayKeys.map(k=>byDay[k].imp/1000), backgroundColor:'#ef9f27',stack:'a'},
+          {label:'Outspec',   data:dayKeys.map(k=>byDay[k].os/1000),  backgroundColor:'#e24b4a',stack:'a',borderRadius:{topLeft:2,topRight:2}}
+        ]
+      },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{
+          legend:{display:false},
+          tooltip:{callbacks:{
+            title:c=>`Hari Panen: ${dayKeys[c[0].dataIndex]}`,
+            label:c=>` ${c.dataset.label}: ${c.raw.toFixed(3)} Ton`
+          }}
+        },
+        scales:{
+          x:{stacked:true,grid:{display:false},ticks:{font:{size:9},color:'#166534'}},
+          y:{stacked:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{font:{size:9},color:'#9ca3af',callback:v=>v+' T'}}
+        }
+      }
+    });
+  }
+
+  // Tabel detail
+  const byTgl={};
+  entries.forEach(d=>{
+    if(!byTgl[d.tgl]) byTgl[d.tgl]=[];
+    const ex=byTgl[d.tgl].find(x=>x.gh===d.gh);
+    if(ex){ex.prem+=d.premium;ex.imp+=d.imperfect;ex.os+=d.outspec;ex.total+=d.total;}
+    else byTgl[d.tgl].push({gh:d.gh,prem:d.premium,imp:d.imperfect,os:d.outspec,total:d.total});
+  });
+  const sortedDays=Object.keys(byTgl).sort((a,b)=>b.localeCompare(a));
+  let rowsHtml='';
+  sortedDays.forEach(tgl=>{
+    const ghRows=byTgl[tgl].sort((a,b)=>b.total-a.total);
+    const dayTotal=ghRows.reduce((a,r)=>a+r.total,0);
+    const[y,m,dd]=tgl.split('-');
+    const tglFmt=`${dd}/${m}/${y}`;
+    const dateObj=new Date(tgl+'T00:00:00');
+    const hariLabel=dateObj.getDay()===3?'Rabu':'Minggu';
+    rowsHtml+=`<tr style="background:linear-gradient(90deg,#f0fdf4,#f9fef5);border-left:3px solid #22c55e;">
+      <td colspan="6" style="padding:6px 12px;font-weight:700;font-size:11px;color:#166534;">
+        📅 ${tglFmt} <span style="display:inline-flex;align-items:center;gap:3px;background:#dcfce7;color:#166534;border:1px solid #bbf7d0;font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;margin-left:6px;">🌿 Hari Panen · ${hariLabel}</span>
+        — <span style="color:var(--text);">Total: ${fmtKg(dayTotal)}</span>
+      </td>
+    </tr>`;
+    ghRows.forEach((r,i)=>{
+      rowsHtml+=`<tr style="${i%2===1?'background:var(--blue-bg);opacity:.7;':''}">
+        <td style="padding:6px 12px 6px 24px;color:var(--hint);font-size:10px;">${tglFmt}</td>
+        <td style="padding:6px 12px;font-weight:600;">${r.gh}</td>
+        <td style="padding:6px 12px;text-align:right;color:var(--green);">${fmtKg(r.prem)}</td>
+        <td style="padding:6px 12px;text-align:right;color:var(--amber);">${fmtKg(r.imp)}</td>
+        <td style="padding:6px 12px;text-align:right;color:var(--red);">${fmtKg(r.os)}</td>
+        <td style="padding:7px 12px;text-align:right;font-weight:700;">${fmtKg(r.total)}</td>
+      </tr>`;
+    });
+  });
+  document.getElementById('dh-detail-body').innerHTML = rowsHtml||'<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--hint);">Tidak ada data.</td></tr>';
+  const dhFoot=document.getElementById('dh-footer');
+  if(dhFoot) dhFoot.textContent=`${entries.length} entri · ${dayKeys.length} hari panen · ${sumRows.length} GH`;
 }
 
 // ── RENDER DATA HARIAN ────────────────────────────────────────────────────────
 function renderHarian(){
   if(!RAW || !RAW.daily) return;
+  // Jika mode filter hari panen aktif, delegasi ke renderer khusus
+  const btnP = document.getElementById('btn-filter-panen');
+  if(btnP && btnP._active){ renderHarianPanenOnly(); return; }
 
   const from    = document.getElementById('dh-from').value;
   const to      = document.getElementById('dh-to').value;
   const selGHs  = getDHSelectedGHs();
 
-  // Filter daily entries
-  const GH_WHITELIST = ['tohudan','sawahan','colomadu','bergas'];
+  // Filter daily entries — tampilkan SEMUA GH termasuk mitra
   const entries = Object.entries(RAW.daily).filter(([dk, d])=>{
     const tgl = dk.split('||')[2]||'';
     if(from && tgl < from) return false;
     if(to   && tgl > to)   return false;
     if(selGHs.length && !selGHs.includes(d.gh)) return false;
-    if(!GH_WHITELIST.some(w=>d.gh.toLowerCase().includes(w))) return false;
     return true;
   }).map(([dk,d])=>({...d, tgl: dk.split('||')[2]}));
 
@@ -2176,8 +2414,8 @@ function renderHarian(){
     document.getElementById('dh-detail-body').innerHTML =
       '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--hint);font-size:12px;">Tidak ada data untuk filter yang dipilih.</td></tr>';
     document.getElementById('dh-summary-body').innerHTML =
-      '<tr><td colspan="7" style="text-align:center;padding:16px;color:var(--hint);">—</td></tr>';
-    renderDHKPI(0,0,0,0);
+      '<tr><td colspan="8" style="text-align:center;padding:16px;color:var(--hint);">—</td></tr>';
+    renderDHKPI(0,0,0,0); renderDHGradePie(0,0,0); destroyChart("dh-bar");
     destroyChart('dh-bar');
     return;
   }
@@ -2201,8 +2439,10 @@ function renderHarian(){
   const sumRows = Object.values(byGH).sort((a,b)=>b.total-a.total);
   document.getElementById('dh-summary-body').innerHTML = sumRows.map((r,i)=>{
     const premPct = r.total>0 ? (r.prem/r.total*100).toFixed(1) : '0.0';
+    const impPct  = r.total>0 ? (r.imp/r.total*100).toFixed(1)  : '0.0';
     const osPct   = r.total>0 ? (r.os/r.total*100).toFixed(1)   : '0.0';
     const osCls   = parseFloat(osPct)>15?'chip-bad':parseFloat(osPct)>8?'chip-mid':'chip-ok';
+    const impCls  = parseFloat(impPct)>40?'chip-bad':parseFloat(impPct)>25?'chip-mid':'chip-ok';
     return `<tr style="${i%2?'background:var(--surface2);':''}">
       <td style="padding:7px 12px;font-weight:600;">${r.gh}</td>
       <td style="padding:7px 12px;text-align:right;color:var(--green);">${fmtKg(r.prem)}</td>
@@ -2210,9 +2450,12 @@ function renderHarian(){
       <td style="padding:7px 12px;text-align:right;color:var(--red);">${fmtKg(r.os)}</td>
       <td style="padding:7px 12px;text-align:right;font-weight:700;">${fmtKg(r.total)}</td>
       <td style="padding:7px 12px;text-align:center;"><span class="tbl-pct-chip chip-ok">${premPct}%</span></td>
+      <td style="padding:7px 12px;text-align:center;"><span class="tbl-pct-chip ${impCls}">${impPct}%</span></td>
       <td style="padding:7px 12px;text-align:center;"><span class="tbl-pct-chip ${osCls}">${osPct}%</span></td>
     </tr>`;
   }).join('');
+
+  renderDHGradePie(totPrem, totImp, totOS);
 
   // ── Daily chart ──
   const byDay = {};
@@ -2223,15 +2466,72 @@ function renderHarian(){
     byDay[d.tgl].os   += d.outspec;
   });
   const dayKeys = Object.keys(byDay).sort();
+  const HARVEST_DAYS = [0, 3]; // 0=Minggu, 3=Rabu
+  const isHarvestDay = tgl => {
+    const d = new Date(tgl + 'T00:00:00');
+    return HARVEST_DAYS.includes(d.getDay());
+  };
   const fmtTgl  = s => { const [y,m,dd]=s.split('-'); return `${dd}/${m}`; };
 
   destroyChart('dh-bar');
   const cvs = document.getElementById('dh-bar-chart');
   if(cvs){
+    // Plugin untuk background highlight kolom hari panen
+    const harvestHighlightPlugin = {
+      id: 'harvestHighlight',
+      beforeDraw(chart) {
+        const { ctx, chartArea: { top, bottom, left, width }, scales: { x } } = chart;
+        if(!x) return;
+        ctx.save();
+        dayKeys.forEach((dk, i) => {
+          if(!isHarvestDay(dk)) return;
+          const barWidth = width / dayKeys.length;
+          const xPos     = x.getPixelForValue(i);
+          ctx.fillStyle  = 'rgba(90,172,26,0.08)';
+          ctx.fillRect(xPos - barWidth/2, top, barWidth, bottom - top);
+          // Garis vertikal tipis
+          ctx.strokeStyle = 'rgba(90,172,26,0.3)';
+          ctx.lineWidth   = 1;
+          ctx.setLineDash([3,3]);
+          ctx.beginPath();
+          ctx.moveTo(xPos - barWidth/2, top);
+          ctx.lineTo(xPos - barWidth/2, bottom);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        });
+        ctx.restore();
+      }
+    };
+
     charts['dh-bar'] = new Chart(cvs.getContext('2d'),{
       type:'bar',
+      plugins: [harvestHighlightPlugin, {
+        id:'totalLabel',
+        afterDatasetsDraw(chart){
+          const{ctx,data,scales:{x,y}}=chart;
+          const nDays=dayKeys.length;
+          if(!nDays) return;
+          ctx.save();
+          dayKeys.forEach((dk,i)=>{
+            const tot=(byDay[dk].prem+byDay[dk].imp+byDay[dk].os)/1000;
+            if(!tot) return;
+            const xPos=x.getPixelForValue(i);
+            const yPos=y.getPixelForValue(tot)-5;
+            ctx.fillStyle='#374151';
+            ctx.font='bold 9px Inter,system-ui,sans-serif';
+            ctx.textAlign='center';
+            ctx.textBaseline='bottom';
+            ctx.fillText(tot>=1?tot.toFixed(2)+'T':(tot*1000).toFixed(0)+'kg', xPos, yPos+5);
+          });
+          ctx.restore();
+        }
+      }],
       data:{
-        labels: dayKeys.map(fmtTgl),
+        labels: dayKeys.map(dk => {
+          const [y,m,dd] = dk.split('-');
+          const label = `${dd}/${m}`;
+          return isHarvestDay(dk) ? label + ' 🌿' : label;
+        }),
         datasets:[
           {label:'Premium',   data:dayKeys.map(k=>byDay[k].prem/1000), backgroundColor:'#639922', stack:'a', borderRadius:2},
           {label:'Imperfect', data:dayKeys.map(k=>byDay[k].imp/1000),  backgroundColor:'#ef9f27', stack:'a'},
@@ -2243,12 +2543,19 @@ function renderHarian(){
         plugins:{
           legend:{display:false},
           tooltip:{callbacks:{
-            title: c => `Tanggal: ${dayKeys[c[0].dataIndex]}`,
+            title: c => {
+              const dk = dayKeys[c[0].dataIndex];
+              const harvestLabel = isHarvestDay(dk) ? ' 🌿 Hari Panen' : '';
+              return `Tanggal: ${dk}${harvestLabel}`;
+            },
             label: c => ` ${c.dataset.label}: ${(c.raw).toFixed(3)} Ton`
           }}
         },
         scales:{
-          x:{stacked:true,grid:{display:false},ticks:{font:{size:9},color:'#9ca3af'}},
+          x:{stacked:true,grid:{display:false},ticks:{font:{size:9},color: ctx => {
+            const dk = dayKeys[ctx.index];
+            return isHarvestDay(dk) ? '#166534' : '#9ca3af';
+          }}},
           y:{stacked:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{font:{size:9},color:'#9ca3af',callback:v=>v+' T'}}
         }
       }
@@ -2272,10 +2579,20 @@ function renderHarian(){
     const dayTotal = ghRows.reduce((a,r)=>a+r.total,0);
     const [y,m,dd] = tgl.split('-');
     const tglFmt = `${dd}/${m}/${y}`;
+    const dateObj = new Date(tgl + 'T00:00:00');
+    const dayOfWeek = dateObj.getDay();
+    const isRabu   = dayOfWeek === 3;
+    const isMinggu = dayOfWeek === 0;
+    const isPanenDay = isRabu || isMinggu;
+    const hariLabel  = isRabu ? 'Rabu' : isMinggu ? 'Minggu' : '';
+    const rowBg      = isPanenDay ? 'background:linear-gradient(90deg,#f0fdf4,#f9fef5);border-left:3px solid #22c55e;' : 'background:var(--surface2);';
+    const panenBadge = isPanenDay
+      ? `<span style="display:inline-flex;align-items:center;gap:3px;background:#dcfce7;color:#166534;border:1px solid #bbf7d0;font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;margin-left:8px;">🌿 Hari Panen · ${hariLabel}</span>`
+      : '';
     // Day separator row
-    rows += `<tr style="background:var(--surface2);">
-      <td colspan="6" style="padding:6px 12px;font-weight:700;font-size:11px;color:var(--muted);">
-        📅 ${tglFmt} — <span style="color:var(--text);">Total: ${fmtKg(dayTotal)}</span>
+    rows += `<tr style="${rowBg}">
+      <td colspan="6" style="padding:6px 12px;font-weight:700;font-size:11px;color:${isPanenDay?'#166534':'var(--muted)'};display:flex;align-items:center;gap:0;flex-wrap:wrap;">
+        📅 ${tglFmt}${panenBadge} — <span style="color:var(--text);margin-left:4px;">Total: ${fmtKg(dayTotal)}</span>
       </td>
     </tr>`;
     ghRows.forEach((r,i)=>{
@@ -2309,6 +2626,61 @@ function renderDHKPI(prem, imp, os, total){
     <div class="kpi ${parseFloat(osPct)>10?'warn':''}"><div class="kpi-lbl">Outspec</div><div class="kpi-val">${fmtKg(os)}</div><div class="kpi-sub">${osPct}% dari total</div></div>`;
 }
 
+function renderDHGradePie(prem, imp, os){
+  const total = prem + imp + os;
+  const totalEl = document.getElementById('dh-pie-total');
+  if(totalEl) totalEl.textContent = total >= 1000 ? (total/1000).toFixed(2)+' T' : total.toFixed(0)+' kg';
+
+  const legEl = document.getElementById('dh-pie-legend');
+  if(legEl && total > 0){
+    const grades = [
+      {label:'Premium',   val:prem, color:'#639922'},
+      {label:'Imperfect', val:imp,  color:'#ef9f27'},
+      {label:'Outspec',   val:os,   color:'#e24b4a'},
+    ];
+    legEl.innerHTML = grades.map(g=>{
+      const pct = (g.val/total*100).toFixed(1);
+      return `<div style="display:flex;align-items:center;gap:6px;font-size:10px;">
+        <span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${g.color};flex-shrink:0;"></span>
+        <span style="flex:1;color:var(--muted);">${g.label}</span>
+        <span style="font-weight:700;color:var(--text);">${pct}%</span>
+      </div>`;
+    }).join('');
+  }
+
+  destroyChart('dh-pie');
+  const pieCvs = document.getElementById('dh-grade-pie');
+  if(!pieCvs || !total) return;
+  charts['dh-pie'] = new Chart(pieCvs.getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Premium','Imperfect','Outspec'],
+      datasets:[{
+        data: [prem, imp, os],
+        backgroundColor: ['#639922','#ef9f27','#e24b4a'],
+        borderWidth: 2,
+        borderColor: '#fff',
+        hoverOffset: 6,
+      }]
+    },
+    options:{
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '65%',
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{
+          label: c => {
+            const pct = total ? (c.raw/total*100).toFixed(1) : 0;
+            const kg  = c.raw >= 1000 ? (c.raw/1000).toFixed(2)+' T' : c.raw.toFixed(0)+' kg';
+            return ` ${c.label}: ${kg} (${pct}%)`;
+          }
+        }}
+      }
+    }
+  });
+}
+
 // Export CSV
 function exportDHCSV(){
   if(!RAW||!RAW.daily) return;
@@ -2322,7 +2694,6 @@ function exportDHCSV(){
     if(from&&tgl<from) return false;
     if(to&&tgl>to) return false;
     if(selGHs.length&&!selGHs.includes(d.gh)) return false;
-    if(!GH_WHITELIST.some(w=>d.gh.toLowerCase().includes(w))) return false;
     return true;
   }).map(([dk,d])=>({tgl:dk.split('||')[2], ...d}));
 
