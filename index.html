@@ -3331,14 +3331,9 @@ function render(){
 
   // Totals — selalu dari RAW.monthly agar konsisten antara mode Semua/Lalu/Ini/Depan
   const totEstGH    = ghList.reduce((a,r)=>a+r.est,0);
-  // Pakai sheet estimasi HANYA jika ada filter aktif (periode, GH spesifik, atau bulan).
-  // Default "Semua" tanpa filter → pakai est per GH dari sheet panen (totEstGH).
-  const _selGHsNow   = getSelectedGHs();
-  const _totalGHOpts = document.querySelectorAll('#gh-multi-list input[type=checkbox]').length;
-  const _hasFilter   = !!(pFilter || (_selGHsNow.length && _selGHsNow.length < _totalGHOpts) || (activeQuick && activeQuick !== 'all'));
-  const totEstSheet  = _hasFilter ? getEstimasiTotal(ghList, pFilter, activeQuick) : null;
-  const totEst       = totEstSheet !== null ? totEstSheet : totEstGH;
-  const estSource    = totEstSheet !== null ? 'sheet estimasi' : 'per GH';
+  // % Tercapai vs Est: selalu pakai estimasi dari populasi × 1kg per GH (totEstGH)
+  // agar konsisten dan tidak tergantung sheet estimasi eksternal
+  const totEst      = totEstGH;
   const totPop     = ghList.reduce((a,r)=>a+r.pop,0);
   const totPrem    = mt.prem;
   const totImp     = mt.imp;
@@ -3403,16 +3398,27 @@ function render(){
   const ymThisMonth = `${nowEst.getFullYear()}-${String(nowEst.getMonth()+1).padStart(2,'0')}`;
 
   // Tentukan YM bulan yang dipakai untuk Est. Akhir Bulan
-  // Jika ada filter aktif (Lalu/Ini/Depan), pakai ymDari dari filter tersebut
-  // Jika "Semua", pakai bulan ini
   const ymEst = ymD || ymThisMonth;
 
-  // Panen sudah terjadi di bulan tsb (dari RAW.monthly, termasuk outspec)
-  const panenSudah = sumMonthly(ghList, ymEst, ymEst);
+  // ghListAll: semua GH records (termasuk mitra) yang punya data di bulan ymEst
+  // Dipakai untuk sumMonthly & sumFuture agar Est. Akhir Bulan include mitra
+  const _ymEstSet = new Set([
+    ...Object.keys(RAW.monthly||{}).filter(mk=>mk.split('||')[2]===ymEst).map(mk=>mk.split('||')[0]+'||'+mk.split('||')[1]),
+    ...Object.keys(RAW.future||{}).filter(mk=>mk.split('||')[2]===ymEst).map(mk=>mk.split('||')[0]+'||'+mk.split('||')[1]),
+  ]);
+  const ghListAll = [];
+  const _seenAll = new Set();
+  RAW.gh_records.forEach(r=>{
+    const gpk = r.gh+'||'+r.periode;
+    if(_ymEstSet.has(gpk) && !_seenAll.has(gpk)){ _seenAll.add(gpk); ghListAll.push(r); }
+  });
+
+  // Panen sudah terjadi di bulan tsb (dari RAW.monthly, semua GH)
+  const panenSudah = sumMonthly(ghListAll, ymEst, ymEst);
   const totSelesaiBulan = panenSudah.prem + panenSudah.imp + panenSudah.os;
 
-  // Sisa terjadwal di bulan tsb (dari RAW.future, termasuk outspec)
-  const ftSisaBulan  = sumFuture(ghList, ymEst, ymEst);
+  // Sisa terjadwal di bulan tsb (dari RAW.future, semua GH)
+  const ftSisaBulan  = sumFuture(ghListAll, ymEst, ymEst);
   const totSisaBulan = Math.max(0, ftSisaBulan.prem + ftSisaBulan.imp + ftSisaBulan.os);
 
   const estAkhirBulan = totSelesaiBulan + totSisaBulan;
