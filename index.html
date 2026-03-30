@@ -926,10 +926,29 @@ body {
 </div>
 
 <div class="page" style="padding-bottom:0;padding-top:16px;display:none;" id="tab-nav-wrap">
-  <div class="tab-nav">
-    <button class="tab-btn active" id="tab-dashboard" onclick="switchTab('dashboard')">📊 Dashboard</button>
-    <button class="tab-btn" id="tab-harian" onclick="switchTab('harian')">📅 Data Harian</button>
-    <button class="tab-btn" id="tab-evaluasi" onclick="switchTab('evaluasi')">📋 Evaluasi</button>
+  <div class="tab-nav" style="align-items:center;gap:6px;">
+    <!-- Menu: Dashboard / Performa -->
+    <button class="tab-btn active" id="tab-dashboard" onclick="switchTab('dashboard')" style="gap:6px;">📊 Performa</button>
+
+    <!-- Menu Dropdown: Panen -->
+    <div style="position:relative;flex:1;" id="panen-menu-wrap">
+      <button id="panen-menu-btn" onclick="togglePanenMenu(event)"
+        style="width:100%;padding:7px 16px;border-radius:8px;border:none;background:transparent;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;"
+        id="panen-menu-btn-inner">
+        🌾 Panen <span id="panen-menu-arrow" style="font-size:9px;transition:transform .2s;">▼</span>
+      </button>
+      <!-- Dropdown -->
+      <div id="panen-menu-dropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surface);border:1px solid var(--border-med);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.12);z-index:200;padding:4px;min-width:160px;">
+        <button onclick="switchTab('harian')" id="tab-harian"
+          style="width:100%;text-align:left;padding:8px 12px;border-radius:7px;border:none;background:transparent;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:8px;transition:all .15s;">
+          📅 Panen Harian
+        </button>
+        <button onclick="switchTab('evaluasi')" id="tab-evaluasi"
+          style="width:100%;text-align:left;padding:8px 12px;border-radius:7px;border:none;background:transparent;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:8px;transition:all .15s;">
+          📋 Evaluasi
+        </button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1287,10 +1306,11 @@ body {
           <th style="padding:8px 12px;text-align:right;font-size:9.5px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">Total</th>
           <th style="padding:8px 12px;text-align:center;font-size:9.5px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">% Premium</th>
           <th style="padding:8px 12px;text-align:center;font-size:9.5px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">% Outspec</th>
+          <th style="padding:8px 12px;text-align:center;font-size:9.5px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">Status</th>
         </tr>
       </thead>
       <tbody id="dh-summary-body">
-        <tr><td colspan="7" style="text-align:center;padding:24px;color:var(--hint);">Pilih rentang tanggal untuk melihat data</td></tr>
+        <tr><td colspan="8" style="text-align:center;padding:24px;color:var(--hint);">Pilih rentang tanggal untuk melihat data</td></tr>
       </tbody>
     </table>
   </div>
@@ -2289,14 +2309,60 @@ function getActiveYMRange(){
 
 // ── TAB NAVIGATION ────────────────────────────────────────────────────────────
 let activeTab = 'dashboard';
+
+function togglePanenMenu(e){
+  e.stopPropagation();
+  const dd = document.getElementById('panen-menu-dropdown');
+  const arrow = document.getElementById('panen-menu-arrow');
+  const isOpen = dd.style.display !== 'none';
+  dd.style.display = isOpen ? 'none' : 'block';
+  if(arrow) arrow.style.transform = isOpen ? '' : 'rotate(180deg)';
+}
+// Close dropdown when clicking outside
+document.addEventListener('click', function(e){
+  const wrap = document.getElementById('panen-menu-wrap');
+  if(wrap && !wrap.contains(e.target)){
+    const dd = document.getElementById('panen-menu-dropdown');
+    if(dd) dd.style.display = 'none';
+    const arrow = document.getElementById('panen-menu-arrow');
+    if(arrow) arrow.style.transform = '';
+  }
+});
+
 function switchTab(tab){
   activeTab = tab;
+  // Close panen dropdown
+  const dd = document.getElementById('panen-menu-dropdown');
+  if(dd) dd.style.display = 'none';
+  const arrow = document.getElementById('panen-menu-arrow');
+  if(arrow) arrow.style.transform = '';
+
   document.getElementById('page-harian').style.display   = tab==='harian'    ? '' : 'none';
   document.getElementById('dashboard').style.display     = tab==='dashboard' ? '' : 'none';
   document.getElementById('page-evaluasi').style.display = tab==='evaluasi'  ? '' : 'none';
-  document.getElementById('tab-dashboard').classList.toggle('active', tab==='dashboard');
-  document.getElementById('tab-harian').classList.toggle('active', tab==='harian');
-  document.getElementById('tab-evaluasi').classList.toggle('active', tab==='evaluasi');
+
+  // Update active state: Performa button
+  const btnDash = document.getElementById('tab-dashboard');
+  if(btnDash){
+    btnDash.style.background = tab==='dashboard' ? 'var(--blue)' : 'transparent';
+    btnDash.style.color      = tab==='dashboard' ? '#fff'        : 'var(--muted)';
+  }
+  // Update Panen menu button highlight when sub-tab active
+  const btnPanen = document.getElementById('panen-menu-btn');
+  if(btnPanen){
+    btnPanen.style.background = (tab==='harian'||tab==='evaluasi') ? 'var(--blue)' : 'transparent';
+    btnPanen.style.color      = (tab==='harian'||tab==='evaluasi') ? '#fff'        : 'var(--muted)';
+  }
+  // Dropdown item active highlight
+  ['harian','evaluasi'].forEach(t => {
+    const btn = document.getElementById('tab-'+t);
+    if(btn){
+      btn.style.background = t===tab ? 'var(--blue-bg)' : 'transparent';
+      btn.style.color      = t===tab ? 'var(--blue)'    : 'var(--muted)';
+      btn.style.fontWeight = t===tab ? '700'             : '600';
+    }
+  });
+
   if(tab==='harian') renderHarian();
   if(tab==='evaluasi') renderEvaluasi();
 }
@@ -2437,6 +2503,15 @@ function renderHarian(){
     const premPct = r.total>0 ? (r.prem/r.total*100).toFixed(1) : '0.0';
     const osPct   = r.total>0 ? (r.os/r.total*100).toFixed(1)   : '0.0';
     const osCls   = parseFloat(osPct)>15?'chip-bad':parseFloat(osPct)>8?'chip-mid':'chip-ok';
+    // Status dari gh_records
+    const ghRec = RAW && RAW.gh_records.find(x=>x.gh===r.gh);
+    let statusHtml = '<span style="color:var(--hint);font-size:10px;">—</span>';
+    if(ghRec){
+      const kat = ghRec.kategori||'';
+      if(kat==='Ongoing') statusHtml = `<span class="sbadge s-ongoing" style="font-size:9px;">Ongoing</span>`;
+      else if(kat==='Belum Panen'||kat==='BELUM PANEN') statusHtml = `<span class="sbadge s-belum" style="font-size:9px;">Belum Panen</span>`;
+      else statusHtml = `<span class="sbadge s-terpenuhi" style="font-size:9px;">Selesai</span>`;
+    }
     return `<tr style="${i%2?'background:var(--surface2);':''}">
       <td style="padding:7px 12px;font-weight:600;">${r.gh}</td>
       <td style="padding:7px 12px;text-align:right;color:var(--green);">${fmtKg(r.prem)}</td>
@@ -2445,6 +2520,7 @@ function renderHarian(){
       <td style="padding:7px 12px;text-align:right;font-weight:700;">${fmtKg(r.total)}</td>
       <td style="padding:7px 12px;text-align:center;"><span class="tbl-pct-chip chip-ok">${premPct}%</span></td>
       <td style="padding:7px 12px;text-align:center;"><span class="tbl-pct-chip ${osCls}">${osPct}%</span></td>
+      <td style="padding:7px 12px;text-align:center;">${statusHtml}</td>
     </tr>`;
   }).join('');
 
@@ -2462,6 +2538,30 @@ function renderHarian(){
   destroyChart('dh-bar');
   const cvs = document.getElementById('dh-bar-chart');
   if(cvs){
+    // Plugin: label total di atas setiap bar
+    const dhBarLabelPlugin = {
+      id: 'dhBarLabels',
+      afterDatasetsDraw(chart){
+        const {ctx, scales:{x,y}, data} = chart;
+        ctx.save();
+        ctx.font = '600 9px Segoe UI,system-ui,sans-serif';
+        ctx.fillStyle = '#374151';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        const nDays = dayKeys.length;
+        dayKeys.forEach((k, i) => {
+          const total = (byDay[k].prem + byDay[k].imp + byDay[k].os) / 1000;
+          if(total <= 0) return;
+          const meta = chart.getDatasetMeta(2); // Outspec = dataset teratas
+          const bar  = meta.data[i];
+          if(!bar) return;
+          const lbl = total >= 1 ? total.toFixed(2)+'T' : (total*1000).toFixed(0)+'Kg';
+          ctx.fillText(lbl, bar.x, y.getPixelForValue(total + (byDay[k].prem + byDay[k].imp)/1000) - 3);
+        });
+        ctx.restore();
+      }
+    };
+
     charts['dh-bar'] = new Chart(cvs.getContext('2d'),{
       type:'bar',
       data:{
@@ -2474,18 +2574,25 @@ function renderHarian(){
       },
       options:{
         responsive:true, maintainAspectRatio:false,
+        layout:{padding:{top:18}},
         plugins:{
           legend:{display:false},
           tooltip:{callbacks:{
             title: c => `Tanggal: ${dayKeys[c[0].dataIndex]}`,
-            label: c => ` ${c.dataset.label}: ${(c.raw).toFixed(3)} Ton`
+            label: c => ` ${c.dataset.label}: ${(c.raw).toFixed(3)} Ton`,
+            footer: c => {
+              const k = dayKeys[c[0].dataIndex];
+              const tot = (byDay[k].prem+byDay[k].imp+byDay[k].os)/1000;
+              return `Total: ${tot.toFixed(3)} Ton`;
+            }
           }}
         },
         scales:{
           x:{stacked:true,grid:{display:false},ticks:{font:{size:9},color:'#9ca3af'}},
           y:{stacked:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{font:{size:9},color:'#9ca3af',callback:v=>v+' T'}}
         }
-      }
+      },
+      plugins:[dhBarLabelPlugin]
     });
   }
 
@@ -3741,11 +3848,9 @@ function render(){
   document.getElementById('k-pct-s').textContent  = `P+I+O: ${fmt(totPanen)} / est. ${fmt(totEst)}`;
   const pctCard = document.getElementById('k-pct-card');
   pctCard.className = 'kpi'+(pctTercapaiSelesai>=80?' ok':pctTercapaiSelesai<50?' warn':'');
-  // Total Target: dari sheet estimasi jika tersedia, fallback pop×1kg
-  document.getElementById('k-target').textContent  = fmt(totEst > 0 ? totEst : totPop);
-  document.getElementById('k-target-s').textContent = estFromSheet > 0
-    ? `dari sheet estimasi`
-    : `${totPop.toLocaleString('id-ID')} pop × 1 kg`;
+  // Total Target: populasi awal × 1 kg/tanaman
+  document.getElementById('k-target').textContent  = fmt(totPop);
+  document.getElementById('k-target-s').textContent = `${totPop.toLocaleString('id-ID')} pop × 1 kg`;
 
   // Est. Akhir Bulan card
   const estBlnEl   = document.getElementById('k-estbln');
@@ -4699,7 +4804,7 @@ function getEvDailyEntries(){
 function getEvEstimasi(){
   if(!RAW_ESTIMASI || !RAW_ESTIMASI.data) return 0;
 
-  const GH_WHITELIST = ['tohudan','sawahan','colomadu','bergas'];
+  // Tidak filter whitelist di evaluasi — semua GH termasuk mitra
   const fGH = document.getElementById('ev-gh')?.value || '';
 
   let targetMonth = null; // angka bulan 1-12
@@ -4730,8 +4835,8 @@ function getEvEstimasi(){
     ymSet.forEach(ym => {
       const mn = parseInt(ym.split('-')[1]);
       RAW_ESTIMASI.data.forEach(r => {
-        if(!GH_WHITELIST.some(w=>(r.gh||'').toLowerCase().includes(w))) return;
         if(fGH && r.gh !== fGH) return;
+        if(evOwnershipMode !== 'all' && !ghMatchesOwnership(r.gh, evOwnershipMode)) return;
         const rowMonth = MONTH_EN_MAP[r.month] || 0;
         if(rowMonth === mn) total += r.total;
       });
@@ -4741,8 +4846,8 @@ function getEvEstimasi(){
 
   let total = 0;
   RAW_ESTIMASI.data.forEach(r => {
-    if(!GH_WHITELIST.some(w=>(r.gh||'').toLowerCase().includes(w))) return;
     if(fGH && r.gh !== fGH) return;
+    if(evOwnershipMode !== 'all' && !ghMatchesOwnership(r.gh, evOwnershipMode)) return;
     if(targetMonth !== null){
       const rowMonth = MONTH_EN_MAP[r.month] || 0;
       if(rowMonth !== targetMonth) return;
@@ -4774,7 +4879,8 @@ function getEvVarianData(entries){
   if(!_rawRows || !_rawRows.length) return null;
 
   const fGH  = document.getElementById('ev-gh')?.value  || '';
-  const GH_WHITELIST = ['tohudan','sawahan','colomadu','bergas'];
+  // Tidak filter whitelist — semua GH termasuk mitra ditampilkan
+  // (toggle Kepemilikan yang mengatur filter)
 
   // Buat set GH+Tgl yang termasuk dalam filter entries
   const validGHPeriodeTgl = new Set();
@@ -4793,7 +4899,7 @@ function getEvVarianData(entries){
 
     if(!gh || !tgl || val <= 0) return;
     if(fGH && gh !== fGH) return;
-    if(!GH_WHITELIST.some(w=>gh.toLowerCase().includes(w))) return;
+    if(evOwnershipMode !== 'all' && !ghMatchesOwnership(gh, evOwnershipMode)) return;
     if(!validGHPeriodeTgl.has(gh+'||'+per+'||'+tgl)) return;
 
     if(!byVarian[varian]) byVarian[varian] = {varian, premium:0, imperfect:0, outspec:0, total:0, gramasiSum:0, gramasiCount:0};
