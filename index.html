@@ -1681,26 +1681,33 @@ function getEstimasiTotal(ghList, fPeriode, activeQuick){
   return total > 0 ? total : null;
 }
 
-// ── OUTSPEC DATASET (dari sheet baru gid=1180138925) ─────────────────────────
-// Kolom: Tanggal, Periode, Asal (=GH), Item Name (=Varian), Grade, Qty, Kategori, Notes
+// ── OUTSPEC DATASET (dari sheet panen outspec gid=1180138925) ─────────────────
+// Kolom aktual: TANGGAL, Periode, GH, VARIAN, GRADE, DATA KEBUN, Kategori, Notes
 function buildOutspecDataset(rows){
-  // Simpan semua baris outspec mentah untuk query dinamis
+  // Debug: log header kolom yang ditemukan
+  if(rows.length > 0) console.log('[OutspecSheet] Headers:', Object.keys(rows[0]).join(', '));
+
   return rows
-    .filter(r => (r['Grade']||r['GRADE']||'').toUpperCase() === 'OUTSPEC')
-    .map(r => ({
-      tgl:      ((r['Tanggal']||r['TANGGAL']||'')).substring(0,10),
-      periode:  (r['Periode']||r['PERIODE']||'').trim(),
-      gh:       (r['Asal']||r['GH']||'').trim(),
-      varian:   (r['Item Name']||r['VARIAN']||'').trim(),
-      qty:      parseFloat(r['Qty']||r['QTY']||0),
-      kategori: (r['Kategori']||r['KATEGORI']||'').trim() || 'Belum Ada Keterangan',
-      notes:    (r['Notes']||r['NOTES']||'').trim()       || 'Belum Ada Keterangan',
-    }))
+    .filter(r => {
+      const grade = (r['GRADE']||r['Grade']||r['grade']||'').toUpperCase().trim();
+      // Jika semua baris sudah outspec (sheet khusus outspec) atau grade = OUTSPEC
+      return !grade || grade === 'OUTSPEC';
+    })
+    .map(r => {
+      // Coba berbagai kemungkinan nama kolom
+      const tgl     = (r['TANGGAL']||r['Tanggal']||r['tanggal']||'').substring(0,10);
+      const periode = (r['Periode']||r['PERIODE']||r['periode']||'').trim();
+      const gh      = (r['GH']||r['Asal']||r['ASAL']||r['gh']||'').trim();
+      const varian  = (r['VARIAN']||r['Varian']||r['Item Name']||r['varian']||'').trim();
+      const qty     = parseFloat(r['DATA KEBUN']||r['Qty']||r['QTY']||r['qty']||r['DATA_KEBUN']||0);
+      const kategori= (r['Kategori']||r['KATEGORI']||r['kategori']||'').trim() || 'Belum Ada Keterangan';
+      const notes   = (r['Notes']||r['NOTES']||r['notes']||'').trim()          || 'Belum Ada Keterangan';
+      return { tgl, periode, gh, varian, qty, kategori, notes };
+    })
     .filter(r => r.gh && r.qty > 0);
 }
 
 // Helper: aggregate outspec dari RAW_OUTSPEC sesuai filter aktif dashboard
-// mode: 'kategori' (untuk pie) | 'notes' (untuk sub-bar) | 'notes_by_kat' (untuk sub-bar filtered by kategori)
 function getOutspecFromSheet(mode, filterKategori){
   if(!RAW_OUTSPEC || !RAW_OUTSPEC.length) return [];
 
@@ -1711,31 +1718,48 @@ function getOutspecFromSheet(mode, filterKategori){
 
   // Build set GH+Periode aktif jika ada filter bulan
   let activeGPK = null;
-  if(ymRange && RAW){
-    const {ymDari, ymSampai} = ymRange;
-    const mSet = new Set(Object.keys(RAW.monthly||{})
-      .filter(mk=>{ const ym=mk.split('||')[2]||''; return ym>=ymDari&&ym<=ymSampai; })
-      .map(mk=>mk.split('||')[0]+'||'+mk.split('||')[1]));
-    const fSet = new Set(Object.keys(RAW.future||{})
-      .filter(mk=>{ const ym=mk.split('||')[2]||''; return ym>=ymDari&&ym<=ymSampai; })
-      .map(mk=>mk.split('||')[0]+'||'+mk.split('||')[1]));
-    activeGPK = new Set([...mSet,...fSet]);
+  let ymDari = null, ymSampai = null;
+  if(ymRange){
+    ymDari   = ymRange.ymDari;
+    ymSampai = ymRange.ymSampai;
+    if(RAW){
+      const mSet = new Set(Object.keys(RAW.monthly||{})
+        .filter(mk=>{ const ym=mk.split('||')[2]||''; return ym>=ymDari&&ym<=ymSampai; })
+        .map(mk=>mk.split('||')[0]+'||'+mk.split('||')[1]));
+      const fSet = new Set(Object.keys(RAW.future||{})
+        .filter(mk=>{ const ym=mk.split('||')[2]||''; return ym>=ymDari&&ym<=ymSampai; })
+        .map(mk=>mk.split('||')[0]+'||'+mk.split('||')[1]));
+      activeGPK = new Set([...mSet,...fSet]);
+    }
   }
 
   // Filter baris
   const filtered = RAW_OUTSPEC.filter(r => {
+    // Filter periode
     if(p && r.periode !== p) return false;
+    // Filter GH multi-select
     if(selGHs.length && !selGHs.includes(r.gh)) return false;
+    // Filter ownership
     if(ownershipMode !== 'all' && !ghMatchesOwnership(r.gh, ownershipMode)) return false;
-    if(activeGPK !== null && !activeGPK.has(r.gh+'||'+r.periode)) return false;
+    // Filter bulan aktif: gunakan tanggal baris ATAU GH+Periode key
+    if(ymDari && ymSampai){
+      const tglYM = r.tgl ? r.tgl.substring(0,7) : '';
+      // Cek via tanggal (prioritas) atau via GH+Periode key
+      const tglOk  = tglYM >= ymDari && tglYM <= ymSampai;
+      const gpkOk  = activeGPK ? activeGPK.has(r.gh+'||'+r.periode) : true;
+      if(!tglOk && !gpkOk) return false;
+    }
     // Filter klasifikasi via gh_records
-    if(k){
-      const rec = RAW && RAW.gh_records.find(x=>x.gh===r.gh && (!p || x.periode===r.periode));
+    if(k && RAW){
+      const rec = RAW.gh_records.find(x => x.gh===r.gh && (!p || x.periode===r.periode));
       if(rec && rec.klasifikasi !== k) return false;
     }
+    // Filter kategori (untuk sub-bar per kategori)
     if(filterKategori && r.kategori !== filterKategori) return false;
     return true;
   });
+
+  if(filtered.length === 0) console.log('[OutspecSheet] getOutspecFromSheet: 0 rows after filter — mode:', mode, 'filterKat:', filterKategori, 'RAW_OUTSPEC total:', RAW_OUTSPEC.length);
 
   // Aggregate
   const totals = {};
