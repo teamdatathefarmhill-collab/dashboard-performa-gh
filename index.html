@@ -2499,19 +2499,41 @@ function renderHarian(){
     byGH[d.gh].total += d.total;
   });
   const sumRows = Object.values(byGH).sort((a,b)=>b.total-a.total);
+
+  // Bangun set tanggal panen per GH dari SEMUA daily (tidak difilter rentang)
+  // untuk menentukan apakah masih ada panen setelah tanggal 'to'
+  const allGHTgls = {}; // {ghName: [tgl, ...]}
+  Object.entries(RAW.daily).forEach(([dk, d]) => {
+    const tgl = dk.split('||')[2]||'';
+    if(!d.gh || !tgl) return;
+    if(!allGHTgls[d.gh]) allGHTgls[d.gh] = [];
+    allGHTgls[d.gh].push(tgl);
+  });
+
   document.getElementById('dh-summary-body').innerHTML = sumRows.map((r,i)=>{
     const premPct = r.total>0 ? (r.prem/r.total*100).toFixed(1) : '0.0';
     const osPct   = r.total>0 ? (r.os/r.total*100).toFixed(1)   : '0.0';
     const osCls   = parseFloat(osPct)>15?'chip-bad':parseFloat(osPct)>8?'chip-mid':'chip-ok';
-    // Status dari gh_records
-    const ghRec = RAW && RAW.gh_records.find(x=>x.gh===r.gh);
+
+    // Status dinamis: cek apakah masih ada panen di tanggal setelah 'to'
     let statusHtml = '<span style="color:var(--hint);font-size:10px;">—</span>';
-    if(ghRec){
-      const kat = ghRec.kategori||'';
-      if(kat==='Ongoing') statusHtml = `<span class="sbadge s-ongoing" style="font-size:9px;">Ongoing</span>`;
-      else if(kat==='Belum Panen'||kat==='BELUM PANEN') statusHtml = `<span class="sbadge s-belum" style="font-size:9px;">Belum Panen</span>`;
-      else statusHtml = `<span class="sbadge s-terpenuhi" style="font-size:9px;">Selesai</span>`;
+    const ghTgls = allGHTgls[r.gh] || [];
+    const lastPanenTgl = ghTgls.length ? ghTgls.reduce((a,b)=>a>b?a:b) : '';
+    // Jika ada data panen setelah filter 'to' → Ongoing, jika tidak → Selesai
+    const todayStr = new Date().toISOString().substring(0,10);
+    const cutoff   = to || todayStr;
+    const hasAfter = ghTgls.some(t => t > cutoff);
+    // Cek juga gh_records untuk status Belum Panen
+    const ghRec = RAW && RAW.gh_records.find(x=>x.gh===r.gh);
+    const isBelum = ghRec && (ghRec.kategori==='Belum Panen'||ghRec.kategori==='BELUM PANEN');
+    if(isBelum && r.total <= 0){
+      statusHtml = `<span class="sbadge s-belum" style="font-size:9px;">Belum Panen</span>`;
+    } else if(hasAfter){
+      statusHtml = `<span class="sbadge s-ongoing" style="font-size:9px;">Ongoing</span>`;
+    } else {
+      statusHtml = `<span class="sbadge s-terpenuhi" style="font-size:9px;">Selesai</span>`;
     }
+
     return `<tr style="${i%2?'background:var(--surface2);':''}">
       <td style="padding:7px 12px;font-weight:600;">${r.gh}</td>
       <td style="padding:7px 12px;text-align:right;color:var(--green);">${fmtKg(r.prem)}</td>
@@ -2610,17 +2632,21 @@ function renderHarian(){
   let rows = '';
   sortedDays.forEach(tgl=>{
     const ghRows = byTgl[tgl].sort((a,b)=>b.total-a.total);
+    const dayPrem  = ghRows.reduce((a,r)=>a+r.prem,0);
+    const dayImp   = ghRows.reduce((a,r)=>a+r.imp,0);
+    const dayOs    = ghRows.reduce((a,r)=>a+r.os,0);
     const dayTotal = ghRows.reduce((a,r)=>a+r.total,0);
     const [y,m,dd] = tgl.split('-');
     const tglFmt = `${dd}/${m}/${y}`;
-    // Day separator row
+    // Day header row
     rows += `<tr style="background:var(--surface2);">
       <td colspan="6" style="padding:6px 12px;font-weight:700;font-size:11px;color:var(--muted);">
         📅 ${tglFmt} — <span style="color:var(--text);">Total: ${fmtKg(dayTotal)}</span>
       </td>
     </tr>`;
+    // GH rows
     ghRows.forEach((r,i)=>{
-      rows += `<tr style="${i%2===1?'background:var(--blue-bg);opacity:.7;':''}">
+      rows += `<tr style="${i%2===1?'background:var(--blue-bg);opacity:.8;':''}">
         <td style="padding:6px 12px 6px 24px;color:var(--hint);font-size:10px;">${tglFmt}</td>
         <td style="padding:6px 12px;font-weight:600;">${r.gh}</td>
         <td style="padding:6px 12px;text-align:right;color:var(--green);">${fmtKg(r.prem)}</td>
@@ -2629,6 +2655,17 @@ function renderHarian(){
         <td style="padding:6px 12px;text-align:right;font-weight:700;">${fmtKg(r.total)}</td>
       </tr>`;
     });
+    // Grade total row di bawah setiap tanggal (hanya tampil jika lebih dari 1 GH)
+    if(ghRows.length > 1){
+      rows += `<tr style="background:var(--surface3);border-top:1px dashed var(--border-med);">
+        <td style="padding:5px 12px 5px 24px;font-size:10px;color:var(--hint);font-style:italic;">Total ${tglFmt}</td>
+        <td style="padding:5px 12px;font-size:10px;font-weight:700;color:var(--muted);">—</td>
+        <td style="padding:5px 12px;text-align:right;font-weight:700;color:var(--green);font-size:10px;">${fmtKg(dayPrem)}</td>
+        <td style="padding:5px 12px;text-align:right;font-weight:700;color:var(--amber);font-size:10px;">${fmtKg(dayImp)}</td>
+        <td style="padding:5px 12px;text-align:right;font-weight:700;color:var(--red);font-size:10px;">${fmtKg(dayOs)}</td>
+        <td style="padding:5px 12px;text-align:right;font-weight:800;color:var(--text);font-size:10px;">${fmtKg(dayTotal)}</td>
+      </tr>`;
+    }
   });
   document.getElementById('dh-detail-body').innerHTML = rows || '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--hint);">Tidak ada data.</td></tr>';
 
