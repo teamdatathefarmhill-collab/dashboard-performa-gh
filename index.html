@@ -4993,25 +4993,34 @@ function renderEvaluasi(){
   // ─ Ambil entries daily sesuai filter
   const entries = getEvDailyEntries();
 
-  // ─ Hitung totals dari daily entries
-  const totPrem = entries.reduce((a,d)=>a+d.premium,0);
-  const totImp  = entries.reduce((a,d)=>a+d.imperfect,0);
-  const totOS   = entries.reduce((a,d)=>a+d.outspec,0);
-  // Realisasi + Sisa (P+I+O) = semua yang sudah terjadi, termasuk future
-  const totReal = totPrem + totImp + totOS;
-  // Realisasi aktual (hanya yang sudah terjadi, bukan future)
+  // ─ Pisahkan actual (sudah terjadi) vs future (sisa terjadwal)
   const actualEntries = entries.filter(e => !e.isFuture);
+  const futureEntries = entries.filter(e =>  e.isFuture);
+
+  // Hitung dari actual entries
   const actPrem = actualEntries.reduce((a,d)=>a+d.premium,0);
   const actImp  = actualEntries.reduce((a,d)=>a+d.imperfect,0);
   const actOS   = actualEntries.reduce((a,d)=>a+d.outspec,0);
-  const actReal = actPrem + actImp; // aktual P+I saja
+  const actReal = actPrem + actImp; // aktual P+I saja (untuk baris 2)
+
+  // Hitung dari semua entries (actual + future) untuk baris 1 Realisasi+Sisa
+  const totPrem = entries.reduce((a,d)=>a+d.premium,0);
+  const totImp  = entries.reduce((a,d)=>a+d.imperfect,0);
+  const totOS   = entries.reduce((a,d)=>a+d.outspec,0);
+
+  // Apakah bulan ini sudah ada panen aktual sama sekali?
+  const hasActualData = actualEntries.length > 0;
+
+  // totReal: hanya tampilkan jika ada actual data, kalau belum ada panen sama sekali → 0
+  // (jangan tampilkan sisa/future sebagai "realisasi" jika belum ada 1 pun panen terjadi)
+  const totReal = hasActualData ? (totPrem + totImp + totOS) : 0;
 
   // ─ Estimasi
   const estTotal = getEvEstimasi();
 
-  // ─ Deviasi
-  const devReal = totReal - estTotal;   // dengan outspec
-  const devAct  = actReal - estTotal;   // aktual P+I vs estimasi
+  // ─ Deviasi — hanya bermakna jika ada actual data
+  const devReal = hasActualData ? (totReal - estTotal) : 0;
+  const devAct  = hasActualData ? (actReal - estTotal) : 0;
 
   // ─ Label header
   const fBulan = document.getElementById('ev-bulan')?.value || '';
@@ -5029,7 +5038,7 @@ function renderEvaluasi(){
 
   // ─ Update info bar
   document.getElementById('ev-info-txt').textContent =
-    `${labelBulan}${ghLabel} · ${entries.length} entri data`;
+    `${labelBulan}${ghLabel} · ${actualEntries.length} entri data${!hasActualData ? ' (belum ada panen)' : ''}`;
   document.getElementById('ev-est-label').textContent =
     `Estimasi Panen — ${labelBulan}`;
   document.getElementById('ev-real-label').textContent =
@@ -5037,25 +5046,37 @@ function renderEvaluasi(){
 
   // ─ Update KPI baris 1 (estimasi vs real+sisa P/I/O)
   document.getElementById('ev-k-est').textContent  = fmtKg(estTotal);
-  document.getElementById('ev-k-real').textContent = fmtKg(totReal);
-  document.getElementById('ev-k-os').textContent   = fmtKg(totOS);
+  document.getElementById('ev-k-real').textContent = hasActualData ? fmtKg(totReal) : '—';
+  document.getElementById('ev-k-os').textContent   = hasActualData ? fmtKg(totOS)   : '—';
   document.getElementById('ev-k-est-sub').textContent  = estTotal > 0 ? 'dari sheet estimasi' : 'data estimasi tidak tersedia';
-  document.getElementById('ev-k-real-sub').textContent = `${entries.length} entri · P+I+O`;
-  document.getElementById('ev-k-os-sub').textContent   = totReal > 0 ? `${(totOS/totReal*100).toFixed(1)}% dari total` : '—';
+  document.getElementById('ev-k-real-sub').textContent = hasActualData
+    ? `${actualEntries.length} entri · P+I+O`
+    : 'belum ada panen di periode ini';
+  document.getElementById('ev-k-os-sub').textContent   = (hasActualData && totReal > 0)
+    ? `${(totOS/totReal*100).toFixed(1)}% dari total`
+    : '—';
 
   const devCard = document.getElementById('ev-k-dev-card');
-  document.getElementById('ev-k-dev').textContent = (devReal >= 0 ? '+' : '') + fmtKg(devReal);
-  devCard.className = 'kpi ' + (devReal >= 0 ? 'ok' : 'warn');
+  document.getElementById('ev-k-dev').textContent = hasActualData
+    ? ((devReal >= 0 ? '+' : '') + fmtKg(devReal))
+    : '—';
+  devCard.className = hasActualData
+    ? 'kpi ' + (devReal >= 0 ? 'ok' : 'warn')
+    : 'kpi';
   devCard.style.textAlign = 'center';
 
   // ─ Update KPI baris 2 (aktual P+I vs estimasi)
   document.getElementById('ev-k-est2').textContent  = fmtKg(estTotal);
-  document.getElementById('ev-k-real2').textContent = fmtKg(actReal);
-  document.getElementById('ev-k-os2').textContent   = fmtKg(actOS);
+  document.getElementById('ev-k-real2').textContent = hasActualData ? fmtKg(actReal) : '—';
+  document.getElementById('ev-k-os2').textContent   = hasActualData ? fmtKg(actOS)   : '—';
 
   const devCard2 = document.getElementById('ev-k-dev2-card');
-  document.getElementById('ev-k-dev2').textContent = (devAct >= 0 ? '+' : '') + fmtKg(devAct);
-  devCard2.className = 'kpi ' + (devAct >= 0 ? 'ok' : 'warn');
+  document.getElementById('ev-k-dev2').textContent = hasActualData
+    ? ((devAct >= 0 ? '+' : '') + fmtKg(devAct))
+    : '—';
+  devCard2.className = hasActualData
+    ? 'kpi ' + (devAct >= 0 ? 'ok' : 'warn')
+    : 'kpi';
   devCard2.style.textAlign = 'center';
 
   // ─ Tabel per varian
@@ -5063,9 +5084,11 @@ function renderEvaluasi(){
   renderEvCharts(entries);
 
   // ─ Footer
-  const ghCount = new Set(entries.map(e=>e.gh)).size;
+  const ghCount = new Set(actualEntries.map(e=>e.gh)).size;
   document.getElementById('ev-footer').textContent =
-    `${entries.length} entri · ${ghCount} GH · ${labelBulan}`;
+    hasActualData
+      ? `${actualEntries.length} entri · ${ghCount} GH · ${labelBulan}`
+      : `Belum ada panen di ${labelBulan} · Estimasi tersedia: ${fmtKg(estTotal)}`;
 }
 
 function renderEvVarianTable(entries){
