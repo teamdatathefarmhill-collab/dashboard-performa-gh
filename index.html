@@ -3829,25 +3829,33 @@ function render(){
   // Hitung estimasi dari sheet estimasi untuk GH yang sedang tampil
   function getEstFromSheet(){
     if(!RAW_ESTIMASI || !RAW_ESTIMASI.data || !RAW_ESTIMASI.data.length) return 0;
-    const GH_WHITELIST = ['tohudan','sawahan','colomadu','bergas'];
+
     // Tentukan filter bulan dari ymRange
     let targetMonth = null;
     if(ymRange){
       const mn = parseInt(ymRange.ymDari.split('-')[1]);
       targetMonth = mn;
     }
-    // Set GH+Periode aktif
+
+    // Gunakan ghList sebagai acuan GH yang sedang tampil
+    // ghList sudah mencerminkan semua filter aktif (GH selector, ownership, periode, dst)
+    // Buat set GH+Periode dari ghList
+    const activeGHs = new Set(ghList.map(r => (r.gh||'').toLowerCase()));
     const activeGPs = hasSpecificGHFilter
-      ? new Set(ghList.map(r=>(r.gh+'||'+r.periode).toLowerCase()))
+      ? new Set(ghList.map(r => (r.gh+'||'+r.periode).toLowerCase()))
       : null;
+
     let total = 0;
-    RAW_ESTIMASI.data.forEach(r=>{
-      if(!GH_WHITELIST.some(w=>(r.gh||'').toLowerCase().includes(w))) return;
-      if(ownershipMode !== 'all' && !ghMatchesOwnership(r.gh, ownershipMode)) return;
+    RAW_ESTIMASI.data.forEach(r => {
+      const ghLower = (r.gh||'').toLowerCase();
+      // Harus GH yang sedang tampil
+      if(!activeGHs.has(ghLower)) return;
+      // Jika filter GH spesifik, cocokkan juga periode
       if(activeGPs){
-        const key=(r.gh+'||'+r.periode).toLowerCase();
+        const key = (r.gh+'||'+r.periode).toLowerCase();
         if(!activeGPs.has(key)) return;
       }
+      // Filter bulan jika aktif
       if(targetMonth !== null){
         const rowMonth = MONTH_EN_MAP[r.month] || 0;
         if(rowMonth !== targetMonth) return;
