@@ -1568,6 +1568,7 @@ const AUTO_REFRESH_MS = 5 * 60 * 1000; // auto refresh setiap 5 menit
 let RAW = null;
 let RAW_SANITASI = null;
 let RAW_ESTIMASI = null;
+let RAW_OUTSPEC  = null; // sheet outspec baru (gid=1180138925)
 let charts = {};
 
 // ── HELPERS ──────────────────────────────────────────────────────────────────
@@ -1680,7 +1681,80 @@ function getEstimasiTotal(ghList, fPeriode, activeQuick){
   return total > 0 ? total : null;
 }
 
-// ── SANITASI DATASET ──────────────────────────────────────────────────────────
+// ── OUTSPEC DATASET (dari sheet baru gid=1180138925) ─────────────────────────
+// Kolom: Tanggal, Periode, Asal (=GH), Item Name (=Varian), Grade, Qty, Kategori, Notes
+function buildOutspecDataset(rows){
+  // Simpan semua baris outspec mentah untuk query dinamis
+  return rows
+    .filter(r => (r['Grade']||r['GRADE']||'').toUpperCase() === 'OUTSPEC')
+    .map(r => ({
+      tgl:      ((r['Tanggal']||r['TANGGAL']||'')).substring(0,10),
+      periode:  (r['Periode']||r['PERIODE']||'').trim(),
+      gh:       (r['Asal']||r['GH']||'').trim(),
+      varian:   (r['Item Name']||r['VARIAN']||'').trim(),
+      qty:      parseFloat(r['Qty']||r['QTY']||0),
+      kategori: (r['Kategori']||r['KATEGORI']||'').trim() || 'Belum Ada Keterangan',
+      notes:    (r['Notes']||r['NOTES']||'').trim()       || 'Belum Ada Keterangan',
+    }))
+    .filter(r => r.gh && r.qty > 0);
+}
+
+// Helper: aggregate outspec dari RAW_OUTSPEC sesuai filter aktif dashboard
+// mode: 'kategori' (untuk pie) | 'notes' (untuk sub-bar) | 'notes_by_kat' (untuk sub-bar filtered by kategori)
+function getOutspecFromSheet(mode, filterKategori){
+  if(!RAW_OUTSPEC || !RAW_OUTSPEC.length) return [];
+
+  const p       = document.getElementById('f-periode')?.value || '';
+  const k       = document.getElementById('f-klas')?.value    || '';
+  const selGHs  = getSelectedGHs();
+  const ymRange = getActiveYMRange();
+
+  // Build set GH+Periode aktif jika ada filter bulan
+  let activeGPK = null;
+  if(ymRange && RAW){
+    const {ymDari, ymSampai} = ymRange;
+    const mSet = new Set(Object.keys(RAW.monthly||{})
+      .filter(mk=>{ const ym=mk.split('||')[2]||''; return ym>=ymDari&&ym<=ymSampai; })
+      .map(mk=>mk.split('||')[0]+'||'+mk.split('||')[1]));
+    const fSet = new Set(Object.keys(RAW.future||{})
+      .filter(mk=>{ const ym=mk.split('||')[2]||''; return ym>=ymDari&&ym<=ymSampai; })
+      .map(mk=>mk.split('||')[0]+'||'+mk.split('||')[1]));
+    activeGPK = new Set([...mSet,...fSet]);
+  }
+
+  // Filter baris
+  const filtered = RAW_OUTSPEC.filter(r => {
+    if(p && r.periode !== p) return false;
+    if(selGHs.length && !selGHs.includes(r.gh)) return false;
+    if(ownershipMode !== 'all' && !ghMatchesOwnership(r.gh, ownershipMode)) return false;
+    if(activeGPK !== null && !activeGPK.has(r.gh+'||'+r.periode)) return false;
+    // Filter klasifikasi via gh_records
+    if(k){
+      const rec = RAW && RAW.gh_records.find(x=>x.gh===r.gh && (!p || x.periode===r.periode));
+      if(rec && rec.klasifikasi !== k) return false;
+    }
+    if(filterKategori && r.kategori !== filterKategori) return false;
+    return true;
+  });
+
+  // Aggregate
+  const totals = {};
+  filtered.forEach(r => {
+    const key = mode === 'kategori' ? r.kategori : r.notes;
+    totals[key] = (totals[key]||0) + r.qty;
+  });
+  return Object.entries(totals).sort((a,b)=>b[1]-a[1]);
+}
+
+// Untuk warna sub-bar: map notes → kategori induk
+function getNotesKategoriMap(){
+  if(!RAW_OUTSPEC || !RAW_OUTSPEC.length) return {};
+  const map = {};
+  RAW_OUTSPEC.forEach(r => { if(r.notes && r.kategori) map[r.notes] = r.kategori; });
+  return map;
+}
+
+
 // normalizeGH: lowercase+trim untuk matching nama GH lintas sheet
 // (sheet sanitasi pakai "GREENHOUSE", sheet panen pakai "GH")
 function normalizeGH(name){ return (name||'').trim().toLowerCase(); }
@@ -1959,6 +2033,7 @@ async function loadData(isRefresh=false){
   const CACHE_KEY_PANEN    = 'gh_cache_panen';
   const CACHE_KEY_SANITASI = 'gh_cache_sanitasi';
   const CACHE_KEY_ESTIMASI = 'gh_cache_estimasi';
+  const CACHE_KEY_OUTSPEC  = 'gh_cache_outspec';
   const CACHE_TTL_MS       = 5 * 60 * 1000; // 5 menit
 
   function saveCache(key, text){
@@ -1998,6 +2073,11 @@ async function loadData(isRefresh=false){
       if(cachedEstimasi && cachedEstimasi.length > 10 && !cachedEstimasi.trim().startsWith('<')){
         try { RAW_ESTIMASI = buildEstimasiDataset(parseCSV(cachedEstimasi)); } catch(e){}
       }
+      // Load outspec from cache if available
+      const cachedOutspec = isRefresh ? null : loadCache(CACHE_KEY_OUTSPEC);
+      if(cachedOutspec && cachedOutspec.length > 10 && !cachedOutspec.trim().startsWith('<')){
+        try { RAW_OUTSPEC = buildOutspecDataset(parseCSV(cachedOutspec)); } catch(e){}
+      }
       initFilters(prevP, prevK, prevGHs);
       initEvaluasiFilters();
       // Restore status filter and bulan mode after refresh
@@ -2028,28 +2108,31 @@ async function loadData(isRefresh=false){
 
     // ── Fetch kedua sheet SECARA PARALEL ─────────────────────────────────────
     console.log('[loadData] Fetching panen + sanitasi in parallel...');
-    const panenUrl = PROXY_URL + '?t=' + Date.now();
-    const sanUrl   = PROXY_URL + '?type=sanitasi&t=' + Date.now();
-    const estUrl   = PROXY_URL + '?type=estimasi&t=' + Date.now();
+    const panenUrl  = PROXY_URL + '?t=' + Date.now();
+    const sanUrl    = PROXY_URL + '?type=sanitasi&t=' + Date.now();
+    const estUrl    = PROXY_URL + '?type=estimasi&t=' + Date.now();
+    const outspecUrl= PROXY_URL + '?type=outspec&t='  + Date.now();
 
     const controller = new AbortController();
     const timeoutId  = setTimeout(()=>controller.abort(), 35000);
 
-    let text = '', sanText = '', estText = '';
+    let text = '', sanText = '', estText = '', osText = '';
     try {
-      const [res, sanRes, estRes] = await Promise.all([
-        fetch(panenUrl,  { redirect:'follow', cache:'no-cache', signal: controller.signal }),
-        fetch(sanUrl,    { redirect:'follow', cache:'no-cache', signal: controller.signal }),
-        fetch(estUrl,    { redirect:'follow', cache:'no-cache', signal: controller.signal }),
+      const [res, sanRes, estRes, osRes] = await Promise.all([
+        fetch(panenUrl,   { redirect:'follow', cache:'no-cache', signal: controller.signal }),
+        fetch(sanUrl,     { redirect:'follow', cache:'no-cache', signal: controller.signal }),
+        fetch(estUrl,     { redirect:'follow', cache:'no-cache', signal: controller.signal }),
+        fetch(outspecUrl, { redirect:'follow', cache:'no-cache', signal: controller.signal }),
       ]);
       clearTimeout(timeoutId);
       if(!res.ok) throw new Error('HTTP '+res.status+' dari Apps Script (panen)');
-      [text, sanText, estText] = await Promise.all([
+      [text, sanText, estText, osText] = await Promise.all([
         res.text(),
         sanRes.ok ? sanRes.text() : Promise.resolve(''),
         estRes.ok ? estRes.text() : Promise.resolve(''),
+        osRes.ok  ? osRes.text()  : Promise.resolve(''),
       ]);
-      console.log('Fetch OK — panen:', text.length, 'chars | sanitasi:', sanText.length, 'chars | estimasi:', estText.length, 'chars');
+      console.log('Fetch OK — panen:', text.length, 'chars | sanitasi:', sanText.length, 'chars | estimasi:', estText.length, 'chars | outspec:', osText.length, 'chars');
     } catch(fetchErr){
       clearTimeout(timeoutId);
       if(fetchErr.name==='AbortError') throw new Error('Timeout 35 detik — Apps Script tidak merespons. Coba refresh.');
@@ -2068,6 +2151,7 @@ async function loadData(isRefresh=false){
     saveCache(CACHE_KEY_PANEN, text);
     if(sanText && sanText.length > 10 && !sanText.trim().startsWith('<')) saveCache(CACHE_KEY_SANITASI, sanText);
     if(estText && estText.length > 10 && !estText.trim().startsWith('<')) saveCache(CACHE_KEY_ESTIMASI, estText);
+    if(osText  && osText.length  > 10 && !osText.trim().startsWith('<'))  saveCache(CACHE_KEY_OUTSPEC,  osText);
 
     RAW = buildDataset(rows);
 
@@ -2079,6 +2163,11 @@ async function loadData(isRefresh=false){
     if(estText && estText.length > 10 && !estText.trim().startsWith('<')){
       try { RAW_ESTIMASI = buildEstimasiDataset(parseCSV(estText)); }
       catch(estErr){ console.warn('Estimasi parse gagal:', estErr.message); }
+    }
+
+    if(osText && osText.length > 10 && !osText.trim().startsWith('<')){
+      try { RAW_OUTSPEC = buildOutspecDataset(parseCSV(osText)); }
+      catch(osErr){ console.warn('Outspec sheet parse gagal:', osErr.message); }
     }
 
     initFilters(prevP, prevK, prevGHs);
@@ -2986,72 +3075,97 @@ function showOsSubDetail(kat, color){
   const resetEl = document.getElementById('os-pie-reset');
   if(!subEl) return;
 
-  // Mode "semua": kat === null → tampilkan semua Note lintas kategori
+  const useNewOutspec = RAW_OUTSPEC && RAW_OUTSPEC.length > 0;
+
+  // Mode "semua": kat === null → tampilkan semua notes lintas kategori
   if(!kat){
     if(titleEl) titleEl.textContent = 'Semua Sub-Keterangan';
     if(resetEl) resetEl.style.display = 'none';
-    const allEntries = getOutspecAggregated('outspec_note_map');
-    renderOsSubBars(subEl, allEntries, '#e24b4a'); // warna seragam merah
+    const allEntries = useNewOutspec
+      ? getOutspecFromSheet('notes')
+      : getOutspecAggregated('outspec_note_map');
+    const notesKatMap = useNewOutspec ? getNotesKategoriMap() : {};
+    renderOsSubBars(subEl, allEntries, null, notesKatMap);
     return;
   }
 
   if(titleEl) titleEl.textContent = 'Sub-keterangan: ' + kat;
   if(resetEl) resetEl.style.display = 'block';
 
-  // Aggregate Note subs for this specific Notes category using notes_note_map
-  const totals = {};
-  if(RAW && RAW.notes_note_map){
-    const p    = document.getElementById('f-periode').value;
-    const k    = document.getElementById('f-klas').value;
-    const selG = getSelectedGHs();
+  const entries = useNewOutspec
+    ? getOutspecFromSheet('notes', kat)
+    : (() => {
+        // Fallback ke lama
+        const totals = {};
+        if(RAW && RAW.notes_note_map){
+          const p    = document.getElementById('f-periode').value;
+          const k    = document.getElementById('f-klas').value;
+          const selG = getSelectedGHs();
+          const sdYmRange = getActiveYMRange();
+          let sdActiveGPK = null;
+          if(sdYmRange && RAW){
+            const {ymDari, ymSampai} = sdYmRange;
+            const mSet = new Set(Object.keys(RAW.monthly||{}).filter(mk=>{ const ym=mk.split('||')[2]||''; return ym>=ymDari&&ym<=ymSampai; }).map(mk=>mk.split('||')[0]+'||'+mk.split('||')[1]));
+            const fSet = new Set(Object.keys(RAW.future||{}).filter(mk=>{ const ym=mk.split('||')[2]||''; return ym>=ymDari&&ym<=ymSampai; }).map(mk=>mk.split('||')[0]+'||'+mk.split('||')[1]));
+            sdActiveGPK = new Set([...mSet,...fSet]);
+          }
+          Object.entries(RAW.notes_note_map).forEach(([mk, cats])=>{
+            const [gh, periode] = mk.split('||');
+            const rec = RAW.gh_records.find(r=>r.gh===gh&&r.periode===periode);
+            if(!rec) return;
+            if(p && rec.periode!==p) return;
+            if(k && rec.klasifikasi!==k) return;
+            if(selG.length && !selG.includes(rec.gh)) return;
+            if(sdActiveGPK !== null && !sdActiveGPK.has(gh+'||'+periode)) return;
+            const subs = cats[kat];
+            if(!subs) return;
+            Object.entries(subs).forEach(([note,val])=>{
+              totals[note] = (totals[note]||0)+val;
+            });
+          });
+        }
+        return Object.entries(totals).sort((a,b)=>b[1]-a[1]);
+      })();
 
-    // ── Fix: bangun set GH+Periode aktif sesuai filter YM ──
-    const sdYmRange = getActiveYMRange();
-    let sdActiveGPK = null;
-    if(sdYmRange && RAW){
-      const {ymDari, ymSampai} = sdYmRange;
-      const mSet = new Set(Object.keys(RAW.monthly||{}).filter(mk=>{ const ym=mk.split('||')[2]||''; return ym>=ymDari&&ym<=ymSampai; }).map(mk=>mk.split('||')[0]+'||'+mk.split('||')[1]));
-      const fSet = new Set(Object.keys(RAW.future||{}).filter(mk=>{ const ym=mk.split('||')[2]||''; return ym>=ymDari&&ym<=ymSampai; }).map(mk=>mk.split('||')[0]+'||'+mk.split('||')[1]));
-      sdActiveGPK = new Set([...mSet,...fSet]);
-    }
-
-    Object.entries(RAW.notes_note_map).forEach(([mk, cats])=>{
-      const [gh, periode] = mk.split('||');
-      const rec = RAW.gh_records.find(r=>r.gh===gh&&r.periode===periode);
-      if(!rec) return;
-      if(p && rec.periode!==p) return;
-      if(k && rec.klasifikasi!==k) return;
-      if(selG.length && !selG.includes(rec.gh)) return;
-      if(sdActiveGPK !== null && !sdActiveGPK.has(gh+'||'+periode)) return;
-      const subs = cats[kat];
-      if(!subs) return;
-      Object.entries(subs).forEach(([note,val])=>{
-        totals[note] = (totals[note]||0)+val;
-      });
-    });
-  }
-
-  const entries = Object.entries(totals).sort((a,b)=>b[1]-a[1]);
-  renderOsSubBars(subEl, entries, color || '#e24b4a');
+  renderOsSubBars(subEl, entries, color, {});
 }
 
-function renderOsSubBars(subEl, entries, color){
+function renderOsSubBars(subEl, entries, defaultColor, notesKatMap){
   if(!entries || !entries.length){
     subEl.innerHTML = '<div style="font-size:11px;color:var(--hint);font-style:italic;">Tidak ada data</div>';
     return;
   }
+
+  // Warna kategori (sama dengan pie)
+  const KATEGORI_COLORS = {
+    'Crack':                '#e24b4a',
+    'Brix':                 '#ef9f27',
+    'Visual':               '#378add',
+    'Tanaman Layu':         '#9c59c2',
+    'Tanaman Layu Kering':  '#9c59c2',
+    'Busuk':                '#d85a30',
+    'Belum Ada Keterangan': '#9ca3af',
+  };
+
   const maxVal = entries[0][1]||1;
   const total  = entries.reduce((a,[,v])=>a+v,0);
   subEl.innerHTML = entries.map(([note,val])=>{
     const w   = (val/maxVal*90).toFixed(1);
     const pct = total ? (val/total*100).toFixed(0) : 0;
+    // Tentukan warna bar dari kategori induk (jika pakai sheet baru) atau fallback default
+    const kat  = notesKatMap ? notesKatMap[note] : null;
+    const barColor = kat
+      ? (KATEGORI_COLORS[kat] || defaultColor || '#e24b4a')
+      : (defaultColor || '#e24b4a');
+    // Label kategori kecil di samping notes jika pakai sheet baru
+    const katLabel = kat ? `<span style="font-size:9px;color:${barColor};font-weight:700;margin-left:4px;opacity:.8;">[${kat}]</span>` : '';
     return `<div style="margin-bottom:6px;">
-      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:2px;">
-        <span style="font-weight:500;">${note}</span>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:2px;flex-wrap:wrap;gap:2px;">
+        <span style="font-weight:500;">${note}${katLabel}</span>
         <span style="font-weight:700;">${fmtKg(val)} <span style="color:var(--hint);font-weight:400;">(${pct}%)</span></span>
       </div>
       <div style="background:var(--surface2);border-radius:3px;height:5px;overflow:hidden;">
-        <div style="width:${Math.max(w,3)}%;height:100%;border-radius:3px;background:#e24b4a;opacity:.8;"></div>
+        <div style="width:${Math.max(w,3)}%;height:100%;border-radius:3px;background:${barColor};opacity:.85;"></div>
       </div>
     </div>`;
   }).join('');
@@ -4163,21 +4277,40 @@ function render(){
   // For simplicity show Note (sub-keterangan) bars as main outspec bars
 
   // ── OUTSPEC PIE CHART + SUB DETAIL ──────────────────────────────────────────
-  const osKatEntries = getOutspecAggregated('outspec_notes_map');
-  const osAllSubs    = getOutspecAggregated('outspec_note_map'); // semua sub, lintas kategori
-  const pieColors    = ['#ef9f27','#e24b4a','#378add','#5aac1a','#d85a30','#9c59c2','#1d9e75'];
+  // Gunakan RAW_OUTSPEC (sheet baru) jika tersedia, fallback ke outspec_notes_map lama
+  const useNewOutspec = RAW_OUTSPEC && RAW_OUTSPEC.length > 0;
+
+  // Kategori warna — konsisten antara pie dan sub-bar
+  const KATEGORI_COLORS = {
+    'Crack':                '#e24b4a',
+    'Brix':                 '#ef9f27',
+    'Visual':               '#378add',
+    'Tanaman Layu':         '#9c59c2',
+    'Tanaman Layu Kering':  '#9c59c2',
+    'Busuk':                '#d85a30',
+    'Belum Ada Keterangan': '#9ca3af',
+  };
+  const DEFAULT_PIE_COLORS = ['#e24b4a','#ef9f27','#378add','#5aac1a','#d85a30','#9c59c2','#1d9e75','#185fa5','#9ca3af'];
+
+  const osKatEntries = useNewOutspec
+    ? getOutspecFromSheet('kategori')
+    : getOutspecAggregated('outspec_notes_map');
 
   destroyChart('c-os-pie');
   const pieCvs = document.getElementById('c-os-pie');
   if(osKatEntries.length && pieCvs){
     const ctxPie = pieCvs.getContext('2d');
+    // Assign warna per kategori
+    const pieColorsArr = osKatEntries.map(([kat], i) =>
+      KATEGORI_COLORS[kat] || DEFAULT_PIE_COLORS[i % DEFAULT_PIE_COLORS.length]);
+
     charts['c-os-pie'] = new Chart(ctxPie, {
       type: 'pie',
       data: {
         labels: osKatEntries.map(([k])=>k),
         datasets:[{
           data: osKatEntries.map(([,v])=>v),
-          backgroundColor: pieColors.slice(0, osKatEntries.length),
+          backgroundColor: pieColorsArr,
           borderWidth: 2, borderColor: '#fff', hoverOffset: 8,
         }]
       },
@@ -4193,12 +4326,12 @@ function render(){
       },
     });
 
-    // Click handler - filter sub-bars ke kategori yang diklik
+    // Click handler — filter sub-bar ke kategori yang diklik
     pieCvs.onclick = function(evt){
       const pts = charts['c-os-pie'].getElementsAtEventForMode(evt,'nearest',{intersect:true},true);
       if(!pts.length) return;
       const i = pts[0].index;
-      showOsSubDetail(osKatEntries[i][0], pieColors[i%pieColors.length]);
+      showOsSubDetail(osKatEntries[i][0], pieColorsArr[i]);
     };
 
     // Legend
@@ -4207,14 +4340,14 @@ function render(){
       const tot = osKatEntries.reduce((a,[,v])=>a+v,0);
       legEl.innerHTML = osKatEntries.map(([kat,val],i)=>`
         <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted);cursor:pointer;"
-          onclick="showOsSubDetail('${kat}','${pieColors[i%pieColors.length]}')">
-          <div style="width:9px;height:9px;border-radius:2px;background:${pieColors[i%pieColors.length]};flex-shrink:0"></div>
+          onclick="showOsSubDetail('${kat}','${pieColorsArr[i]}')">
+          <div style="width:9px;height:9px;border-radius:2px;background:${pieColorsArr[i]};flex-shrink:0"></div>
           ${kat} ${tot?(val/tot*100).toFixed(0):0}%
         </div>`).join('');
     }
   }
 
-  // Default: tampilkan semua sub-keterangan (tanpa filter kategori)
+  // Default: tampilkan semua sub-keterangan
   showOsSubDetail(null, null);
 
   // ── LAST PANEN DATE (only from GH that are SELESAI/HABIS) ──────────────────
