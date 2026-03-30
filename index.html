@@ -968,8 +968,15 @@ body {
         <option value="Ongoing">Ongoing</option>
         <option value="Belum Panen">Belum Panen</option>
         <option value="Terpenuhi">Selesai ✓</option>
-        <option value="Tidak Terpenuhi">Tidak Terpenuhi</option>
+        <option value="Tidak Terpenuhi">Selesai (Tidak Penuh)</option>
       </select></div>
+      <!-- Toggle Kepemilikan -->
+      <div style="display:flex;gap:2px;background:var(--surface2);border:1px solid var(--border-med);border-radius:8px;padding:3px;align-items:center;">
+        <span style="font-size:10px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.04em;padding:0 6px;">Kepemilikan</span>
+        <button id="own-all"  onclick="setOwnership('all')"   style="font-size:10px;padding:3px 9px;border-radius:6px;border:none;background:var(--blue);color:#fff;font-weight:700;cursor:pointer;transition:all .15s;">Semua</button>
+        <button id="own-tf"   onclick="setOwnership('tf')"    style="font-size:10px;padding:3px 9px;border-radius:6px;border:none;background:transparent;color:var(--muted);font-weight:600;cursor:pointer;transition:all .15s;">The Farmhill</button>
+        <button id="own-mitra" onclick="setOwnership('mitra')" style="font-size:10px;padding:3px 9px;border-radius:6px;border:none;background:transparent;color:var(--muted);font-weight:600;cursor:pointer;transition:all .15s;">Mitra</button>
+      </div>
       <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;" id="quick-bulan-btns">
         <button class="qbtn" onclick="setQuickBulan('prev')" title="Bulan lalu">← Lalu</button>
         <button class="qbtn" onclick="setQuickBulan('this')" title="Bulan ini">Ini</button>
@@ -1042,12 +1049,13 @@ body {
           <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;border-bottom:2px solid var(--border-med);">% Premium</th>
           <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;border-bottom:2px solid var(--border-med);">% Imperfect</th>
           <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;border-bottom:2px solid var(--border-med);">% Outspec</th>
+          <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;border-bottom:2px solid var(--border-med);">Avg Gramasi</th>
           <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;border-bottom:2px solid var(--border-med);">Status</th>
           <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;border-bottom:2px solid var(--border-med);">% Tercapai</th>
         </tr>
       </thead>
       <tbody id="tbl-periode-body">
-        <tr><td colspan="13" style="text-align:center;padding:28px;color:var(--hint);font-size:11px;">Memuat data...</td></tr>
+        <tr><td colspan="14" style="text-align:center;padding:28px;color:var(--hint);font-size:11px;">Memuat data...</td></tr>
       </tbody>
     </table>
   </div>
@@ -1239,6 +1247,13 @@ body {
           style="border:none;background:transparent;font-size:11px;color:var(--text);font-weight:600;cursor:pointer;outline:none;">
       </div>
       <button class="rbtn" onclick="resetDHFilter()">↺ Reset</button>
+      <!-- Toggle Kepemilikan -->
+      <div style="display:flex;gap:2px;background:var(--surface2);border:1px solid var(--border-med);border-radius:8px;padding:3px;align-items:center;">
+        <span style="font-size:10px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.04em;padding:0 6px;">Kepemilikan</span>
+        <button id="dh-own-all"   onclick="setDHOwnership('all')"   style="font-size:10px;padding:3px 9px;border-radius:6px;border:none;background:var(--blue);color:#fff;font-weight:700;cursor:pointer;transition:all .15s;">Semua</button>
+        <button id="dh-own-tf"    onclick="setDHOwnership('tf')"    style="font-size:10px;padding:3px 9px;border-radius:6px;border:none;background:transparent;color:var(--muted);font-weight:600;cursor:pointer;transition:all .15s;">The Farmhill</button>
+        <button id="dh-own-mitra" onclick="setDHOwnership('mitra')" style="font-size:10px;padding:3px 9px;border-radius:6px;border:none;background:transparent;color:var(--muted);font-weight:600;cursor:pointer;transition:all .15s;">Mitra</button>
+      </div>
     </div>
   </div>
 
@@ -1361,6 +1376,13 @@ body {
           <select id="ev-gh" onchange="renderEvaluasi()" style="border:none;background:transparent;font-size:11px;color:var(--text);font-weight:600;cursor:pointer;outline:none;max-width:160px;">
             <option value="">Semua GH</option>
           </select>
+        </div>
+        <!-- Toggle Kepemilikan -->
+        <div style="display:flex;gap:2px;background:var(--surface2);border:1px solid var(--border-med);border-radius:8px;padding:3px;align-items:center;">
+          <span style="font-size:10px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.04em;padding:0 6px;">Kepemilikan</span>
+          <button id="ev-own-all"   onclick="setEvOwnership('all')"   style="font-size:10px;padding:3px 9px;border-radius:6px;border:none;background:var(--blue);color:#fff;font-weight:700;cursor:pointer;transition:all .15s;">Semua</button>
+          <button id="ev-own-tf"    onclick="setEvOwnership('tf')"    style="font-size:10px;padding:3px 9px;border-radius:6px;border:none;background:transparent;color:var(--muted);font-weight:600;cursor:pointer;transition:all .15s;">The Farmhill</button>
+          <button id="ev-own-mitra" onclick="setEvOwnership('mitra')" style="font-size:10px;padding:3px 9px;border-radius:6px;border:none;background:transparent;color:var(--muted);font-weight:600;cursor:pointer;transition:all .15s;">Mitra</button>
         </div>
       </div>
     </div>
@@ -2380,6 +2402,7 @@ function renderHarian(){
     if(from && tgl < from) return false;
     if(to   && tgl > to)   return false;
     if(selGHs.length && !selGHs.includes(d.gh)) return false;
+    if(dhOwnershipMode !== 'all' && !ghMatchesOwnership(d.gh, dhOwnershipMode)) return false;
     return true;
   }).map(([dk,d])=>({...d, tgl: dk.split('||')[2]}));
 
@@ -2679,6 +2702,8 @@ function getFiltered(){
   if(p) rows = rows.filter(r => r.periode     === p);
   if(k) rows = rows.filter(r => r.klasifikasi === k);
   if(selGHs.length) rows = rows.filter(r => selGHs.includes(r.gh));
+  // Filter kepemilikan
+  if(ownershipMode !== 'all') rows = rows.filter(r => ghMatchesOwnership(r.gh, ownershipMode));
 
   // Filter status/kategori
   if(kat){
@@ -2953,6 +2978,19 @@ function renderPeriodeTable(){
     return {prem, imp, os, total};
   }
 
+  // ── Avg Gramasi per GH+Periode dari _rawRows ─────────────────────────────
+  function getAvgGramasiForGH(gh, periode){
+    if(!_rawRows || !_rawRows.length) return 0;
+    let sum = 0, count = 0;
+    _rawRows.forEach(r => {
+      if((r['GH']||'').trim() !== gh) return;
+      if((r['Periode']||'').trim() !== periode) return;
+      const g = parseFloat(r['Rata_Gramasi']||r['Rata Gramasi']||r['RATA_GRAMASI']||0);
+      if(g > 0){ sum += g; count++; }
+    });
+    return count > 0 ? sum / count : 0;
+  }
+
   // ── Filter gh_records sesuai filter UI ──────────────────────────────────
   const matchKlas = r => !fKlas || r.klasifikasi === fKlas;
   let filteredRecs = RAW.gh_records.filter(r=>{
@@ -3070,6 +3108,7 @@ function renderPeriodeTable(){
       pPremPct, pImpPct, pOsPct,
       pop_awal:  curr.pop      || 0,
       pop_akhir: curr.pop_akhir|| 0,
+      avgGramasi: getAvgGramasiForGH(gh, curr.periode),
     });
   });
 
@@ -3081,7 +3120,7 @@ function renderPeriodeTable(){
   });
 
   if(!rows.length){
-    tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:20px;color:var(--hint);font-size:11px;">Tidak ada data GH untuk filter yang dipilih.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="14" style="text-align:center;padding:20px;color:var(--hint);font-size:11px;">Tidak ada data GH untuk filter yang dipilih.</td></tr>';
     return;
   }
 
@@ -3192,6 +3231,12 @@ function renderPeriodeTable(){
       <td style="text-align:center;padding:4px 9px;">${r.cPanen > 0 ? premCell : '<span class="tbl-pct-chip chip-neu">—</span>'}</td>
       <td style="text-align:center;padding:4px 9px;">${r.cPanen > 0 ? impCell  : '<span class="tbl-pct-chip chip-neu">—</span>'}</td>
       <td style="text-align:center;padding:4px 9px;">${r.cPanen > 0 ? osPctCell(r.cOsPct, r.pOsPct) : '<span class="tbl-pct-chip chip-neu">—</span>'}</td>
+      <td style="text-align:center;padding:4px 9px;">${(()=>{
+        if(r.avgGramasi <= 0) return '<span style="color:var(--hint);">—</span>';
+        const g = r.avgGramasi.toFixed(0);
+        const cls = r.avgGramasi >= 250 ? 'color:var(--green);font-weight:700;' : r.avgGramasi < 180 ? 'color:var(--red);font-weight:700;' : 'color:var(--muted);font-weight:600;';
+        return `<span style="${cls}">${g} g</span>`;
+      })()}</td>
       <td style="text-align:center;padding:4px 9px;">${statusHtml}</td>
       <td style="text-align:center;padding:4px 9px;">${r.cPanen > 0 ? pctEstHtml : '<span class="tbl-pct-chip chip-neu">—</span>'}</td>
     </tr>`;
@@ -3631,9 +3676,13 @@ function render(){
   const estAkhirBulan = totSelesaiBulan + totSisaBulan;
 
   // totEst: estimasi yang dipakai untuk % Tercapai & progress bar
+  // Kalau filter GH spesifik aktif → gunakan estimasi GH tersebut saja (totEstGH)
   // Kalau filter bulan aktif (Lalu/Ini/Depan) → pakai estAkhirBulan (sudah include mitra, ~54T)
   // Kalau filter "Semua" → pakai totEstGH (populasi × 1kg dari GH yang tampil)
-  const totEst = (ymRange && estAkhirBulan > 0) ? estAkhirBulan : totEstGH;
+  const selGHsForEst = getSelectedGHs();
+  const totalGHOptsForEst = document.querySelectorAll('#gh-multi-list input[type=checkbox]').length;
+  const hasSpecificGHFilter = selGHsForEst.length > 0 && selGHsForEst.length < totalGHOptsForEst;
+  const totEst = hasSpecificGHFilter ? totEstGH : ((ymRange && estAkhirBulan > 0) ? estAkhirBulan : totEstGH);
   const pctTercapai = totEst ? totSelesai/totEst*100 : 0;
 
   // Kelas warna: bandingkan vs estimasi total
@@ -3720,7 +3769,7 @@ function render(){
     } else if(isSelesai && pBar2 >= 85){
       sClass='s-terpenuhi'; sLabel='Selesai ✓'; barColor='#378add';
     } else {
-      sClass='s-tidak'; sLabel='Tidak Terpenuhi'; barColor='#f5a027';
+      sClass='s-terpenuhi'; sLabel='Selesai'; barColor='#378add';
     }
     let etaHTML = '';
     if(kat==='Belum Panen'||kat==='BELUM PANEN'){
@@ -4598,6 +4647,7 @@ function getEvDailyEntries(){
       const ym  = tgl.substring(0,7);
       if(fBulan && ym !== fBulan) return;
       if(fGH    && d.gh !== fGH) return;
+      if(evOwnershipMode !== 'all' && !ghMatchesOwnership(d.gh, evOwnershipMode)) return;
       entries.push({...d, tgl});
     });
   } else {
@@ -4609,6 +4659,7 @@ function getEvDailyEntries(){
       if(from && tgl < from) return;
       if(to   && tgl > to)   return;
       if(fGH  && d.gh !== fGH) return;
+      if(evOwnershipMode !== 'all' && !ghMatchesOwnership(d.gh, evOwnershipMode)) return;
       entries.push({...d, tgl});
     });
   }
@@ -5022,6 +5073,115 @@ function renderEvCharts(entries){
       }
     });
   }
+}
+
+// ── KEPEMILIKAN FILTER ────────────────────────────────────────────────────────
+// GH Mitra: bergas 1-7, safaritex, densus, cangkirang
+// GH The Farmhill: tohudan, sawahan, colomadu, bergas 8+
+
+const MITRA_KEYWORDS = ['bergas 1','bergas 2','bergas 3','bergas 4','bergas 5','bergas 6','bergas 7','safaritex','densus','cangkirang'];
+const TF_KEYWORDS    = ['tohudan','sawahan','colomadu'];
+
+function isGHMitra(ghName){
+  const lower = (ghName||'').toLowerCase();
+  return MITRA_KEYWORDS.some(k => lower.includes(k));
+}
+function isGHTF(ghName){
+  const lower = (ghName||'').toLowerCase();
+  // Bergas 8+ adalah The Farmhill
+  if(lower.includes('bergas')){
+    const match = lower.match(/bergas\s*(\d+)/);
+    if(match && parseInt(match[1]) >= 8) return true;
+  }
+  return TF_KEYWORDS.some(k => lower.includes(k));
+}
+function ghMatchesOwnership(ghName, mode){
+  if(mode === 'all')   return true;
+  if(mode === 'mitra') return isGHMitra(ghName);
+  if(mode === 'tf')    return isGHTF(ghName);
+  return true;
+}
+
+// Dashboard ownership state
+let ownershipMode = 'all';
+
+function setOwnership(mode){
+  ownershipMode = mode;
+  ['all','tf','mitra'].forEach(m => {
+    const btn = document.getElementById('own-'+m);
+    if(!btn) return;
+    btn.style.background = m === mode ? 'var(--blue)' : 'transparent';
+    btn.style.color      = m === mode ? '#fff'        : 'var(--muted)';
+    btn.style.fontWeight = m === mode ? '700'          : '600';
+  });
+  // Filter GH checkboxes sesuai kepemilikan
+  document.querySelectorAll('#gh-multi-list input[type=checkbox]').forEach(chk => {
+    const ghName = chk.value;
+    chk.checked = ghMatchesOwnership(ghName, mode);
+  });
+  const allChk = document.getElementById('gh-chk-all');
+  if(allChk){
+    const all = document.querySelectorAll('#gh-multi-list input[type=checkbox]');
+    const chk = document.querySelectorAll('#gh-multi-list input[type=checkbox]:checked');
+    allChk.checked = all.length === chk.length;
+  }
+  updateGHLabel();
+  debouncedRender();
+}
+
+// Data Harian ownership state
+let dhOwnershipMode = 'all';
+
+function setDHOwnership(mode){
+  dhOwnershipMode = mode;
+  ['all','tf','mitra'].forEach(m => {
+    const btn = document.getElementById('dh-own-'+m);
+    if(!btn) return;
+    btn.style.background = m === mode ? 'var(--blue)' : 'transparent';
+    btn.style.color      = m === mode ? '#fff'        : 'var(--muted)';
+    btn.style.fontWeight = m === mode ? '700'          : '600';
+  });
+  // Filter GH checkboxes di Data Harian
+  document.querySelectorAll('#dh-gh-list input[type=checkbox]').forEach(chk => {
+    const ghName = chk.value;
+    chk.checked = ghMatchesOwnership(ghName, mode);
+  });
+  const allChk = document.getElementById('dh-chk-all');
+  if(allChk){
+    const all = document.querySelectorAll('#dh-gh-list input[type=checkbox]');
+    const chk = document.querySelectorAll('#dh-gh-list input[type=checkbox]:checked');
+    allChk.checked = all.length === chk.length;
+  }
+  updateDHLabel();
+  renderHarian();
+}
+
+// Evaluasi ownership state
+let evOwnershipMode = 'all';
+
+function setEvOwnership(mode){
+  evOwnershipMode = mode;
+  ['all','tf','mitra'].forEach(m => {
+    const btn = document.getElementById('ev-own-'+m);
+    if(!btn) return;
+    btn.style.background = m === mode ? 'var(--blue)' : 'transparent';
+    btn.style.color      = m === mode ? '#fff'        : 'var(--muted)';
+    btn.style.fontWeight = m === mode ? '700'          : '600';
+  });
+  // Update dropdown GH evaluasi: hanya tampilkan GH sesuai kepemilikan
+  const selGH = document.getElementById('ev-gh');
+  if(selGH && RAW){
+    const GH_WHITELIST = ['tohudan','sawahan','colomadu','bergas'];
+    const prevVal = selGH.value;
+    const ghs = [...new Set((RAW.gh_records||[]).map(r=>r.gh))]
+      .filter(g => GH_WHITELIST.some(w=>(g||'').toLowerCase().includes(w)))
+      .filter(g => ghMatchesOwnership(g, mode))
+      .sort();
+    selGH.innerHTML = '<option value="">Semua GH</option>';
+    ghs.forEach(g => selGH.innerHTML += `<option value="${g}">${g}</option>`);
+    if(ghs.includes(prevVal)) selGH.value = prevVal;
+  }
+  renderEvaluasi();
 }
 
 // ── STARTUP ───────────────────────────────────────────────────────────────────
