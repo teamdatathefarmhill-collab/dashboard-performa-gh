@@ -3676,14 +3676,50 @@ function render(){
   const estAkhirBulan = totSelesaiBulan + totSisaBulan;
 
   // totEst: estimasi yang dipakai untuk % Tercapai & progress bar
-  // Kalau filter GH spesifik aktif → gunakan estimasi GH tersebut saja (totEstGH)
-  // Kalau filter bulan aktif (Lalu/Ini/Depan) → pakai estAkhirBulan (sudah include mitra, ~54T)
-  // Kalau filter "Semua" → pakai totEstGH (populasi × 1kg dari GH yang tampil)
+  // PRIORITAS: gunakan RAW_ESTIMASI (sheet estimasi) jika tersedia untuk GH yang aktif
+  // Fallback: estAkhirBulan (dari data kebun aktual+sisa), lalu totEstGH (pop×1kg)
   const selGHsForEst = getSelectedGHs();
   const totalGHOptsForEst = document.querySelectorAll('#gh-multi-list input[type=checkbox]').length;
   const hasSpecificGHFilter = selGHsForEst.length > 0 && selGHsForEst.length < totalGHOptsForEst;
-  const totEst = hasSpecificGHFilter ? totEstGH : ((ymRange && estAkhirBulan > 0) ? estAkhirBulan : totEstGH);
-  const pctTercapai = totEst ? totSelesai/totEst*100 : 0;
+
+  // Hitung estimasi dari sheet estimasi untuk GH yang sedang tampil
+  function getEstFromSheet(){
+    if(!RAW_ESTIMASI || !RAW_ESTIMASI.data || !RAW_ESTIMASI.data.length) return 0;
+    const GH_WHITELIST = ['tohudan','sawahan','colomadu','bergas'];
+    // Tentukan filter bulan dari ymRange
+    let targetMonth = null;
+    if(ymRange){
+      const mn = parseInt(ymRange.ymDari.split('-')[1]);
+      targetMonth = mn;
+    }
+    // Set GH+Periode aktif
+    const activeGPs = hasSpecificGHFilter
+      ? new Set(ghList.map(r=>(r.gh+'||'+r.periode).toLowerCase()))
+      : null;
+    let total = 0;
+    RAW_ESTIMASI.data.forEach(r=>{
+      if(!GH_WHITELIST.some(w=>(r.gh||'').toLowerCase().includes(w))) return;
+      if(ownershipMode !== 'all' && !ghMatchesOwnership(r.gh, ownershipMode)) return;
+      if(activeGPs){
+        const key=(r.gh+'||'+r.periode).toLowerCase();
+        if(!activeGPs.has(key)) return;
+      }
+      if(targetMonth !== null){
+        const rowMonth = MONTH_EN_MAP[r.month] || 0;
+        if(rowMonth !== targetMonth) return;
+      }
+      total += r.total;
+    });
+    return total;
+  }
+
+  const estFromSheet = getEstFromSheet();
+  // Gunakan estimasi sheet jika ada, fallback ke estAkhirBulan/totEstGH
+  const totEst = estFromSheet > 0
+    ? estFromSheet
+    : (hasSpecificGHFilter ? totEstGH : ((ymRange && estAkhirBulan > 0) ? estAkhirBulan : totEstGH));
+
+  const pctTercapai = totEst ? totPanen/totEst*100 : 0;  // P+I+O / estimasi
 
   // Kelas warna: bandingkan vs estimasi total
   const estBulanPct = totEst > 0 ? (estAkhirBulan / totEst * 100) : 0;
@@ -3694,29 +3730,22 @@ function render(){
   const labelBulanEst = MONTH_LABELS_ID[ymEstM-1] + ' ' + ymEstY;
 
   // KPI % Tercapai vs Est
-  // = (premium+imperfect dari SEMUA GH yang tampil, sesuai filter bulan) / estimasi
-  // Pakai mt (sumMonthly yang sudah difilter bulan) supaya konsisten dengan filter Lalu/Ini/Depan
-  const totPremImpSelesai = mt.prem + mt.imp;
-  const pctTercapaiSelesai = totEst > 0 ? (totPremImpSelesai / totEst * 100) : 0;
-
-  // Total Target = populasi awal × 1 kg per tanaman (dalam gram→kg, pop sudah dalam satuan tanaman)
-  const totTarget = totPop; // 1 kg/tanaman → totPop kg → dalam kg, kita pakai fmt
-  // totPop satuan tanaman, target = totPop * 1 kg = totPop kg
-  const targetKg  = totPop * 1000; // gramasi 1 kg = 1000 g, tapi pop sudah tanaman
+  // = total panen P+I+O / estimasi dari sheet
+  const pctTercapaiSelesai = totEst > 0 ? (totPanen / totEst * 100) : 0;
 
   document.getElementById('k-pop').textContent   = totPop.toLocaleString('id-ID');
   document.getElementById('k-pop-s').textContent  = 'tanaman';
   document.getElementById('k-tot').textContent   = fmt(totPanen);
   document.getElementById('k-tot-s').textContent  = `sudah terjadi · dari est. ${fmt(totEst)}`;
   document.getElementById('k-pct').textContent   = pctTercapaiSelesai.toFixed(1)+'%';
-  document.getElementById('k-pct-s').textContent  = `prem+imp: ${fmt(totPremImpSelesai)} / est. ${fmt(totEst)}`;
+  document.getElementById('k-pct-s').textContent  = `P+I+O: ${fmt(totPanen)} / est. ${fmt(totEst)}`;
   const pctCard = document.getElementById('k-pct-card');
   pctCard.className = 'kpi'+(pctTercapaiSelesai>=80?' ok':pctTercapaiSelesai<50?' warn':'');
-  // Total Target: populasi awal × 1 kg/tanaman
-  // Total Target: populasi awal × 1 kg/tanaman. fmt expects kg value.
-  // totPop = jumlah tanaman; target = totPop × 1 kg = totPop kg → fmt(totPop)
-  document.getElementById('k-target').textContent  = fmt(totPop);
-  document.getElementById('k-target-s').textContent = `${totPop.toLocaleString('id-ID')} pop × 1 kg`;
+  // Total Target: dari sheet estimasi jika tersedia, fallback pop×1kg
+  document.getElementById('k-target').textContent  = fmt(totEst > 0 ? totEst : totPop);
+  document.getElementById('k-target-s').textContent = estFromSheet > 0
+    ? `dari sheet estimasi`
+    : `${totPop.toLocaleString('id-ID')} pop × 1 kg`;
 
   // Est. Akhir Bulan card
   const estBlnEl   = document.getElementById('k-estbln');
@@ -3746,7 +3775,7 @@ function render(){
   document.getElementById('op3').textContent = fmt(totEst);
 
   // ── INSIGHT MANAGER ──
-  renderInsight(ghList, {totSelesai: totPremImpSelesai, totEst, totPanen, totOS, totImp, totPrem, pctOS, pctTercapai: pctTercapaiSelesai, ongoingCount});
+  renderInsight(ghList, {totSelesai: totPanen, totEst, totPanen, totOS, totImp, totPrem, pctOS, pctTercapai: pctTercapaiSelesai, ongoingCount});
 
   // DONUT labels
   document.getElementById('lp').textContent = pctPrem.toFixed(1)+'%';
