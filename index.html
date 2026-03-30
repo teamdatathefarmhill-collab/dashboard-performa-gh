@@ -1634,9 +1634,8 @@ function buildEstimasiDataset(rows){
 function getEstimasiTotal(ghList, fPeriode, activeQuick){
   if(!RAW_ESTIMASI || !RAW_ESTIMASI.data.length) return null;
 
-  // Whitelist GH sendiri (exclude mitra) — sama dengan dashboard
-  const GH_WHITELIST = ['tohudan','sawahan','colomadu','bergas'];
-  const isWhitelisted = gh => GH_WHITELIST.some(w => (gh||'').toLowerCase().includes(w));
+  // Tidak filter whitelist — gunakan ghList sebagai acuan GH yang tampil
+  // ghList sudah merefleksikan semua filter aktif termasuk ownership
 
   // Tentukan filter bulan dari activeQuick
   let targetMonth = null;
@@ -1649,26 +1648,20 @@ function getEstimasiTotal(ghList, fPeriode, activeQuick){
     if(d) targetMonth = d.getMonth()+1;
   }
 
-  // Jika filter bulan aktif → filter estimasi per bulan (misal: March = 51.35 Ton).
-  // Jika filter GH spesifik aktif (tanpa filter bulan) → filter per GH+Periode.
-  // Kedua kondisi bisa dikombinasikan.
-
-  // Bangun set GH+Periode yang sedang ditampilkan, tapi HANYA jika filter GH spesifik
-  // (bukan filter bulan yang kebetulan menyempitkan ghList).
-  // Filter GH spesifik = user memilih GH tertentu dari dropdown, bukan karena filter bulan.
   const selGHsNow   = getSelectedGHs();
   const totalGHOpts = document.querySelectorAll('#gh-multi-list input[type=checkbox]').length;
   const hasSpecificGH = selGHsNow.length > 0 && selGHsNow.length < totalGHOpts;
 
-  // Set GH+Periode hanya dipakai saat filter GH spesifik aktif
+  // Set GH dari ghList sebagai acuan
+  const activeGHs = new Set(ghList.map(r => (r.gh||'').toLowerCase()));
   const activeGHPeriodes = hasSpecificGH
     ? new Set(ghList.map(r => (r.gh + '||' + r.periode).toLowerCase()))
     : null;
 
   let total = 0;
   RAW_ESTIMASI.data.forEach(r=>{
-    // Exclude GH mitra
-    if(!isWhitelisted(r.gh)) return;
+    // Harus termasuk dalam ghList yang tampil
+    if(!activeGHs.has((r.gh||'').toLowerCase())) return;
     // Filter Periode jika aktif
     if(fPeriode && r.periode !== fPeriode) return;
     // Filter GH spesifik jika aktif
@@ -2717,9 +2710,6 @@ function exportDHCSV(){
 }
 
 function initFilters(prevP, prevK, prevGHs){
-  const GH_WHITELIST = ['tohudan','sawahan','colomadu','bergas'];
-  const isWhitelistedGH = v => GH_WHITELIST.some(w => (v||'').toLowerCase().includes(w));
-
   // Populate all filters with full options on first load
   const fill = (id, vals, keepVal) => {
     const sel = document.getElementById(id);
@@ -2731,9 +2721,9 @@ function initFilters(prevP, prevK, prevGHs){
   fill('f-periode',  RAW.filters.periodes);
   fill('f-klas',     RAW.filters.klasifikasis);
 
-  // Build GH multi-select checkboxes
-  const filteredGHs = RAW.filters.ghs.filter(isWhitelistedGH);
-  buildGHMultiSelect(filteredGHs);
+  // Build GH multi-select checkboxes — SEMUA GH, tidak filter whitelist
+  // Ownership toggle yang mengatur tampilan GH mitra vs TF
+  buildGHMultiSelect(RAW.filters.ghs);
 
   // Restore pilihan GH sebelumnya jika ada (supaya tidak reset saat auto-refresh)
   if(prevGHs && prevGHs.length){
@@ -2786,10 +2776,9 @@ function _cascadeQuiet(fromId){
   });
 
   // Also update GH multi-select options while preserving checked state
-  const GH_WHITELIST = ['tohudan','sawahan','colomadu','bergas'];
   let ghRows = RAW.gh_records;
   ids.forEach(id => { const val=cur[id]; if(val) ghRows=ghRows.filter(r=>r[fields[id]]===val); });
-  const validGHs = unique(ghRows,'gh').filter(v => GH_WHITELIST.some(w=>(v||'').toLowerCase().includes(w)));
+  const validGHs = unique(ghRows,'gh');
   updateGHMultiOptions(validGHs);
 
   debouncedRender();
@@ -2826,12 +2815,11 @@ function cascadeFilters(changedId){
     sel.value = validVals.includes(prevVal) ? prevVal : '';
   });
 
-  // Update GH multi-select options based on current filters
-  const GH_WHITELIST = ['tohudan','sawahan','colomadu','bergas'];
+  // Update GH multi-select options based on current filters — semua GH tanpa whitelist
   let ghRows = RAW.gh_records;
   ids.forEach(id => { const val = cur[id]; if(val) ghRows = ghRows.filter(r => r[fields[id]] === val); });
-  const validGHs = unique(ghRows, 'gh').filter(v => GH_WHITELIST.some(w => (v||'').toLowerCase().includes(w)));
-  updateGHMultiOptions(validGHs);
+  const validGHsCascade = unique(ghRows, 'gh');
+  updateGHMultiOptions(validGHsCascade);
 
   debouncedRender();
 }
@@ -3103,12 +3091,8 @@ function renderPeriodeTable(){
   const selGHs    = getSelectedGHs(); // array; empty = semua
   const fKategori = document.getElementById('f-kategori') ? document.getElementById('f-kategori').value : '';
 
-  // ── Whitelist nama GH yang ditampilkan (fix #2) ──────────────────────────
-  const GH_WHITELIST = ['tohudan','sawahan','colomadu','bergas'];
-  function isWhitelisted(ghName){
-    const lower = (ghName||'').toLowerCase();
-    return GH_WHITELIST.some(w => lower.includes(w));
-  }
+  // ── Whitelist diganti dengan ownershipMode filter ────────────────────────
+  // (ownership toggle yang mengatur mitra vs TF, bukan hardcode whitelist)
 
   // ── Hitung totals per GH+Periode dari monthly saja (exclude future) ──────
   function getGHTotals(gh, periode){
@@ -3140,7 +3124,7 @@ function renderPeriodeTable(){
   let filteredRecs = RAW.gh_records.filter(r=>{
     if(!matchKlas(r))                              return false;
     if(selGHs.length && !selGHs.includes(r.gh))   return false;
-    if(!isWhitelisted(r.gh))                       return false;
+    if(ownershipMode !== 'all' && !ghMatchesOwnership(r.gh, ownershipMode)) return false;
     return true;
   });
 
@@ -3171,7 +3155,7 @@ function renderPeriodeTable(){
   RAW.gh_records.filter(r=>{
     if(!matchKlas(r)) return false;
     if(selGHs.length && !selGHs.includes(r.gh)) return false;
-    if(!isWhitelisted(r.gh)) return false;
+    if(ownershipMode !== 'all' && !ghMatchesOwnership(r.gh, ownershipMode)) return false;
     return true;
   }).forEach(r=>{
     if(!allRecsForGH[r.gh]) allRecsForGH[r.gh] = [];
@@ -4794,8 +4778,7 @@ function initEvaluasiFilters(){
   }
 
   // ── Populate dropdown GH dari gh_records ────────────────────
-  const GH_WHITELIST = ['tohudan','sawahan','colomadu','bergas'];
-  const ghs = [...new Set((RAW.gh_records||[]).map(r=>r.gh))].filter(g=>GH_WHITELIST.some(w=>(g||'').toLowerCase().includes(w))).sort();
+  const ghs = [...new Set((RAW.gh_records||[]).map(r=>r.gh))].sort();
   const selGH = document.getElementById('ev-gh');
   if(selGH){
     const prevGH = selGH.value;
@@ -5371,14 +5354,12 @@ function setEvOwnership(mode){
     btn.style.color      = m === mode ? '#fff'        : 'var(--muted)';
     btn.style.fontWeight = m === mode ? '700'          : '600';
   });
-  // Update dropdown GH evaluasi: hanya tampilkan GH sesuai kepemilikan
+  // Update dropdown GH evaluasi: tampilkan GH sesuai kepemilikan (tanpa whitelist)
   const selGH = document.getElementById('ev-gh');
   if(selGH && RAW){
-    const GH_WHITELIST = ['tohudan','sawahan','colomadu','bergas'];
     const prevVal = selGH.value;
     const ghs = [...new Set((RAW.gh_records||[]).map(r=>r.gh))]
-      .filter(g => GH_WHITELIST.some(w=>(g||'').toLowerCase().includes(w)))
-      .filter(g => ghMatchesOwnership(g, mode))
+      .filter(g => mode === 'all' || ghMatchesOwnership(g, mode))
       .sort();
     selGH.innerHTML = '<option value="">Semua GH</option>';
     ghs.forEach(g => selGH.innerHTML += `<option value="${g}">${g}</option>`);
