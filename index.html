@@ -3168,10 +3168,17 @@ function showOsSubDetail(kat, color){
   if(!kat){
     if(titleEl) titleEl.textContent = 'Semua Sub-Keterangan';
     if(resetEl) resetEl.style.display = 'none';
-    const allEntries = useNewOutspec
-      ? getOutspecFromSheet('notes')
-      : getOutspecAggregated('outspec_note_map');
-    const notesKatMap = useNewOutspec ? getNotesKategoriMap() : {};
+    let allEntries = [];
+    let notesKatMap = {};
+    if(useNewOutspec){
+      allEntries = getOutspecFromSheet('notes');
+      notesKatMap = getNotesKategoriMap();
+    }
+    // Fallback ke outspec_note_map jika RAW_OUTSPEC kosong atau tidak ada data
+    if(!allEntries.length){
+      allEntries = getOutspecAggregated('outspec_note_map');
+      notesKatMap = {};
+    }
     renderOsSubBars(subEl, allEntries, null, notesKatMap);
     return;
   }
@@ -4400,7 +4407,14 @@ function render(){
   })();
 
   destroyChart('c-os-pie');
-  console.log('[Outspec Pie] RAW_OUTSPEC length:', RAW_OUTSPEC ? RAW_OUTSPEC.length : 'null', '| osKatEntries:', osKatEntries.length, osKatEntries.slice(0,3));
+  console.log('[Outspec Debug]', {
+    RAW_OUTSPEC_len: RAW_OUTSPEC ? RAW_OUTSPEC.length : 'null',
+    outspec_notes_map_keys: RAW ? Object.keys(RAW.outspec_notes_map||{}).length : 'no RAW',
+    outspec_note_map_keys:  RAW ? Object.keys(RAW.outspec_note_map||{}).length  : 'no RAW',
+    osKatEntries_len: osKatEntries.length,
+    osKatEntries_sample: osKatEntries.slice(0,3),
+    selectedGHs: getSelectedGHs(),
+  });
   const pieCvs = document.getElementById('c-os-pie');
   if(osKatEntries.length && pieCvs){
     const ctxPie = pieCvs.getContext('2d');
