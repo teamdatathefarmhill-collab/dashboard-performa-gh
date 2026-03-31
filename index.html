@@ -2759,11 +2759,13 @@ function renderHarian(){
             enabled: true,
             mode: 'index',
             intersect: false,
+            boxWidth: 0,
+            boxHeight: 0,
             callbacks:{
               title: c => {
                 if(!c || !c.length) return '';
                 const idx = c[0].dataIndex;
-                return `📅 ${dayKeys[idx] || ''}`;
+                return dayKeys[idx] || '';
               },
               label: c => {
                 if(c.raw == null) return '';
@@ -2773,7 +2775,6 @@ function renderHarian(){
                 const tot = byDay[k].prem + byDay[k].imp + byDay[k].os;
                 const val = c.raw * 1000;
                 const pct = tot > 0 ? (val / tot * 100).toFixed(1) : '0.0';
-                const icon = c.datasetIndex===0 ? '🟢' : c.datasetIndex===1 ? '🟡' : '🔴';
                 return ` ${c.dataset.label}: ${fmtKg(val)} (${pct}%)`;
               },
               footer: c => {
