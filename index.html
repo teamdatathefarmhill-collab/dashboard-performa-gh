@@ -803,15 +803,28 @@ body {
   body:not(.pdf-popup-mode) .bot-grid { grid-template-columns:1fr 1fr; gap:7px; }
   body:not(.pdf-popup-mode) .insight-grid { grid-template-columns:1fr 1fr; gap:6px; }
 
-  /* Tabel periode — font kecil supaya tidak terpotong */
-  #tbl-periode { font-size:8.5px; table-layout:auto; width:100%; }
-  #tbl-periode td, #tbl-periode th { padding:4px 6px; white-space:nowrap; }
-  .tbl-pct-chip { padding:1px 4px; font-size:8px; }
-  .sbadge { font-size:8px; padding:1px 5px; }
+  /* 1. Sembunyikan GH Ongoing dari KPI saat print */
+  #k-ong-card { display:none!important; }
+  /* Sesuaikan grid KPI jadi 5 kolom karena 1 card disembunyikan */
+  body:not(.pdf-popup-mode) .kpi-row { grid-template-columns:repeat(5,1fr)!important; }
 
-  /* Sanitasi + insight: 2 kolom berdampingan */
+  /* 2. Tabel Riwayat & Kualitas per GH — perkecil font & padding agar muat */
+  #tbl-periode { font-size:7.5px!important; table-layout:fixed; width:100%; }
+  #tbl-periode td, #tbl-periode th { padding:3px 5px!important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #tbl-periode th { font-size:7px!important; letter-spacing:0!important; }
+  .tbl-pct-chip { padding:1px 3px!important; font-size:7px!important; }
+  .sbadge { font-size:7px!important; padding:1px 4px!important; }
+  /* Tombol sort tidak perlu di PDF */
+  #tbl-sort-gh, #tbl-sort-panen, #tbl-sort-pct { display:none!important; }
+
+  /* 3. Distribusi Kategori Sanitasi — layout horizontal berdampingan */
   #sanitasi-insight-grid { grid-template-columns:1fr 1fr!important; gap:8px!important; }
-  #sanitasi-kategori-section { display:block!important; }
+  #sanitasi-kategori-section { display:block!important; break-inside:avoid; }
+  /* Sanitasi card: pie + legend berdampingan horizontal */
+  #sanitasi-kategori-section .card:first-child > div { flex-direction:row!important; align-items:center!important; gap:12px!important; }
+  #sanitasi-kategori-legend { display:grid!important; grid-template-columns:1fr 1fr!important; gap:3px 10px!important; font-size:9px!important; }
+  #sanitasi-kategori-legend > div { font-size:9px!important; }
+  #c-sanitasi-kategori-pie { width:120px!important; height:120px!important; }
 
   /* Standalone insight fallback */
   #insight-section-standalone { break-inside:avoid; }
