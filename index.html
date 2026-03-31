@@ -4379,11 +4379,28 @@ function render(){
   };
   const DEFAULT_PIE_COLORS = ['#e24b4a','#ef9f27','#378add','#5aac1a','#d85a30','#9c59c2','#14b8a6','#185fa5','#0ea5e9'];
 
-  const osKatEntries = useNewOutspec
-    ? getOutspecFromSheet('kategori')
-    : getOutspecAggregated('outspec_notes_map');
+  const osKatEntries = (() => {
+    // Coba RAW_OUTSPEC dulu
+    if(RAW_OUTSPEC && RAW_OUTSPEC.length > 0){
+      const fromSheet = getOutspecFromSheet('kategori');
+      if(fromSheet.length > 0) return fromSheet;
+    }
+    // Fallback ke outspec_notes_map dari sheet utama
+    const fallback = getOutspecAggregated('outspec_notes_map');
+    if(fallback.length > 0) return fallback;
+    // Fallback terakhir: hitung dari totOS per GH langsung
+    const osByKat = {};
+    ghList.forEach(r => {
+      if(r.outspec > 0){
+        const kat = 'Outspec';
+        osByKat[kat] = (osByKat[kat]||0) + r.outspec;
+      }
+    });
+    return Object.entries(osByKat).sort((a,b)=>b[1]-a[1]);
+  })();
 
   destroyChart('c-os-pie');
+  console.log('[Outspec Pie] RAW_OUTSPEC length:', RAW_OUTSPEC ? RAW_OUTSPEC.length : 'null', '| osKatEntries:', osKatEntries.length, osKatEntries.slice(0,3));
   const pieCvs = document.getElementById('c-os-pie');
   if(osKatEntries.length && pieCvs){
     const ctxPie = pieCvs.getContext('2d');
