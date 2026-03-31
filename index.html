@@ -2487,9 +2487,9 @@ function switchTab(tab){
   });
 
   if(tab==='harian') setTimeout(() => {
+    destroyChart('dh-bar');
     renderHarian();
-    if(charts['dh-bar']) charts['dh-bar'].resize();
-  }, 50);
+  }, 80);
   if(tab==='evaluasi') setTimeout(() => renderEvaluasi(), 50);
 }
 
@@ -2795,8 +2795,6 @@ function renderHarian(){
       },
       plugins:[dhBarLabelPlugin]
     });
-    // Force resize supaya tooltip berfungsi meski sebelumnya halaman hidden
-    setTimeout(() => { if(charts['dh-bar']) charts['dh-bar'].resize(); }, 30);
   }
 
   // ── Detail table — group by tanggal, lalu GH ──
