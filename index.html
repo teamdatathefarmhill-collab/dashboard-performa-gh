@@ -2472,8 +2472,11 @@ function switchTab(tab){
     }
   });
 
-  if(tab==='harian') renderHarian();
-  if(tab==='evaluasi') renderEvaluasi();
+  if(tab==='harian') setTimeout(() => {
+    renderHarian();
+    if(charts['dh-bar']) charts['dh-bar'].resize();
+  }, 50);
+  if(tab==='evaluasi') setTimeout(() => renderEvaluasi(), 50);
 }
 
 // ── DATA HARIAN — GH MULTI-SELECT ────────────────────────────────────────────
@@ -2778,6 +2781,8 @@ function renderHarian(){
       },
       plugins:[dhBarLabelPlugin]
     });
+    // Force resize supaya tooltip berfungsi meski sebelumnya halaman hidden
+    setTimeout(() => { if(charts['dh-bar']) charts['dh-bar'].resize(); }, 30);
   }
 
   // ── Detail table — group by tanggal, lalu GH ──
