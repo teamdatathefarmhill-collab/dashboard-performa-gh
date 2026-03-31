@@ -2760,17 +2760,27 @@ function renderHarian(){
             mode: 'index',
             intersect: false,
             callbacks:{
-              title: c => `📅 ${dayKeys[c[0].dataIndex]}`,
+              title: c => {
+                if(!c || !c.length) return '';
+                const idx = c[0].dataIndex;
+                return `📅 ${dayKeys[idx] || ''}`;
+              },
               label: c => {
-                const k = dayKeys[c[0].dataIndex];
+                if(c.raw == null) return '';
+                const idx = c.dataIndex;
+                const k = dayKeys[idx];
+                if(!k || !byDay[k]) return '';
                 const tot = byDay[k].prem + byDay[k].imp + byDay[k].os;
                 const val = c.raw * 1000;
-                const pct = tot > 0 ? (val / tot * 100).toFixed(1) : 0;
+                const pct = tot > 0 ? (val / tot * 100).toFixed(1) : '0.0';
                 const icon = c.datasetIndex===0 ? '🟢' : c.datasetIndex===1 ? '🟡' : '🔴';
                 return ` ${icon} ${c.dataset.label}: ${fmtKg(val)} (${pct}%)`;
               },
               footer: c => {
-                const k = dayKeys[c[0].dataIndex];
+                if(!c || !c.length) return '';
+                const idx = c[0].dataIndex;
+                const k = dayKeys[idx];
+                if(!k || !byDay[k]) return '';
                 const tot = byDay[k].prem + byDay[k].imp + byDay[k].os;
                 return ` 📦 Total: ${fmtKg(tot)}`;
               }
