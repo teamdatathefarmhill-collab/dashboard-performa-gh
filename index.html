@@ -2125,10 +2125,24 @@ async function loadData(isRefresh=false){
       render();
       if(activeTab === 'evaluasi') renderEvaluasi();
       if(isRefresh) showToast('✓ Data dari cache · '+RAW.loaded_at+' · '+RAW.total_rows.toLocaleString()+' records');
-      // Tetap fetch di background untuk update cache
+      // Tetap fetch di background untuk update cache (termasuk outspec & estimasi)
       Promise.all([
         fetch(PROXY_URL+'?t='+Date.now(),{redirect:'follow',cache:'no-cache'}).then(r=>r.text()).then(t=>{ if(t&&t.length>10&&!t.trim().startsWith('<')) saveCache(CACHE_KEY_PANEN,t); }).catch(()=>{}),
         fetch(PROXY_URL+'?type=sanitasi&t='+Date.now(),{redirect:'follow',cache:'no-cache'}).then(r=>r.text()).then(t=>{ if(t&&t.length>10&&!t.trim().startsWith('<')) saveCache(CACHE_KEY_SANITASI,t); }).catch(()=>{}),
+        fetch(PROXY_URL+'?type=estimasi&t='+Date.now(),{redirect:'follow',cache:'no-cache'}).then(r=>r.text()).then(t=>{ if(t&&t.length>10&&!t.trim().startsWith('<')) saveCache(CACHE_KEY_ESTIMASI,t); }).catch(()=>{}),
+        fetch(PROXY_URL+'?type=outspec&t='+Date.now(),{redirect:'follow',cache:'no-cache'}).then(r=>r.text()).then(t=>{
+          if(t&&t.length>10&&!t.trim().startsWith('<')){
+            saveCache(CACHE_KEY_OUTSPEC, t);
+            // Update RAW_OUTSPEC dan re-render pie chart outspec tanpa full reload
+            try {
+              const parsed = buildOutspecDataset(parseCSV(t));
+              if(parsed.length > 0){
+                RAW_OUTSPEC = parsed;
+                render(); // refresh chart outspec
+              }
+            } catch(e){}
+          }
+        }).catch(()=>{}),
       ]);
       return;
     }
@@ -3163,63 +3177,91 @@ function showOsSubDetail(kat, color){
   if(!subEl) return;
 
   const useNewOutspec = RAW_OUTSPEC && RAW_OUTSPEC.length > 0;
+  const hasNotesMap   = RAW && Object.keys(RAW.outspec_notes_map||{}).length > 0;
+  const hasNoteMap    = RAW && Object.keys(RAW.outspec_note_map||{}).length  > 0;
 
-  // Mode "semua": kat === null → tampilkan semua notes lintas kategori
+  // Mode "semua": kat === null → tampilkan semua sub-keterangan
   if(!kat){
     if(titleEl) titleEl.textContent = 'Semua Sub-Keterangan';
     if(resetEl) resetEl.style.display = 'none';
     let allEntries = [];
     let notesKatMap = {};
+
     if(useNewOutspec){
-      allEntries = getOutspecFromSheet('notes');
+      allEntries  = getOutspecFromSheet('notes');
       notesKatMap = getNotesKategoriMap();
     }
-    // Fallback ke outspec_note_map jika RAW_OUTSPEC kosong atau tidak ada data
-    if(!allEntries.length){
-      allEntries = getOutspecAggregated('outspec_note_map');
+    if(!allEntries.length && hasNoteMap){
+      allEntries  = getOutspecAggregated('outspec_note_map');
       notesKatMap = {};
     }
+    // Fallback: breakdown per GH dari ghList
+    if(!allEntries.length){
+      const selG = getSelectedGHs();
+      const byGH = {};
+      ghList.forEach(r => {
+        if(selG.length && !selG.includes(r.gh)) return;
+        if((r.outspec||0) > 0) byGH[r.gh] = (byGH[r.gh]||0) + r.outspec;
+      });
+      allEntries = Object.entries(byGH).sort((a,b)=>b[1]-a[1]);
+    }
+
     renderOsSubBars(subEl, allEntries, null, notesKatMap);
     return;
   }
 
-  if(titleEl) titleEl.textContent = 'Sub-keterangan: ' + kat;
+  // Mode klik satu slice pie — tampilkan sub dari kategori/GH itu
+  if(titleEl) titleEl.textContent = 'Detail: ' + kat;
   if(resetEl) resetEl.style.display = 'block';
 
-  const entries = useNewOutspec
-    ? getOutspecFromSheet('notes', kat)
-    : (() => {
-        // Fallback ke lama
-        const totals = {};
-        if(RAW && RAW.notes_note_map){
-          const p    = document.getElementById('f-periode').value;
-          const k    = document.getElementById('f-klas').value;
-          const selG = getSelectedGHs();
-          const sdYmRange = getActiveYMRange();
-          let sdActiveGPK = null;
-          if(sdYmRange && RAW){
-            const {ymDari, ymSampai} = sdYmRange;
-            const mSet = new Set(Object.keys(RAW.monthly||{}).filter(mk=>{ const ym=mk.split('||')[2]||''; return ym>=ymDari&&ym<=ymSampai; }).map(mk=>mk.split('||')[0]+'||'+mk.split('||')[1]));
-            const fSet = new Set(Object.keys(RAW.future||{}).filter(mk=>{ const ym=mk.split('||')[2]||''; return ym>=ymDari&&ym<=ymSampai; }).map(mk=>mk.split('||')[0]+'||'+mk.split('||')[1]));
-            sdActiveGPK = new Set([...mSet,...fSet]);
-          }
-          Object.entries(RAW.notes_note_map).forEach(([mk, cats])=>{
-            const [gh, periode] = mk.split('||');
-            const rec = RAW.gh_records.find(r=>r.gh===gh&&r.periode===periode);
-            if(!rec) return;
-            if(p && rec.periode!==p) return;
-            if(k && rec.klasifikasi!==k) return;
-            if(selG.length && !selG.includes(rec.gh)) return;
-            if(sdActiveGPK !== null && !sdActiveGPK.has(gh+'||'+periode)) return;
-            const subs = cats[kat];
-            if(!subs) return;
-            Object.entries(subs).forEach(([note,val])=>{
-              totals[note] = (totals[note]||0)+val;
-            });
-          });
-        }
-        return Object.entries(totals).sort((a,b)=>b[1]-a[1]);
-      })();
+  let entries = [];
+
+  if(useNewOutspec){
+    entries = getOutspecFromSheet('notes', kat);
+  }
+  if(!entries.length && hasNoteMap){
+    // Fallback lama via notes_note_map
+    const totals = {};
+    if(RAW && RAW.notes_note_map){
+      const p    = document.getElementById('f-periode').value;
+      const k    = document.getElementById('f-klas').value;
+      const selG = getSelectedGHs();
+      const sdYmRange = getActiveYMRange();
+      let sdActiveGPK = null;
+      if(sdYmRange && RAW){
+        const {ymDari, ymSampai} = sdYmRange;
+        const mSet = new Set(Object.keys(RAW.monthly||{}).filter(mk=>{ const ym=mk.split('||')[2]||''; return ym>=ymDari&&ym<=ymSampai; }).map(mk=>mk.split('||')[0]+'||'+mk.split('||')[1]));
+        const fSet = new Set(Object.keys(RAW.future||{}).filter(mk=>{ const ym=mk.split('||')[2]||''; return ym>=ymDari&&ym<=ymSampai; }).map(mk=>mk.split('||')[0]+'||'+mk.split('||')[1]));
+        sdActiveGPK = new Set([...mSet,...fSet]);
+      }
+      Object.entries(RAW.notes_note_map).forEach(([mk, cats])=>{
+        const [gh, periode] = mk.split('||');
+        const rec = RAW.gh_records.find(r=>r.gh===gh&&r.periode===periode);
+        if(!rec) return;
+        if(p && rec.periode!==p) return;
+        if(k && rec.klasifikasi!==k) return;
+        if(selG.length && !selG.includes(rec.gh)) return;
+        if(sdActiveGPK !== null && !sdActiveGPK.has(gh+'||'+periode)) return;
+        const subs = cats[kat];
+        if(!subs) return;
+        Object.entries(subs).forEach(([note,val])=>{
+          totals[note] = (totals[note]||0)+val;
+        });
+      });
+    }
+    entries = Object.entries(totals).sort((a,b)=>b[1]-a[1]);
+  }
+  // Fallback: kat adalah nama GH, tampilkan breakdown bulan dari daily
+  if(!entries.length && RAW && RAW.daily){
+    const byPeriode = {};
+    Object.entries(RAW.daily).forEach(([dk, d])=>{
+      if(d.gh !== kat) return;
+      const per = d.periode || dk.split('||')[1] || '—';
+      byPeriode[per] = (byPeriode[per]||0) + (d.outspec||0);
+    });
+    entries = Object.entries(byPeriode).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+    if(entries.length) entries = entries.map(([k,v])=>['Periode '+k, v]);
+  }
 
   renderOsSubBars(subEl, entries, color, {});
 }
@@ -4392,29 +4434,19 @@ function render(){
       const fromSheet = getOutspecFromSheet('kategori');
       if(fromSheet.length > 0) return fromSheet;
     }
-    // Fallback ke outspec_notes_map dari sheet utama
-    const fallback = getOutspecAggregated('outspec_notes_map');
-    if(fallback.length > 0) return fallback;
-    // Fallback terakhir: hitung dari totOS per GH langsung
-    const osByKat = {};
+    // Fallback ke outspec_notes_map dari sheet utama (kolom Notes)
+    const fromNotes = getOutspecAggregated('outspec_notes_map');
+    if(fromNotes.length > 0) return fromNotes;
+    // Fallback: bangun dari gh_records → breakdown per GH yang punya outspec
+    // Gunakan data ghList yang sudah difilter sesuai filter aktif
+    const byGH = {};
     ghList.forEach(r => {
-      if(r.outspec > 0){
-        const kat = 'Outspec';
-        osByKat[kat] = (osByKat[kat]||0) + r.outspec;
-      }
+      if((r.outspec||0) > 0) byGH[r.gh] = (byGH[r.gh]||0) + r.outspec;
     });
-    return Object.entries(osByKat).sort((a,b)=>b[1]-a[1]);
+    return Object.entries(byGH).sort((a,b)=>b[1]-a[1]);
   })();
 
   destroyChart('c-os-pie');
-  console.log('[Outspec Debug]', {
-    RAW_OUTSPEC_len: RAW_OUTSPEC ? RAW_OUTSPEC.length : 'null',
-    outspec_notes_map_keys: RAW ? Object.keys(RAW.outspec_notes_map||{}).length : 'no RAW',
-    outspec_note_map_keys:  RAW ? Object.keys(RAW.outspec_note_map||{}).length  : 'no RAW',
-    osKatEntries_len: osKatEntries.length,
-    osKatEntries_sample: osKatEntries.slice(0,3),
-    selectedGHs: getSelectedGHs(),
-  });
   const pieCvs = document.getElementById('c-os-pie');
   if(osKatEntries.length && pieCvs){
     const ctxPie = pieCvs.getContext('2d');
