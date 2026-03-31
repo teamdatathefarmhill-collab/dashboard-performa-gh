@@ -782,26 +782,32 @@ body {
 .no-print { display: block; }
 
 @media print{
-  body { background:#fff; font-size:10.5px; }
+  body { background:#fff; font-size:9px; -webkit-print-color-adjust:exact!important; print-color-adjust:exact!important; zoom:0.62; }
   #loading-screen,#err-screen,#popup-panen-overlay { display:none!important; }
   .filters,#btn-refresh,#btn-pdf,#quick-bulan-btns { display:none!important; }
   .no-print { display:none!important; }
   #ai-eval-card, #ai-eval-standalone, #ai-eval-output, #ai-eval-placeholder,
   #ai-eval-output-sa, #ai-eval-placeholder-sa { display:none!important; }
-  .page { max-width:100%; padding:6px 10px; }
-  .header { margin-bottom:6px; border:none; box-shadow:none; padding:6px 0 4px; }
-  .alert-bar { margin-bottom:6px; padding:5px 10px; }
-  .card,.kpi,.gh-card,.ins-card { box-shadow:none; border:1px solid #ddd; break-inside:avoid; }
-  canvas { max-width:100%!important; }
-  .sec { margin-top:6px; }
-  @page { margin:8mm 8mm; size:A4 landscape; }
+  .page { max-width:100%; padding:4px 8px; }
+  .header { margin-bottom:4px; border:none; box-shadow:none; padding:4px 0 3px; }
+  .alert-bar { margin-bottom:4px; padding:4px 8px; }
+  .card,.kpi,.gh-card,.ins-card { box-shadow:none; border:1px solid #ddd; }
+  canvas { max-width:100%!important; max-height:150px!important; }
+  .sec { margin-top:4px; margin-bottom:3px; }
+  @page { margin:5mm 5mm; size:A4 portrait; }
 
-  /* KPI + GH cards */
-  body:not(.pdf-popup-mode) .kpi-row { grid-template-columns:repeat(5,1fr)!important; gap:5px; }
-  body:not(.pdf-popup-mode) .gh-row { grid-template-columns:repeat(4,1fr); gap:5px; }
-  body:not(.pdf-popup-mode) .chart-row { grid-template-columns:1fr 1fr; gap:7px; }
-  body:not(.pdf-popup-mode) .bot-grid { grid-template-columns:1fr 1fr; gap:7px; }
-  body:not(.pdf-popup-mode) .insight-grid { grid-template-columns:1fr 1fr; gap:6px; }
+  /* KPI + GH cards — 5 kolom (tanpa GH Ongoing) */
+  body:not(.pdf-popup-mode) .kpi-row { grid-template-columns:repeat(5,1fr)!important; gap:4px; }
+  body:not(.pdf-popup-mode) .gh-row { grid-template-columns:repeat(3,1fr); gap:4px; }
+  body:not(.pdf-popup-mode) .chart-row { grid-template-columns:1fr 1fr; gap:5px; }
+  body:not(.pdf-popup-mode) .bot-grid { grid-template-columns:1fr 1fr; gap:5px; }
+  body:not(.pdf-popup-mode) .insight-grid { grid-template-columns:1fr 1fr; gap:5px; }
+  .kpi { padding:6px 8px!important; }
+  .kpi-val { font-size:13px!important; }
+  .kpi-lbl { font-size:8px!important; }
+  .kpi-sub { font-size:7px!important; margin-top:2px!important; }
+  .card { padding:6px 8px!important; margin-bottom:5px!important; }
+  .chart-row { margin-bottom:5px!important; }
 
   /* 1. Hide: menu bar atas, status per GH, progress bar hijau, GH ongoing card */
   #tab-nav-wrap { display:none!important; }
@@ -812,12 +818,16 @@ body {
   /* Tombol sort tidak perlu di PDF */
   #tbl-sort-gh, #tbl-sort-panen, #tbl-sort-pct { display:none!important; }
 
-  /* 2. Tabel Riwayat — font kecil agar muat di A4 landscape */
-  #tbl-periode { font-size:7.5px!important; table-layout:fixed; width:100%; }
-  #tbl-periode td, #tbl-periode th { padding:3px 5px!important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  #tbl-periode th { font-size:7px!important; letter-spacing:0!important; }
-  .tbl-pct-chip { padding:1px 3px!important; font-size:7px!important; }
-  .sbadge { font-size:7px!important; padding:1px 4px!important; }
+  /* 2. Tabel Riwayat — font kecil agar muat di A4 portrait */
+  #tbl-periode { font-size:6.5px!important; table-layout:fixed; width:100%; }
+  #tbl-periode td, #tbl-periode th { padding:2px 3px!important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #tbl-periode th { font-size:6px!important; letter-spacing:0!important; }
+  .tbl-pct-chip { padding:1px 2px!important; font-size:6px!important; }
+  .sbadge { font-size:6px!important; padding:1px 3px!important; }
+  /* Sembunyikan kolom kurang kritis di portrait */
+  #tbl-periode th:nth-child(3), #tbl-periode td:nth-child(3),
+  #tbl-periode th:nth-child(4), #tbl-periode td:nth-child(4),
+  #tbl-periode th:nth-child(12), #tbl-periode td:nth-child(12) { display:none!important; }
 
   /* 3. Distribusi Kategori Sanitasi — compact */
   #sanitasi-insight-grid { grid-template-columns:1fr 1fr!important; gap:8px!important; }
@@ -825,18 +835,7 @@ body {
   #sanitasi-kategori-legend { display:grid!important; grid-template-columns:1fr 1fr!important; gap:2px 8px!important; }
   #sanitasi-kategori-legend > div { font-size:8.5px!important; }
 
-  /* 4. Satu halaman — semua konten fit di A4 landscape */
-  * { -webkit-print-color-adjust:exact!important; print-color-adjust:exact!important; }
-  .page { padding:4px 8px!important; }
-  .header { padding:6px 10px!important; margin-bottom:4px!important; }
-  .sec { margin-top:6px!important; margin-bottom:4px!important; }
-  .kpi { padding:8px 10px!important; }
-  .kpi-val { font-size:16px!important; }
-  .card { padding:8px 10px!important; margin-bottom:6px!important; }
-  .chart-row { margin-bottom:6px!important; }
-  .bot-grid { gap:6px!important; }
-  .gh-card { padding:8px 10px!important; }
-  canvas { max-height:180px!important; }
+  /* Standalone insight */
 
   /* Standalone insight fallback */
   #insight-section-standalone { break-inside:avoid; }
