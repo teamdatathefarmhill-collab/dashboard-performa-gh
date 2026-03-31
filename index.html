@@ -1300,17 +1300,19 @@ body {
       <thead>
         <tr style="background:var(--surface2);">
           <th style="padding:8px 12px;text-align:left;font-size:9.5px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">GH</th>
+          <th style="padding:8px 12px;text-align:left;font-size:9.5px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">Periode</th>
           <th style="padding:8px 12px;text-align:right;font-size:9.5px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">Premium</th>
           <th style="padding:8px 12px;text-align:right;font-size:9.5px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">Imperfect</th>
           <th style="padding:8px 12px;text-align:right;font-size:9.5px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">Outspec</th>
           <th style="padding:8px 12px;text-align:right;font-size:9.5px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">Total</th>
           <th style="padding:8px 12px;text-align:center;font-size:9.5px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">% Premium</th>
+          <th style="padding:8px 12px;text-align:center;font-size:9.5px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">% Imperfect</th>
           <th style="padding:8px 12px;text-align:center;font-size:9.5px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">% Outspec</th>
           <th style="padding:8px 12px;text-align:center;font-size:9.5px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">Status</th>
         </tr>
       </thead>
       <tbody id="dh-summary-body">
-        <tr><td colspan="8" style="text-align:center;padding:24px;color:var(--hint);">Pilih rentang tanggal untuk melihat data</td></tr>
+        <tr><td colspan="10" style="text-align:center;padding:24px;color:var(--hint);">Pilih rentang tanggal untuk melihat data</td></tr>
       </tbody>
     </table>
   </div>
@@ -1329,6 +1331,7 @@ body {
         <tr style="background:var(--surface2);">
           <th style="padding:8px 12px;text-align:left;font-size:9.5px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">Tanggal</th>
           <th style="padding:8px 12px;text-align:left;font-size:9.5px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">GH</th>
+          <th style="padding:8px 12px;text-align:left;font-size:9.5px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">Periode</th>
           <th style="padding:8px 12px;text-align:right;font-size:9.5px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">Premium</th>
           <th style="padding:8px 12px;text-align:right;font-size:9.5px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">Imperfect</th>
           <th style="padding:8px 12px;text-align:right;font-size:9.5px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);">Outspec</th>
@@ -1336,7 +1339,7 @@ body {
         </tr>
       </thead>
       <tbody id="dh-detail-body">
-        <tr><td colspan="6" style="text-align:center;padding:24px;color:var(--hint);">Pilih rentang tanggal untuk melihat data</td></tr>
+        <tr><td colspan="7" style="text-align:center;padding:24px;color:var(--hint);">Pilih rentang tanggal untuk melihat data</td></tr>
       </tbody>
     </table>
   </div>
@@ -2580,9 +2583,9 @@ function renderHarian(){
 
   if(!entries.length){
     document.getElementById('dh-detail-body').innerHTML =
-      '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--hint);font-size:12px;">Tidak ada data untuk filter yang dipilih.</td></tr>';
+      '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--hint);font-size:12px;">Tidak ada data untuk filter yang dipilih.</td></tr>';
     document.getElementById('dh-summary-body').innerHTML =
-      '<tr><td colspan="7" style="text-align:center;padding:16px;color:var(--hint);">—</td></tr>';
+      '<tr><td colspan="10" style="text-align:center;padding:16px;color:var(--hint);">—</td></tr>';
     renderDHKPI(0,0,0,0);
     destroyChart('dh-bar');
     return;
@@ -2618,20 +2621,21 @@ function renderHarian(){
 
   document.getElementById('dh-summary-body').innerHTML = sumRows.map((r,i)=>{
     const premPct = r.total>0 ? (r.prem/r.total*100).toFixed(1) : '0.0';
+    const impPct  = r.total>0 ? (r.imp/r.total*100).toFixed(1)  : '0.0';
     const osPct   = r.total>0 ? (r.os/r.total*100).toFixed(1)   : '0.0';
     const osCls   = parseFloat(osPct)>15?'chip-bad':parseFloat(osPct)>8?'chip-mid':'chip-ok';
+    const impCls  = parseFloat(impPct)>25?'chip-bad':parseFloat(impPct)>15?'chip-mid':'chip-ok';
 
     // Status dinamis: cek apakah masih ada panen di tanggal setelah 'to'
     let statusHtml = '<span style="color:var(--hint);font-size:10px;">—</span>';
     const ghTgls = allGHTgls[r.gh] || [];
     const lastPanenTgl = ghTgls.length ? ghTgls.reduce((a,b)=>a>b?a:b) : '';
-    // Jika ada data panen setelah filter 'to' → Ongoing, jika tidak → Selesai
     const todayStr = new Date().toISOString().substring(0,10);
     const cutoff   = to || todayStr;
     const hasAfter = ghTgls.some(t => t > cutoff);
-    // Cek juga gh_records untuk status Belum Panen
     const ghRec = RAW && RAW.gh_records.find(x=>x.gh===r.gh);
     const isBelum = ghRec && (ghRec.kategori==='Belum Panen'||ghRec.kategori==='BELUM PANEN');
+    const periodeLabel = ghRec ? ghRec.periode : '—';
     if(isBelum && r.total <= 0){
       statusHtml = `<span class="sbadge s-belum" style="font-size:9px;">Belum Panen</span>`;
     } else if(hasAfter){
@@ -2642,11 +2646,13 @@ function renderHarian(){
 
     return `<tr style="${i%2?'background:var(--surface2);':''}">
       <td style="padding:7px 12px;font-weight:600;">${r.gh}</td>
+      <td style="padding:7px 12px;color:var(--hint);font-size:10px;font-weight:600;">${periodeLabel}</td>
       <td style="padding:7px 12px;text-align:right;color:var(--green);">${fmtKg(r.prem)}</td>
       <td style="padding:7px 12px;text-align:right;color:var(--amber);">${fmtKg(r.imp)}</td>
       <td style="padding:7px 12px;text-align:right;color:var(--red);">${fmtKg(r.os)}</td>
       <td style="padding:7px 12px;text-align:right;font-weight:700;">${fmtKg(r.total)}</td>
       <td style="padding:7px 12px;text-align:center;"><span class="tbl-pct-chip chip-ok">${premPct}%</span></td>
+      <td style="padding:7px 12px;text-align:center;"><span class="tbl-pct-chip ${impCls}">${impPct}%</span></td>
       <td style="padding:7px 12px;text-align:center;"><span class="tbl-pct-chip ${osCls}">${osPct}%</span></td>
       <td style="padding:7px 12px;text-align:center;">${statusHtml}</td>
     </tr>`;
@@ -2666,25 +2672,33 @@ function renderHarian(){
   destroyChart('dh-bar');
   const cvs = document.getElementById('dh-bar-chart');
   if(cvs){
-    // Plugin: label total di atas setiap bar
+    // Plugin: label total di atas setiap bar (fixed positioning)
     const dhBarLabelPlugin = {
       id: 'dhBarLabels',
       afterDatasetsDraw(chart){
-        const {ctx, scales:{x,y}, data} = chart;
+        const {ctx, scales:{x,y}} = chart;
         ctx.save();
         ctx.font = '600 9px Segoe UI,system-ui,sans-serif';
         ctx.fillStyle = '#374151';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
-        const nDays = dayKeys.length;
         dayKeys.forEach((k, i) => {
           const total = (byDay[k].prem + byDay[k].imp + byDay[k].os) / 1000;
           if(total <= 0) return;
-          const meta = chart.getDatasetMeta(2); // Outspec = dataset teratas
-          const bar  = meta.data[i];
-          if(!bar) return;
+          // Find top of stacked bar using the last visible dataset
+          let topY = null;
+          for(let ds = chart.data.datasets.length - 1; ds >= 0; ds--){
+            const meta = chart.getDatasetMeta(ds);
+            if(meta.hidden) continue;
+            const bar = meta.data[i];
+            if(bar){
+              topY = bar.y;
+              break;
+            }
+          }
+          if(topY === null) return;
           const lbl = total >= 1 ? total.toFixed(2)+'T' : (total*1000).toFixed(0)+'Kg';
-          ctx.fillText(lbl, bar.x, y.getPixelForValue(total + (byDay[k].prem + byDay[k].imp)/1000) - 3);
+          ctx.fillText(lbl, x.getPixelForValue(i), topY - 3);
         });
         ctx.restore();
       }
@@ -2702,21 +2716,38 @@ function renderHarian(){
       },
       options:{
         responsive:true, maintainAspectRatio:false,
-        layout:{padding:{top:18}},
+        layout:{padding:{top:20}},
         plugins:{
           legend:{display:false},
           tooltip:{callbacks:{
             title: c => `Tanggal: ${dayKeys[c[0].dataIndex]}`,
-            label: c => ` ${c.dataset.label}: ${(c.raw).toFixed(3)} Ton`,
+            label: c => {
+              const k = dayKeys[c[0].dataIndex];
+              const tot = (byDay[k].prem + byDay[k].imp + byDay[k].os);
+              const pct = tot > 0 ? (c.raw * 1000 / tot * 100).toFixed(1) : 0;
+              return ` ${c.dataset.label}: ${(c.raw).toFixed(3)} Ton (${pct}%)`;
+            },
             footer: c => {
               const k = dayKeys[c[0].dataIndex];
               const tot = (byDay[k].prem+byDay[k].imp+byDay[k].os)/1000;
-              return `Total: ${tot.toFixed(3)} Ton`;
+              const impPct = tot > 0 ? (byDay[k].imp/1000/tot*100).toFixed(1) : 0;
+              return [`Total: ${tot.toFixed(3)} Ton`, `% Imperfect: ${impPct}%`];
             }
           }}
         },
         scales:{
-          x:{stacked:true,grid:{display:false},ticks:{font:{size:9},color:'#9ca3af'}},
+          x:{
+            stacked:true,
+            grid:{display:false},
+            ticks:{
+              font:{size:9},
+              color:'#9ca3af',
+              maxRotation: dayKeys.length > 20 ? 45 : 0,
+              minRotation: 0,
+              autoSkip: true,
+              maxTicksLimit: dayKeys.length > 20 ? 15 : dayKeys.length
+            }
+          },
           y:{stacked:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{font:{size:9},color:'#9ca3af',callback:v=>v+' T'}}
         }
       },
@@ -2731,7 +2762,7 @@ function renderHarian(){
     // merge same GH on same date
     const ex = byTgl[d.tgl].find(x=>x.gh===d.gh);
     if(ex){ ex.prem+=d.premium; ex.imp+=d.imperfect; ex.os+=d.outspec; ex.total+=d.total; }
-    else   byTgl[d.tgl].push({gh:d.gh, prem:d.premium, imp:d.imperfect, os:d.outspec, total:d.total});
+    else   byTgl[d.tgl].push({gh:d.gh, periode:d.periode||'—', prem:d.premium, imp:d.imperfect, os:d.outspec, total:d.total});
   });
   const sortedDays = Object.keys(byTgl).sort((a,b)=>b.localeCompare(a)); // newest first
 
@@ -2746,7 +2777,7 @@ function renderHarian(){
     const tglFmt = `${dd}/${m}/${y}`;
     // Day header row
     rows += `<tr style="background:var(--surface2);">
-      <td colspan="6" style="padding:6px 12px;font-weight:700;font-size:11px;color:var(--muted);">
+      <td colspan="7" style="padding:6px 12px;font-weight:700;font-size:11px;color:var(--muted);">
         📅 ${tglFmt} — <span style="color:var(--text);">Total: ${fmtKg(dayTotal)}</span>
       </td>
     </tr>`;
@@ -2755,6 +2786,7 @@ function renderHarian(){
       rows += `<tr style="${i%2===1?'background:var(--blue-bg);opacity:.8;':''}">
         <td style="padding:6px 12px 6px 24px;color:var(--hint);font-size:10px;">${tglFmt}</td>
         <td style="padding:6px 12px;font-weight:600;">${r.gh}</td>
+        <td style="padding:6px 12px;color:var(--hint);font-size:10px;font-weight:600;">${r.periode}</td>
         <td style="padding:6px 12px;text-align:right;color:var(--green);">${fmtKg(r.prem)}</td>
         <td style="padding:6px 12px;text-align:right;color:var(--amber);">${fmtKg(r.imp)}</td>
         <td style="padding:6px 12px;text-align:right;color:var(--red);">${fmtKg(r.os)}</td>
@@ -2766,6 +2798,7 @@ function renderHarian(){
       rows += `<tr style="background:var(--surface3);border-top:1px dashed var(--border-med);">
         <td style="padding:5px 12px 5px 24px;font-size:10px;color:var(--hint);font-style:italic;">Total ${tglFmt}</td>
         <td style="padding:5px 12px;font-size:10px;font-weight:700;color:var(--muted);">—</td>
+        <td style="padding:5px 12px;font-size:10px;color:var(--hint);">—</td>
         <td style="padding:5px 12px;text-align:right;font-weight:700;color:var(--green);font-size:10px;">${fmtKg(dayPrem)}</td>
         <td style="padding:5px 12px;text-align:right;font-weight:700;color:var(--amber);font-size:10px;">${fmtKg(dayImp)}</td>
         <td style="padding:5px 12px;text-align:right;font-weight:700;color:var(--red);font-size:10px;">${fmtKg(dayOs)}</td>
@@ -2773,7 +2806,7 @@ function renderHarian(){
       </tr>`;
     }
   });
-  document.getElementById('dh-detail-body').innerHTML = rows || '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--hint);">Tidak ada data.</td></tr>';
+  document.getElementById('dh-detail-body').innerHTML = rows || '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--hint);">Tidak ada data.</td></tr>';
 
   // Footer
   const dhFoot = document.getElementById('dh-footer');
@@ -4083,7 +4116,7 @@ function render(){
       etaHTML = `<div class="gh-eta"><span class="sp-done">Selesai ${r.tgl_akhir||''}</span></div>`;
     }
     ghCardsEl.insertAdjacentHTML('beforeend',`
-      <div class="gh-card">
+      <div class="gh-card" style="cursor:pointer;" onclick="filterDashboardByGH('${r.gh}')" title="Klik untuk filter ke ${r.gh}">
         <div class="gh-nm" title="${r.gh}">${r.gh}</div>
         ${!pFilter ? `<div style="font-size:9px;color:var(--hint);margin-bottom:3px;font-weight:600;">Periode ${r.periode}</div>` : ''}
         <div class="sbadge ${sClass}">${sLabel}</div>
@@ -4312,9 +4345,9 @@ function render(){
     'Tanaman Layu':         '#9c59c2',
     'Tanaman Layu Kering':  '#9c59c2',
     'Busuk':                '#d85a30',
-    'Belum Ada Keterangan': '#9ca3af',
+    'Belum Ada Keterangan': '#14b8a6',
   };
-  const DEFAULT_PIE_COLORS = ['#e24b4a','#ef9f27','#378add','#5aac1a','#d85a30','#9c59c2','#1d9e75','#185fa5','#9ca3af'];
+  const DEFAULT_PIE_COLORS = ['#e24b4a','#ef9f27','#378add','#5aac1a','#d85a30','#9c59c2','#14b8a6','#185fa5','#0ea5e9'];
 
   const osKatEntries = useNewOutspec
     ? getOutspecFromSheet('kategori')
@@ -4362,12 +4395,17 @@ function render(){
     const legEl = document.getElementById('os-pie-legend');
     if(legEl){
       const tot = osKatEntries.reduce((a,[,v])=>a+v,0);
-      legEl.innerHTML = osKatEntries.map(([kat,val],i)=>`
-        <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted);cursor:pointer;"
-          onclick="showOsSubDetail('${kat}','${pieColorsArr[i]}')">
+      legEl.innerHTML = osKatEntries.map(([kat,val],i)=>{
+        const pct = tot ? (val/tot*100).toFixed(0) : 0;
+        // Shorten long category names for display
+        const displayKat = kat.length > 22 ? kat.substring(0, 20) + '…' : kat;
+        return `<div style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);cursor:pointer;padding:2px 0;"
+          title="${kat}" onclick="showOsSubDetail('${kat}','${pieColorsArr[i]}')">
           <div style="width:9px;height:9px;border-radius:2px;background:${pieColorsArr[i]};flex-shrink:0"></div>
-          ${kat} ${tot?(val/tot*100).toFixed(0):0}%
-        </div>`).join('');
+          <span style="flex:1;min-width:0;line-height:1.3;">${displayKat}</span>
+          <span style="font-weight:700;color:var(--text);flex-shrink:0;">${pct}%</span>
+        </div>`;
+      }).join('');
     }
   }
 
@@ -5523,6 +5561,58 @@ function setEvOwnership(mode){
     if(ghs.includes(prevVal)) selGH.value = prevVal;
   }
   renderEvaluasi();
+}
+
+// ── FILTER DASHBOARD BY GH (click on GH card) ───────────────────────────────
+let _activeGHCardFilter = null;
+
+function filterDashboardByGH(ghName){
+  // Toggle: if clicking same GH, clear filter
+  if(_activeGHCardFilter === ghName){
+    _activeGHCardFilter = null;
+    // Uncheck all, then re-check all
+    const allChks = document.querySelectorAll('#gh-multi-list input[type=checkbox]');
+    allChks.forEach(chk => { chk.checked = true; });
+    const allChk = document.getElementById('gh-chk-all');
+    if(allChk) allChk.checked = true;
+  } else {
+    _activeGHCardFilter = ghName;
+    // Uncheck all, then check only the target GH
+    const allChks = document.querySelectorAll('#gh-multi-list input[type=checkbox]');
+    allChks.forEach(chk => {
+      chk.checked = (chk.value === ghName);
+    });
+    const allChk = document.getElementById('gh-chk-all');
+    if(allChk) allChk.checked = false;
+  }
+  updateGHLabel();
+  // Update card highlight
+  document.querySelectorAll('.gh-card').forEach(card => {
+    const nm = card.querySelector('.gh-nm');
+    if(!nm) return;
+    if(!_activeGHCardFilter){
+      card.style.outline = '';
+      card.style.boxShadow = '';
+    } else if(nm.title === _activeGHCardFilter || nm.textContent.trim() === _activeGHCardFilter){
+      card.style.outline = '2px solid var(--blue-mid)';
+      card.style.boxShadow = '0 0 0 4px rgba(59,130,246,0.15)';
+    } else {
+      card.style.outline = '';
+      card.style.boxShadow = '';
+      card.style.opacity = '0.55';
+    }
+  });
+  // Restore opacity for active card
+  document.querySelectorAll('.gh-card').forEach(card => {
+    const nm = card.querySelector('.gh-nm');
+    if(!nm) return;
+    if(!_activeGHCardFilter){
+      card.style.opacity = '';
+    } else if(nm.title === _activeGHCardFilter || nm.textContent.trim() === _activeGHCardFilter){
+      card.style.opacity = '';
+    }
+  });
+  debouncedRender();
 }
 
 // ── STARTUP ───────────────────────────────────────────────────────────────────
