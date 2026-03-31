@@ -2774,7 +2774,7 @@ function renderHarian(){
                 const val = c.raw * 1000;
                 const pct = tot > 0 ? (val / tot * 100).toFixed(1) : '0.0';
                 const icon = c.datasetIndex===0 ? '🟢' : c.datasetIndex===1 ? '🟡' : '🔴';
-                return ` ${icon} ${c.dataset.label}: ${fmtKg(val)} (${pct}%)`;
+                return ` ${c.dataset.label}: ${fmtKg(val)} (${pct}%)`;
               },
               footer: c => {
                 if(!c || !c.length) return '';
@@ -2782,7 +2782,7 @@ function renderHarian(){
                 const k = dayKeys[idx];
                 if(!k || !byDay[k]) return '';
                 const tot = byDay[k].prem + byDay[k].imp + byDay[k].os;
-                return ` 📦 Total: ${fmtKg(tot)}`;
+                return `Total: ${fmtKg(tot)}`;
               }
             }
           }
