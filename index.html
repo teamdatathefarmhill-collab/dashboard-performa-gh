@@ -797,34 +797,46 @@ body {
   @page { margin:8mm 8mm; size:A4 landscape; }
 
   /* KPI + GH cards */
-  body:not(.pdf-popup-mode) .kpi-row { grid-template-columns:repeat(4,1fr); gap:5px; }
+  body:not(.pdf-popup-mode) .kpi-row { grid-template-columns:repeat(5,1fr)!important; gap:5px; }
   body:not(.pdf-popup-mode) .gh-row { grid-template-columns:repeat(4,1fr); gap:5px; }
   body:not(.pdf-popup-mode) .chart-row { grid-template-columns:1fr 1fr; gap:7px; }
   body:not(.pdf-popup-mode) .bot-grid { grid-template-columns:1fr 1fr; gap:7px; }
   body:not(.pdf-popup-mode) .insight-grid { grid-template-columns:1fr 1fr; gap:6px; }
 
-  /* 1. Sembunyikan GH Ongoing dari KPI saat print */
+  /* 1. Hide: menu bar atas, status per GH, progress bar hijau, GH ongoing card */
+  #tab-nav-wrap { display:none!important; }
+  .sec-gh-status { display:none!important; }
+  #gh-cards { display:none!important; }
+  .overall { display:none!important; }
   #k-ong-card { display:none!important; }
-  /* Sesuaikan grid KPI jadi 5 kolom karena 1 card disembunyikan */
-  body:not(.pdf-popup-mode) .kpi-row { grid-template-columns:repeat(5,1fr)!important; }
+  /* Tombol sort tidak perlu di PDF */
+  #tbl-sort-gh, #tbl-sort-panen, #tbl-sort-pct { display:none!important; }
 
-  /* 2. Tabel Riwayat & Kualitas per GH — perkecil font & padding agar muat */
+  /* 2. Tabel Riwayat — font kecil agar muat di A4 landscape */
   #tbl-periode { font-size:7.5px!important; table-layout:fixed; width:100%; }
   #tbl-periode td, #tbl-periode th { padding:3px 5px!important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   #tbl-periode th { font-size:7px!important; letter-spacing:0!important; }
   .tbl-pct-chip { padding:1px 3px!important; font-size:7px!important; }
   .sbadge { font-size:7px!important; padding:1px 4px!important; }
-  /* Tombol sort tidak perlu di PDF */
-  #tbl-sort-gh, #tbl-sort-panen, #tbl-sort-pct { display:none!important; }
 
-  /* 3. Distribusi Kategori Sanitasi — layout horizontal berdampingan */
+  /* 3. Distribusi Kategori Sanitasi — compact */
   #sanitasi-insight-grid { grid-template-columns:1fr 1fr!important; gap:8px!important; }
   #sanitasi-kategori-section { display:block!important; break-inside:avoid; }
-  /* Sanitasi card: pie + legend berdampingan horizontal */
-  #sanitasi-kategori-section .card:first-child > div { flex-direction:row!important; align-items:center!important; gap:12px!important; }
-  #sanitasi-kategori-legend { display:grid!important; grid-template-columns:1fr 1fr!important; gap:3px 10px!important; font-size:9px!important; }
-  #sanitasi-kategori-legend > div { font-size:9px!important; }
-  #c-sanitasi-kategori-pie { width:120px!important; height:120px!important; }
+  #sanitasi-kategori-legend { display:grid!important; grid-template-columns:1fr 1fr!important; gap:2px 8px!important; }
+  #sanitasi-kategori-legend > div { font-size:8.5px!important; }
+
+  /* 4. Satu halaman — semua konten fit di A4 landscape */
+  * { -webkit-print-color-adjust:exact!important; print-color-adjust:exact!important; }
+  .page { padding:4px 8px!important; }
+  .header { padding:6px 10px!important; margin-bottom:4px!important; }
+  .sec { margin-top:6px!important; margin-bottom:4px!important; }
+  .kpi { padding:8px 10px!important; }
+  .kpi-val { font-size:16px!important; }
+  .card { padding:8px 10px!important; margin-bottom:6px!important; }
+  .chart-row { margin-bottom:6px!important; }
+  .bot-grid { gap:6px!important; }
+  .gh-card { padding:8px 10px!important; }
+  canvas { max-height:180px!important; }
 
   /* Standalone insight fallback */
   #insight-section-standalone { break-inside:avoid; }
