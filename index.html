@@ -3195,11 +3195,11 @@ function showOsSubDetail(kat, color){
       allEntries  = getOutspecAggregated('outspec_note_map');
       notesKatMap = {};
     }
-    // Fallback: breakdown per GH dari ghList
-    if(!allEntries.length){
+    // Fallback: breakdown per GH dari RAW.gh_records
+    if(!allEntries.length && RAW){
       const selG = getSelectedGHs();
       const byGH = {};
-      ghList.forEach(r => {
+      RAW.gh_records.forEach(r => {
         if(selG.length && !selG.includes(r.gh)) return;
         if((r.outspec||0) > 0) byGH[r.gh] = (byGH[r.gh]||0) + r.outspec;
       });
