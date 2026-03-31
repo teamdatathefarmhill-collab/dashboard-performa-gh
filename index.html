@@ -1282,7 +1282,7 @@ body {
   <!-- Chart bar harian -->
   <div class="card" style="margin-bottom:12px;">
     <div class="card-ttl">Total Panen per Hari</div>
-    <div style="position:relative;height:200px;"><canvas id="dh-bar-chart"></canvas></div>
+    <div style="position:relative;height:240px;"><canvas id="dh-bar-chart"></canvas></div>
     <div class="leg" style="margin-top:8px;">
       <div class="leg-item"><div class="leg-sq" style="background:#639922"></div>Premium</div>
       <div class="leg-item"><div class="leg-sq" style="background:#ef9f27"></div>Imperfect</div>
@@ -2691,29 +2691,25 @@ function renderHarian(){
   destroyChart('dh-bar');
   const cvs = document.getElementById('dh-bar-chart');
   if(cvs){
-    // Plugin: label total di atas setiap bar (fixed positioning)
+    // Plugin: label total di atas setiap bar saja
     const dhBarLabelPlugin = {
       id: 'dhBarLabels',
       afterDatasetsDraw(chart){
         const {ctx, scales:{x,y}} = chart;
         ctx.save();
-        ctx.font = '600 9px Segoe UI,system-ui,sans-serif';
-        ctx.fillStyle = '#374151';
+        ctx.font = '700 9px Segoe UI,system-ui,sans-serif';
+        ctx.fillStyle = '#111827';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
         dayKeys.forEach((k, i) => {
           const total = (byDay[k].prem + byDay[k].imp + byDay[k].os) / 1000;
           if(total <= 0) return;
-          // Find top of stacked bar using the last visible dataset
           let topY = null;
           for(let ds = chart.data.datasets.length - 1; ds >= 0; ds--){
             const meta = chart.getDatasetMeta(ds);
             if(meta.hidden) continue;
             const bar = meta.data[i];
-            if(bar){
-              topY = bar.y;
-              break;
-            }
+            if(bar){ topY = bar.y; break; }
           }
           if(topY === null) return;
           const lbl = total >= 1 ? total.toFixed(2)+'T' : (total*1000).toFixed(0)+'Kg';
@@ -2738,21 +2734,26 @@ function renderHarian(){
         layout:{padding:{top:20}},
         plugins:{
           legend:{display:false},
-          tooltip:{callbacks:{
-            title: c => `Tanggal: ${dayKeys[c[0].dataIndex]}`,
-            label: c => {
-              const k = dayKeys[c[0].dataIndex];
-              const tot = (byDay[k].prem + byDay[k].imp + byDay[k].os);
-              const pct = tot > 0 ? (c.raw * 1000 / tot * 100).toFixed(1) : 0;
-              return ` ${c.dataset.label}: ${(c.raw).toFixed(3)} Ton (${pct}%)`;
-            },
-            footer: c => {
-              const k = dayKeys[c[0].dataIndex];
-              const tot = (byDay[k].prem+byDay[k].imp+byDay[k].os)/1000;
-              const impPct = tot > 0 ? (byDay[k].imp/1000/tot*100).toFixed(1) : 0;
-              return [`Total: ${tot.toFixed(3)} Ton`, `% Imperfect: ${impPct}%`];
+          tooltip:{
+            mode: 'index',
+            intersect: false,
+            callbacks:{
+              title: c => `📅 ${dayKeys[c[0].dataIndex]}`,
+              label: c => {
+                const k = dayKeys[c[0].dataIndex];
+                const tot = byDay[k].prem + byDay[k].imp + byDay[k].os;
+                const val = c.raw * 1000;
+                const pct = tot > 0 ? (val / tot * 100).toFixed(1) : 0;
+                const icon = c.datasetIndex===0 ? '🟢' : c.datasetIndex===1 ? '🟡' : '🔴';
+                return ` ${icon} ${c.dataset.label}: ${fmtKg(val)} (${pct}%)`;
+              },
+              footer: c => {
+                const k = dayKeys[c[0].dataIndex];
+                const tot = byDay[k].prem + byDay[k].imp + byDay[k].os;
+                return `─────────────────\n 📦 Total: ${fmtKg(tot)}`;
+              }
             }
-          }}
+          }
         },
         scales:{
           x:{
