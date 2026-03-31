@@ -2732,9 +2732,14 @@ function renderHarian(){
       options:{
         responsive:true, maintainAspectRatio:false,
         layout:{padding:{top:20}},
+        interaction:{
+          mode: 'index',
+          intersect: false,
+        },
         plugins:{
           legend:{display:false},
           tooltip:{
+            enabled: true,
             mode: 'index',
             intersect: false,
             callbacks:{
@@ -2750,7 +2755,7 @@ function renderHarian(){
               footer: c => {
                 const k = dayKeys[c[0].dataIndex];
                 const tot = byDay[k].prem + byDay[k].imp + byDay[k].os;
-                return `─────────────────\n 📦 Total: ${fmtKg(tot)}`;
+                return ` 📦 Total: ${fmtKg(tot)}`;
               }
             }
           }
