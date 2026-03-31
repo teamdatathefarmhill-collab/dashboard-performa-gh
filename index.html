@@ -1294,7 +1294,7 @@ body {
   <div class="card" style="margin-bottom:12px;overflow-x:auto;padding:0;">
     <div style="padding:14px 18px 12px;border-bottom:1px solid var(--border);">
       <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px;">Rekapitulasi per GH</div>
-      <div style="font-size:11px;color:var(--hint);">Total panen dalam rentang tanggal yang dipilih</div>
+      <div style="font-size:11px;color:var(--hint);">Total panen keseluruhan per GH per periode tanam — GH yang aktif dalam rentang tanggal dipilih</div>
     </div>
     <table id="dh-summary-table" style="width:100%;border-collapse:collapse;font-size:11px;">
       <thead>
@@ -2598,16 +2598,29 @@ function renderHarian(){
   const totAll  = entries.reduce((a,d)=>a+d.total,0);
   renderDHKPI(totPrem, totImp, totOS, totAll);
 
-  // ── Summary per GH ──
-  const byGH = {};
-  entries.forEach(d=>{
-    if(!byGH[d.gh]) byGH[d.gh]={gh:d.gh, prem:0, imp:0, os:0, total:0};
-    byGH[d.gh].prem  += d.premium;
-    byGH[d.gh].imp   += d.imperfect;
-    byGH[d.gh].os    += d.outspec;
-    byGH[d.gh].total += d.total;
+  // ── Summary per GH+Periode — total keseluruhan, bukan hanya dalam rentang tanggal ──
+  // Step 1: kumpulkan GH+Periode yang aktif dalam rentang tanggal (dari entries yang sudah difilter)
+  const activeGHPeriode = new Set();
+  entries.forEach(d => activeGHPeriode.add(d.gh + '||' + (d.periode||'')));
+
+  // Step 2: aggregate SEMUA data (tidak difilter tanggal) per GH+Periode
+  // hanya untuk GH+Periode yang aktif dalam rentang
+  const byGHPeriode = {};
+  Object.entries(RAW.daily).forEach(([dk, d]) => {
+    const parts = dk.split('||');
+    const ghName = d.gh || parts[0] || '';
+    const per    = d.periode || parts[1] || '';
+    const key    = ghName + '||' + per;
+    if(!activeGHPeriode.has(key)) return;
+    if(!byGHPeriode[key]) byGHPeriode[key] = {gh:ghName, periode:per, prem:0, imp:0, os:0, total:0, tgls:[]};
+    byGHPeriode[key].prem  += d.premium;
+    byGHPeriode[key].imp   += d.imperfect;
+    byGHPeriode[key].os    += d.outspec;
+    byGHPeriode[key].total += d.total;
+    const tgl = parts[2]||'';
+    if(tgl) byGHPeriode[key].tgls.push(tgl);
   });
-  const sumRows = Object.values(byGH).sort((a,b)=>b.total-a.total);
+  const sumRows = Object.values(byGHPeriode).sort((a,b)=>b.total-a.total);
 
   // Bangun set tanggal panen per GH dari SEMUA daily (tidak difilter rentang)
   // untuk menentukan apakah masih ada panen setelah tanggal 'to'
@@ -2626,27 +2639,33 @@ function renderHarian(){
     const osCls   = parseFloat(osPct)>15?'chip-bad':parseFloat(osPct)>8?'chip-mid':'chip-ok';
     const impCls  = parseFloat(impPct)>25?'chip-bad':parseFloat(impPct)>15?'chip-mid':'chip-ok';
 
-    // Status dinamis: cek apakah masih ada panen di tanggal setelah 'to'
+    // Status: cek dari gh_records per GH+Periode
     let statusHtml = '<span style="color:var(--hint);font-size:10px;">—</span>';
-    const ghTgls = allGHTgls[r.gh] || [];
-    const lastPanenTgl = ghTgls.length ? ghTgls.reduce((a,b)=>a>b?a:b) : '';
-    const todayStr = new Date().toISOString().substring(0,10);
-    const cutoff   = to || todayStr;
-    const hasAfter = ghTgls.some(t => t > cutoff);
-    const ghRec = RAW && RAW.gh_records.find(x=>x.gh===r.gh);
-    const isBelum = ghRec && (ghRec.kategori==='Belum Panen'||ghRec.kategori==='BELUM PANEN');
-    const periodeLabel = ghRec ? ghRec.periode : '—';
-    if(isBelum && r.total <= 0){
+    const ghRec = RAW && RAW.gh_records.find(x => x.gh===r.gh && String(x.periode).trim()===String(r.periode).trim());
+    const ghRecFallback = ghRec || (RAW && RAW.gh_records.find(x => x.gh===r.gh));
+    const kat = ghRec ? (ghRec.kategori||'') : (ghRecFallback ? (ghRecFallback.kategori||'') : '');
+    const isBelum = kat==='Belum Panen'||kat==='BELUM PANEN';
+    const isSelesai = kat==='Terpenuhi'||kat==='HABIS'||kat==='SELESAI'||kat==='Tidak Terpenuhi';
+    if(isBelum){
       statusHtml = `<span class="sbadge s-belum" style="font-size:9px;">Belum Panen</span>`;
-    } else if(hasAfter){
+    } else if(isSelesai){
+      statusHtml = `<span class="sbadge s-terpenuhi" style="font-size:9px;">Selesai ✓</span>`;
+    } else if(kat==='Ongoing'){
       statusHtml = `<span class="sbadge s-ongoing" style="font-size:9px;">Ongoing</span>`;
     } else {
-      statusHtml = `<span class="sbadge s-terpenuhi" style="font-size:9px;">Selesai</span>`;
+      // Fallback: cek apakah ada data panen setelah cutoff
+      const ghTgls = allGHTgls[r.gh] || [];
+      const todayStr = new Date().toISOString().substring(0,10);
+      const cutoff   = to || todayStr;
+      const hasAfter = ghTgls.some(t => t > cutoff);
+      statusHtml = hasAfter
+        ? `<span class="sbadge s-ongoing" style="font-size:9px;">Ongoing</span>`
+        : `<span class="sbadge s-terpenuhi" style="font-size:9px;">Selesai</span>`;
     }
 
     return `<tr style="${i%2?'background:var(--surface2);':''}">
       <td style="padding:7px 12px;font-weight:600;">${r.gh}</td>
-      <td style="padding:7px 12px;color:var(--hint);font-size:10px;font-weight:600;">${periodeLabel}</td>
+      <td style="padding:7px 12px;color:var(--hint);font-size:10px;font-weight:600;">${r.periode||'—'}</td>
       <td style="padding:7px 12px;text-align:right;color:var(--green);">${fmtKg(r.prem)}</td>
       <td style="padding:7px 12px;text-align:right;color:var(--amber);">${fmtKg(r.imp)}</td>
       <td style="padding:7px 12px;text-align:right;color:var(--red);">${fmtKg(r.os)}</td>
