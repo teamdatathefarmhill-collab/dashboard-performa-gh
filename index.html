@@ -4485,39 +4485,71 @@ function render(){
   };
   const DEFAULT_PIE_COLORS = ['#e24b4a','#ef9f27','#378add','#5aac1a','#d85a30','#9c59c2','#14b8a6','#185fa5','#0ea5e9'];
 
+  // 7 kategori default yang selalu ditampilkan di pie chart, bahkan jika 0
+  const ALL_DEFAULT_KATEGORI = [
+    'Belum Ada Keterangan',
+    'Tanaman Layu (Layu Akar)',
+    'Crack',
+    'Visual',
+    'Brix',
+    'GSB',
+    'Tanaman Keriting',
+  ];
+
   const osKatEntries = (() => {
+    let entries = [];
     // Coba RAW_OUTSPEC dulu
     if(RAW_OUTSPEC && RAW_OUTSPEC.length > 0){
       const fromSheet = getOutspecFromSheet('kategori');
-      if(fromSheet.length > 0) return fromSheet;
+      if(fromSheet.length > 0) entries = fromSheet;
     }
     // Fallback ke outspec_notes_map dari sheet utama (kolom Notes)
-    const fromNotes = getOutspecAggregated('outspec_notes_map');
-    if(fromNotes.length > 0) return fromNotes;
-    // Fallback: bangun dari gh_records → breakdown per GH yang punya outspec
-    // Gunakan data ghList yang sudah difilter sesuai filter aktif
-    const byGH = {};
-    ghList.forEach(r => {
-      if((r.outspec||0) > 0) byGH[r.gh] = (byGH[r.gh]||0) + r.outspec;
+    if(!entries.length){
+      const fromNotes = getOutspecAggregated('outspec_notes_map');
+      if(fromNotes.length > 0) entries = fromNotes;
+    }
+    // Fallback: bangun dari gh_records
+    if(!entries.length){
+      const byGH = {};
+      ghList.forEach(r => {
+        if((r.outspec||0) > 0) byGH[r.gh] = (byGH[r.gh]||0) + r.outspec;
+      });
+      entries = Object.entries(byGH).sort((a,b)=>b[1]-a[1]);
+    }
+
+    // Pastikan semua 7 kategori default selalu muncul (dengan nilai 0 jika tidak ada)
+    const entryMap = new Map(entries);
+    ALL_DEFAULT_KATEGORI.forEach(kat => {
+      if(!entryMap.has(kat)) entryMap.set(kat, 0);
     });
-    return Object.entries(byGH).sort((a,b)=>b[1]-a[1]);
+    // Susun ulang: kategori yang ada data dulu (desc), lalu yang 0 sesuai urutan default
+    const withData    = entries.filter(([k]) => entryMap.get(k) > 0);
+    const withoutData = ALL_DEFAULT_KATEGORI
+      .filter(kat => !withData.find(([k]) => k === kat))
+      .map(kat => [kat, 0]);
+    return [...withData, ...withoutData];
   })();
 
   destroyChart('c-os-pie');
   const pieCvs = document.getElementById('c-os-pie');
   if(osKatEntries.length && pieCvs){
     const ctxPie = pieCvs.getContext('2d');
-    // Assign warna per kategori
-    const pieColorsArr = osKatEntries.map(([kat], i) =>
+    // Assign warna per kategori (konsisten untuk semua 7, termasuk yang 0)
+    const allPieColorsArr = osKatEntries.map(([kat], i) =>
       KATEGORI_COLORS[kat] || DEFAULT_PIE_COLORS[i % DEFAULT_PIE_COLORS.length]);
+
+    // Pie chart hanya pakai entri yang punya nilai > 0 (slice 0 tidak bisa tampil di pie)
+    const pieEntries    = osKatEntries.filter(([,v]) => v > 0);
+    const pieColorsOnly = pieEntries.map(([kat]) =>
+      allPieColorsArr[osKatEntries.findIndex(([k]) => k === kat)]);
 
     charts['c-os-pie'] = new Chart(ctxPie, {
       type: 'pie',
       data: {
-        labels: osKatEntries.map(([k])=>k),
+        labels: pieEntries.map(([k])=>k),
         datasets:[{
-          data: osKatEntries.map(([,v])=>v),
-          backgroundColor: pieColorsArr,
+          data: pieEntries.map(([,v])=>v),
+          backgroundColor: pieColorsOnly,
           borderWidth: 2, borderColor: '#fff', hoverOffset: 8,
         }]
       },
@@ -4526,34 +4558,35 @@ function render(){
         plugins:{
           legend:{display:false},
           tooltip:{callbacks:{label:c=>{
-            const tot = osKatEntries.reduce((a,[,v])=>a+v,0);
+            const tot = pieEntries.reduce((a,[,v])=>a+v,0);
             return ` ${c.label}: ${fmtKg(c.raw)} (${tot?(c.raw/tot*100).toFixed(1):0}%)`;
           }}}
         }
       },
     });
 
-    // Click handler — filter sub-bar ke kategori yang diklik
+    // Click handler — pakai pieEntries (hanya yang ada nilai)
     pieCvs.onclick = function(evt){
       const pts = charts['c-os-pie'].getElementsAtEventForMode(evt,'nearest',{intersect:true},true);
       if(!pts.length) return;
       const i = pts[0].index;
-      showOsSubDetail(osKatEntries[i][0], pieColorsArr[i]);
+      showOsSubDetail(pieEntries[i][0], pieColorsOnly[i]);
     };
 
-    // Legend
+    // Legend — tampilkan SEMUA 7 kategori default (termasuk yang 0)
     const legEl = document.getElementById('os-pie-legend');
     if(legEl){
       const tot = osKatEntries.reduce((a,[,v])=>a+v,0);
       legEl.innerHTML = osKatEntries.map(([kat,val],i)=>{
-        const pct = tot ? (val/tot*100).toFixed(0) : 0;
-        // Shorten long category names for display
-        const displayKat = kat.length > 22 ? kat.substring(0, 20) + '…' : kat;
-        return `<div style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);cursor:pointer;padding:2px 0;"
-          title="${kat}" onclick="showOsSubDetail('${kat}','${pieColorsArr[i]}')">
-          <div style="width:9px;height:9px;border-radius:2px;background:${pieColorsArr[i]};flex-shrink:0"></div>
+        const pct    = (tot && val > 0) ? (val/tot*100).toFixed(0) : 0;
+        const isZero = val === 0;
+        const displayKat = kat.length > 22 ? kat.substring(0, 20) + '\u2026' : kat;
+        const color  = allPieColorsArr[i];
+        return `<div style="display:flex;align-items:center;gap:5px;font-size:10px;color:${isZero?'var(--hint)':'var(--muted)'};cursor:pointer;padding:2px 0;opacity:${isZero?'0.5':'1'};"
+          title="${kat}${isZero?' \u2014 tidak ada data pada filter ini':''}" onclick="showOsSubDetail('${kat}','${color}')">
+          <div style="width:9px;height:9px;border-radius:2px;background:${color};flex-shrink:0;${isZero?'opacity:0.35;':''}"></div>
           <span style="flex:1;min-width:0;line-height:1.3;">${displayKat}</span>
-          <span style="font-weight:700;color:var(--text);flex-shrink:0;">${pct}%</span>
+          <span style="font-weight:${isZero?'400':'700'};color:${isZero?'var(--hint)':'var(--text)'};flex-shrink:0;">${isZero?'0%':pct+'%'}</span>
         </div>`;
       }).join('');
     }
