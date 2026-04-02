@@ -2195,37 +2195,45 @@ async function loadData(isRefresh=false){
       return;
     }
 
-    // ── Fetch kedua sheet SECARA PARALEL ─────────────────────────────────────
-    console.log('[loadData] Fetching panen + sanitasi in parallel...');
-    const panenUrl  = PROXY_URL + '?t=' + Date.now();
-    const sanUrl    = PROXY_URL + '?type=sanitasi&t=' + Date.now();
-    const estUrl    = PROXY_URL + '?type=estimasi&t=' + Date.now();
-    const outspecUrl= PROXY_URL + '?type=outspec&t='  + Date.now();
+    // ── Fetch tiap endpoint INDEPENDEN dengan timeout masing-masing ──────────
+    console.log('[loadData] Fetching panen + sanitasi + estimasi + outspec (independent timeout)...');
+    const FETCH_TIMEOUT_MS = 60000; // 60 detik per endpoint
 
-    const controller = new AbortController();
-    const timeoutId  = setTimeout(()=>controller.abort(), 35000);
+    async function fetchWithTimeout(url, label){
+      const ctrl = new AbortController();
+      const tid  = setTimeout(()=>ctrl.abort(), FETCH_TIMEOUT_MS);
+      try {
+        const res = await fetch(url, { redirect:'follow', cache:'no-cache', signal: ctrl.signal });
+        clearTimeout(tid);
+        if(!res.ok){ console.warn('['+label+'] HTTP '+res.status); return ''; }
+        const t = await res.text();
+        console.log('['+label+'] OK — '+t.length+' chars');
+        return t;
+      } catch(err){
+        clearTimeout(tid);
+        if(err.name==='AbortError') console.warn('['+label+'] Timeout 60 detik, menggunakan cache jika ada');
+        else console.warn('['+label+'] Gagal: '+err.message);
+        return null; // null = gagal (beda dari '' = kosong)
+      }
+    }
 
-    let text = '', sanText = '', estText = '', osText = '';
-    try {
-      const [res, sanRes, estRes, osRes] = await Promise.all([
-        fetch(panenUrl,   { redirect:'follow', cache:'no-cache', signal: controller.signal }),
-        fetch(sanUrl,     { redirect:'follow', cache:'no-cache', signal: controller.signal }),
-        fetch(estUrl,     { redirect:'follow', cache:'no-cache', signal: controller.signal }),
-        fetch(outspecUrl, { redirect:'follow', cache:'no-cache', signal: controller.signal }),
-      ]);
-      clearTimeout(timeoutId);
-      if(!res.ok) throw new Error('HTTP '+res.status+' dari Apps Script (panen)');
-      [text, sanText, estText, osText] = await Promise.all([
-        res.text(),
-        sanRes.ok ? sanRes.text() : Promise.resolve(''),
-        estRes.ok ? estRes.text() : Promise.resolve(''),
-        osRes.ok  ? osRes.text()  : Promise.resolve(''),
-      ]);
-      console.log('Fetch OK — panen:', text.length, 'chars | sanitasi:', sanText.length, 'chars | estimasi:', estText.length, 'chars | outspec:', osText.length, 'chars');
-    } catch(fetchErr){
-      clearTimeout(timeoutId);
-      if(fetchErr.name==='AbortError') throw new Error('Timeout 35 detik — Apps Script tidak merespons. Coba refresh.');
-      throw new Error('Gagal fetch: '+fetchErr.message);
+    const ts = Date.now();
+    const [text_raw, sanText_raw, estText_raw, osText_raw] = await Promise.all([
+      fetchWithTimeout(PROXY_URL + '?t=' + ts,                   'panen'),
+      fetchWithTimeout(PROXY_URL + '?type=sanitasi&t=' + ts,     'sanitasi'),
+      fetchWithTimeout(PROXY_URL + '?type=estimasi&t=' + ts,     'estimasi'),
+      fetchWithTimeout(PROXY_URL + '?type=outspec&t='  + ts,     'outspec'),
+    ]);
+
+    // Fallback ke cache jika endpoint gagal (null = timeout/error)
+    const text    = (text_raw    !== null) ? text_raw    : (loadCache(CACHE_KEY_PANEN)    || '');
+    const sanText = (sanText_raw !== null) ? sanText_raw : (loadCache(CACHE_KEY_SANITASI) || '');
+    const estText = (estText_raw !== null) ? estText_raw : (loadCache(CACHE_KEY_ESTIMASI) || '');
+    const osText  = (osText_raw  !== null) ? osText_raw  : (loadCache(CACHE_KEY_OUTSPEC)  || '');
+
+    // Panen wajib ada — jika gagal fetch DAN cache kosong, baru throw
+    if(!text || text.length < 10){
+      throw new Error('Timeout — Apps Script tidak merespons & tidak ada cache. Coba refresh beberapa saat lagi.');
     }
 
     if(!text || text.length < 10) throw new Error('Data kosong ('+text.length+' chars) — cek Apps Script');
@@ -2320,8 +2328,11 @@ async function loadData(isRefresh=false){
       // Sembunyikan JS internal error dari user, tampilkan pesan yang actionable
       const rawMsg = e.message || '';
       const isJsInternalErr = rawMsg.includes('Cannot read') || rawMsg.includes('null') || rawMsg.includes('undefined');
+      const isTimeout = rawMsg.includes('Timeout') || rawMsg.includes('timeout');
       const userMsg = isJsInternalErr
         ? 'Gagal terhubung ke Apps Script. Pastikan: 1) URL Apps Script benar, 2) sudah di-deploy sebagai Web App, 3) akses "Anyone".'
+        : isTimeout
+        ? 'Apps Script lambat merespons (timeout 60 detik). Kemungkinan: 1) Apps Script cold-start, 2) koneksi lambat. Coba klik "Coba Lagi" — biasanya berhasil percobaan kedua.'
         : rawMsg + ' — cek koneksi internet atau Apps Script.';
       document.getElementById('err-msg').textContent = userMsg;
       // Log error asli ke console untuk debugging
