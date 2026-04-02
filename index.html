@@ -5413,12 +5413,45 @@ function getEvEstimasiPerGH(){
   return result;
 }
 
-function getEvRealisasiPerGH(entries){
-  // entries sudah difilter dari getEvDailyEntries()
-  // Gunakan actual saja (P+I, bukan future) → sesuai "Realisasi"
+function getEvRealisasiPerGH(){
+  // Baca langsung dari _rawRows (sheet panen/report) — lebih akurat dari aggregate daily
+  // Filter: Tanggal Ref sesuai range aktif, GH filter, kepemilikan
+  // Hanya PERFECT + IMPERFECT (realisasi aktual, bukan outspec/sisa)
   const result = {};
-  entries.filter(e => !e.isFuture).forEach(e => {
-    result[e.gh] = (result[e.gh]||0) + e.premium + e.imperfect;
+  if(!_rawRows || !_rawRows.length) return result;
+
+  const fGH  = document.getElementById('ev-gh')?.value || '';
+  let from='', to='';
+
+  if(evMode === 'bulan'){
+    const fBulan = document.getElementById('ev-bulan')?.value || ''; // YYYY-MM
+    if(fBulan){
+      from = fBulan + '-01';
+      // last day of month
+      const [yr,mn] = fBulan.split('-').map(Number);
+      const lastDay = new Date(yr, mn, 0).getDate();
+      to = `${fBulan}-${String(lastDay).padStart(2,'0')}`;
+    }
+  } else {
+    from = document.getElementById('ev-from')?.value || '';
+    to   = document.getElementById('ev-to')?.value   || '';
+  }
+
+  _rawRows.forEach(r => {
+    const gh    = (r['GH']||'').trim();
+    const grade = (r['GRADE']||'').toUpperCase().trim();
+    const val   = parseFloat(r['DATA KEBUN']||r['Total']||0);
+    // Tanggal realisasi: kolom "Tanggal Ref" (Real Panen) atau "Tanggal"
+    const tgl   = (r['Tanggal Ref']||r['Real Panen']||r['Tanggal']||'').substring(0,10);
+
+    if(!gh || val <= 0) return;
+    if(grade !== 'PERFECT' && grade !== 'IMPERFECT') return; // hanya realisasi
+    if(fGH && gh !== fGH) return;
+    if(evOwnershipMode !== 'all' && !ghMatchesOwnership(gh, evOwnershipMode)) return;
+    if(from && tgl < from) return;
+    if(to   && tgl > to)   return;
+
+    result[gh] = (result[gh]||0) + val;
   });
   return result;
 }
@@ -5429,7 +5462,7 @@ function renderEvGHEstTable(entries){
   if(!tbody) return;
 
   const estPerGH  = getEvEstimasiPerGH();
-  const realPerGH = getEvRealisasiPerGH(entries);
+  const realPerGH = getEvRealisasiPerGH();
 
   // Gabung semua GH yang ada di estimasi atau realisasi
   const allGHs = new Set([...Object.keys(estPerGH), ...Object.keys(realPerGH)]);
