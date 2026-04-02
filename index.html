@@ -1694,13 +1694,14 @@ const MONTH_EN_MAP = {
 };
 
 function buildEstimasiDataset(rows){
-  // rows: array of objects dari parseCSV
-  // Simpan semua baris dengan field yang diperlukan
+  // Kolom sheet estimasi: Tanggal, Greenhouse, Varian, Grade, Total, Month, Real Panen, Month Real, Panen Ke-, Status, Periode
   const data = rows.map(r=>({
     gh:      (r['Greenhouse']||r['GREENHOUSE']||'').trim(),
     periode: (r['Periode']||r['PERIODE']||'').trim(),
     month:   (r['Month']||r['MONTH']||'').trim().toLowerCase(),
     total:   parseFloat(r['Total']||r['TOTAL']||0),
+    // Tanggal estimasi panen per baris — untuk filter per tanggal
+    tgl: (r['Real Panen']||r['Real Pan']||r['REAL PANEN']||r['Tanggal']||r['TANGGAL']||r['tanggal']||'').substring(0,10),
   })).filter(r=>r.gh && r.total>0);
   return { data };
 }
@@ -5232,51 +5233,46 @@ function getEvDailyEntries(){
 // Helper: hitung proporsi hari dalam bulan untuk range tanggal
 // Misal filter 1 Apr s.d. 1 Apr → 1 hari dari 30 hari April → 1/30 estimasi April
 function _getEstByDateRange(from, to, fGH, calcPerGH){
+  // Filter estimasi berdasarkan tanggal aktual di kolom tgl (Real Panen)
+  // Jika tgl tersedia → filter langsung per tanggal
+  // Jika tgl tidak ada → fallback ke proporsi hari/bulan
   if(!RAW_ESTIMASI || !RAW_ESTIMASI.data) return calcPerGH ? {} : 0;
   if(!from && !to) return calcPerGH ? {} : 0;
 
-  const dateFrom = new Date(from || to);
-  const dateTo   = new Date(to   || from);
+  const fromStr = from || to;
+  const toStr   = to   || from;
 
-  // Kumpulkan semua bulan dalam range, dengan jumlah hari yang masuk filter
-  const monthInfo = {}; // key: YYYY-MM → {days: hari dalam bulan yg dipilih, totalDays: total hari bulan}
-  let cur = new Date(dateFrom);
-  while(cur <= dateTo){
-    const ym = cur.toISOString().substring(0,7);
-    if(!monthInfo[ym]){
-      const yr = cur.getFullYear(), mn = cur.getMonth();
-      const totalDays = new Date(yr, mn+1, 0).getDate();
-      monthInfo[ym] = {days:0, totalDays, month: mn+1};
+  // Cek apakah data estimasi punya field tgl yang terisi
+  const hasTgl = RAW_ESTIMASI.data.some(r => r.tgl && r.tgl.length >= 10);
+
+  const filterRow = r => {
+    if(fGH && r.gh !== fGH) return false;
+    if(evOwnershipMode !== 'all' && !ghMatchesOwnership(r.gh, evOwnershipMode)) return false;
+    if(hasTgl){
+      // Filter by actual date
+      if(!r.tgl) return false;
+      return r.tgl >= fromStr && r.tgl <= toStr;
+    } else {
+      // Fallback: filter by month range
+      const rowMonth = MONTH_EN_MAP[r.month] || 0;
+      const fromMonth = parseInt(fromStr.split('-')[1]);
+      const toMonth   = parseInt(toStr.split('-')[1]);
+      return rowMonth >= fromMonth && rowMonth <= toMonth;
     }
-    monthInfo[ym].days++;
-    cur.setDate(cur.getDate()+1);
-  }
+  };
 
   if(calcPerGH){
-    // Kembalikan Map gh → estimasi proporsional
     const result = {};
-    Object.entries(monthInfo).forEach(([ym, info]) => {
-      const ratio = info.totalDays > 0 ? info.days / info.totalDays : 0;
-      RAW_ESTIMASI.data.forEach(r => {
-        if(fGH && r.gh !== fGH) return;
-        if(evOwnershipMode !== 'all' && !ghMatchesOwnership(r.gh, evOwnershipMode)) return;
-        const rowMonth = MONTH_EN_MAP[r.month] || 0;
-        if(rowMonth !== info.month) return;
-        result[r.gh] = (result[r.gh]||0) + r.total * ratio;
-      });
+    RAW_ESTIMASI.data.forEach(r => {
+      if(!filterRow(r)) return;
+      result[r.gh] = (result[r.gh]||0) + r.total;
     });
     return result;
   } else {
     let total = 0;
-    Object.entries(monthInfo).forEach(([ym, info]) => {
-      const ratio = info.totalDays > 0 ? info.days / info.totalDays : 0;
-      RAW_ESTIMASI.data.forEach(r => {
-        if(fGH && r.gh !== fGH) return;
-        if(evOwnershipMode !== 'all' && !ghMatchesOwnership(r.gh, evOwnershipMode)) return;
-        const rowMonth = MONTH_EN_MAP[r.month] || 0;
-        if(rowMonth !== info.month) return;
-        total += r.total * ratio;
-      });
+    RAW_ESTIMASI.data.forEach(r => {
+      if(!filterRow(r)) return;
+      total += r.total;
     });
     return total;
   }
