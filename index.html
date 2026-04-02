@@ -1465,27 +1465,31 @@ body {
     </div>
   </div>
 
-  <!-- BAGIAN 1: Summary Estimasi vs Realisasi (seperti tabel atas di gambar) -->
+  <!-- BAGIAN 1: Summary Estimasi vs Realisasi -->
   <div class="sec" style="margin-top:16px;">Ringkasan Estimasi vs Realisasi</div>
 
-  <!-- Estimasi bulan -->
-  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 16px 14px;margin-bottom:10px;box-shadow:var(--shadow);">
-    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;text-align:center;" id="ev-est-label">Estimasi Panen Bulan —</div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 16px 14px;margin-bottom:14px;box-shadow:var(--shadow);">
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;text-align:center;" id="ev-est-label">Estimasi Panen —</div>
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;">
       <div class="kpi info" style="text-align:center;">
         <div class="kpi-lbl">Total Estimasi</div>
         <div class="kpi-val" id="ev-k-est">—</div>
         <div class="kpi-sub" id="ev-k-est-sub">dari sheet estimasi</div>
       </div>
+      <div class="kpi" style="text-align:center;background:var(--teal-bg);border-color:var(--teal-border);">
+        <div class="kpi-lbl" style="color:var(--teal);">Realisasi Aktual (P+I)</div>
+        <div class="kpi-val" style="color:var(--teal);" id="ev-k-real2">—</div>
+        <div class="kpi-sub">Premium + Imperfect</div>
+      </div>
       <div class="kpi ok" style="text-align:center;">
-        <div class="kpi-lbl">Total Realisasi + Sisa (P/I/O)</div>
+        <div class="kpi-lbl">Realisasi + Sisa (P/I/O)</div>
         <div class="kpi-val" id="ev-k-real">—</div>
-        <div class="kpi-sub" id="ev-k-real-sub">Premium + Imperfect + Outspec</div>
+        <div class="kpi-sub" id="ev-k-real-sub">P + I + Outspec</div>
       </div>
       <div id="ev-k-dev-card" class="kpi" style="text-align:center;">
-        <div class="kpi-lbl">Deviasi (P/I/O)</div>
+        <div class="kpi-lbl">Deviasi Aktual</div>
         <div class="kpi-val" id="ev-k-dev">—</div>
-        <div class="kpi-sub">Realisasi − Estimasi</div>
+        <div class="kpi-sub">Aktual (P+I) − Estimasi</div>
       </div>
       <div class="kpi warn" style="text-align:center;">
         <div class="kpi-lbl">Total Outspec</div>
@@ -1495,34 +1499,49 @@ body {
     </div>
   </div>
 
-  <!-- Realisasi sampai hari ini -->
-  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 16px 14px;margin-bottom:14px;box-shadow:var(--shadow);">
-    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;text-align:center;" id="ev-real-label">Realisasi s.d. Hari Ini</div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
-      <div class="kpi info" style="text-align:center;opacity:.7;">
-        <div class="kpi-lbl">Total Estimasi (sama)</div>
-        <div class="kpi-val" id="ev-k-est2">—</div>
-        <div class="kpi-sub">referensi</div>
+  <!-- BAGIAN 2: Tabel Estimasi vs Realisasi per GH -->
+  <div class="sec">Estimasi vs Realisasi per Greenhouse</div>
+
+  <div class="card" style="overflow-x:auto;padding:0;margin-bottom:14px;" id="ev-gh-est-card">
+    <div style="padding:14px 18px 12px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px;">Tabel Estimasi–Realisasi Panen per GH</div>
+        <div style="font-size:11px;color:var(--hint);" id="ev-gh-tbl-subtitle">Estimasi dari sheet estimasi · Realisasi aktual dari data kebun (P+I)</div>
       </div>
-      <div class="kpi" style="text-align:center;background:var(--teal-bg);border-color:var(--teal-border);">
-        <div class="kpi-lbl" style="color:var(--teal);">Realisasi Aktual (P+I)</div>
-        <div class="kpi-val" style="color:var(--teal);" id="ev-k-real2">—</div>
-        <div class="kpi-sub">Premium + Imperfect saja</div>
-      </div>
-      <div id="ev-k-dev2-card" class="kpi" style="text-align:center;">
-        <div class="kpi-lbl">Deviasi Aktual</div>
-        <div class="kpi-val" id="ev-k-dev2">—</div>
-        <div class="kpi-sub">Aktual − Estimasi</div>
-      </div>
-      <div class="kpi warn" style="text-align:center;">
-        <div class="kpi-lbl">Outspec (sama)</div>
-        <div class="kpi-val" id="ev-k-os2">—</div>
-        <div class="kpi-sub">—</div>
+      <div style="font-size:10px;color:var(--hint);background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:6px;padding:4px 10px;align-self:center;">
+        ✏️ Kolom Keterangan dapat diisi langsung
       </div>
     </div>
+    <table id="ev-gh-est-table" style="width:100%;border-collapse:collapse;font-size:11.5px;">
+      <thead>
+        <tr style="background:var(--surface2);text-align:center;">
+          <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);text-align:left;white-space:nowrap;">Greenhouse</th>
+          <th style="padding:9px 12px;font-weight:700;color:var(--blue);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Estimasi<br><span style="font-weight:500;font-size:9px;color:var(--hint);">Sheet Estimasi</span></th>
+          <th style="padding:9px 12px;font-weight:700;color:var(--teal);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Realisasi (P+I)<br><span style="font-weight:500;font-size:9px;color:var(--hint);">Aktual</span></th>
+          <th style="padding:9px 12px;font-weight:700;color:var(--red);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Outspec</th>
+          <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Deviasi<br><span style="font-weight:500;font-size:9px;">Aktual − Est</span></th>
+          <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">% Tercapai</th>
+          <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);text-align:left;white-space:nowrap;min-width:180px;">Keterangan</th>
+        </tr>
+      </thead>
+      <tbody id="ev-gh-est-body">
+        <tr><td colspan="7" style="text-align:center;padding:28px;color:var(--hint);font-size:11px;">Memuat data...</td></tr>
+      </tbody>
+      <tfoot>
+        <tr id="ev-gh-est-foot" style="background:var(--surface2);font-weight:700;display:none;">
+          <td style="padding:10px 12px;font-size:11px;font-weight:800;color:var(--text);">Grand Total</td>
+          <td style="padding:10px 12px;text-align:center;font-size:11px;font-weight:700;color:var(--blue);" id="ev-gh-foot-est">—</td>
+          <td style="padding:10px 12px;text-align:center;font-size:11px;font-weight:700;color:var(--teal);" id="ev-gh-foot-real">—</td>
+          <td style="padding:10px 12px;text-align:center;font-size:11px;font-weight:700;color:var(--red);" id="ev-gh-foot-os">—</td>
+          <td style="padding:10px 12px;text-align:center;font-size:11px;font-weight:700;" id="ev-gh-foot-dev">—</td>
+          <td style="padding:10px 12px;text-align:center;font-size:11px;font-weight:700;" id="ev-gh-foot-pct">—</td>
+          <td style="padding:10px 12px;"></td>
+        </tr>
+      </tfoot>
+    </table>
   </div>
 
-  <!-- BAGIAN 2: Analisa per Varian -->
+  <!-- BAGIAN 3: Analisa per Varian -->
   <div class="sec">Analisa Panen per Varian <span class="bnew">PER VARIAN</span></div>
 
   <div class="card" style="overflow-x:auto;padding:0;margin-bottom:14px;">
@@ -1560,27 +1579,7 @@ body {
     </table>
   </div>
 
-  <!-- BAGIAN 3: Chart Varian -->
-  <div style="display:grid;grid-template-columns:2fr 1fr;gap:10px;margin-bottom:14px;">
-    <div class="card">
-      <div class="card-ttl">Volume Panen per Varian (kg)</div>
-      <div style="position:relative;height:240px;"><canvas id="ev-varian-bar"></canvas></div>
-      <div class="leg" style="margin-top:8px;">
-        <div class="leg-item"><div class="leg-sq" style="background:#639922"></div>Perfect</div>
-        <div class="leg-item"><div class="leg-sq" style="background:#ef9f27"></div>Imperfect</div>
-        <div class="leg-item"><div class="leg-sq" style="background:#e24b4a"></div>Outspec</div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-ttl">Distribusi Kualitas Total</div>
-      <div style="position:relative;height:180px;"><canvas id="ev-quality-donut"></canvas></div>
-      <div class="leg" style="justify-content:center;margin-top:8px;">
-        <div class="leg-item"><div class="leg-sq" style="background:#639922"></div>Perfect <strong id="ev-lpct-p"></strong></div>
-        <div class="leg-item"><div class="leg-sq" style="background:#ef9f27"></div>Imperfect <strong id="ev-lpct-i"></strong></div>
-        <div class="leg-item"><div class="leg-sq" style="background:#e24b4a"></div>Outspec <strong id="ev-lpct-o"></strong></div>
-      </div>
-    </div>
-  </div>
+  <!-- Chart dihapus -->
 
   <div style="text-align:center;font-size:10px;color:var(--hint);padding:10px 0 2px;" id="ev-footer"></div>
 </div>
@@ -2195,45 +2194,37 @@ async function loadData(isRefresh=false){
       return;
     }
 
-    // ── Fetch tiap endpoint INDEPENDEN dengan timeout masing-masing ──────────
-    console.log('[loadData] Fetching panen + sanitasi + estimasi + outspec (independent timeout)...');
-    const FETCH_TIMEOUT_MS = 60000; // 60 detik per endpoint
+    // ── Fetch kedua sheet SECARA PARALEL ─────────────────────────────────────
+    console.log('[loadData] Fetching panen + sanitasi in parallel...');
+    const panenUrl  = PROXY_URL + '?t=' + Date.now();
+    const sanUrl    = PROXY_URL + '?type=sanitasi&t=' + Date.now();
+    const estUrl    = PROXY_URL + '?type=estimasi&t=' + Date.now();
+    const outspecUrl= PROXY_URL + '?type=outspec&t='  + Date.now();
 
-    async function fetchWithTimeout(url, label){
-      const ctrl = new AbortController();
-      const tid  = setTimeout(()=>ctrl.abort(), FETCH_TIMEOUT_MS);
-      try {
-        const res = await fetch(url, { redirect:'follow', cache:'no-cache', signal: ctrl.signal });
-        clearTimeout(tid);
-        if(!res.ok){ console.warn('['+label+'] HTTP '+res.status); return ''; }
-        const t = await res.text();
-        console.log('['+label+'] OK — '+t.length+' chars');
-        return t;
-      } catch(err){
-        clearTimeout(tid);
-        if(err.name==='AbortError') console.warn('['+label+'] Timeout 60 detik, menggunakan cache jika ada');
-        else console.warn('['+label+'] Gagal: '+err.message);
-        return null; // null = gagal (beda dari '' = kosong)
-      }
-    }
+    const controller = new AbortController();
+    const timeoutId  = setTimeout(()=>controller.abort(), 35000);
 
-    const ts = Date.now();
-    const [text_raw, sanText_raw, estText_raw, osText_raw] = await Promise.all([
-      fetchWithTimeout(PROXY_URL + '?t=' + ts,                   'panen'),
-      fetchWithTimeout(PROXY_URL + '?type=sanitasi&t=' + ts,     'sanitasi'),
-      fetchWithTimeout(PROXY_URL + '?type=estimasi&t=' + ts,     'estimasi'),
-      fetchWithTimeout(PROXY_URL + '?type=outspec&t='  + ts,     'outspec'),
-    ]);
-
-    // Fallback ke cache jika endpoint gagal (null = timeout/error)
-    const text    = (text_raw    !== null) ? text_raw    : (loadCache(CACHE_KEY_PANEN)    || '');
-    const sanText = (sanText_raw !== null) ? sanText_raw : (loadCache(CACHE_KEY_SANITASI) || '');
-    const estText = (estText_raw !== null) ? estText_raw : (loadCache(CACHE_KEY_ESTIMASI) || '');
-    const osText  = (osText_raw  !== null) ? osText_raw  : (loadCache(CACHE_KEY_OUTSPEC)  || '');
-
-    // Panen wajib ada — jika gagal fetch DAN cache kosong, baru throw
-    if(!text || text.length < 10){
-      throw new Error('Timeout — Apps Script tidak merespons & tidak ada cache. Coba refresh beberapa saat lagi.');
+    let text = '', sanText = '', estText = '', osText = '';
+    try {
+      const [res, sanRes, estRes, osRes] = await Promise.all([
+        fetch(panenUrl,   { redirect:'follow', cache:'no-cache', signal: controller.signal }),
+        fetch(sanUrl,     { redirect:'follow', cache:'no-cache', signal: controller.signal }),
+        fetch(estUrl,     { redirect:'follow', cache:'no-cache', signal: controller.signal }),
+        fetch(outspecUrl, { redirect:'follow', cache:'no-cache', signal: controller.signal }),
+      ]);
+      clearTimeout(timeoutId);
+      if(!res.ok) throw new Error('HTTP '+res.status+' dari Apps Script (panen)');
+      [text, sanText, estText, osText] = await Promise.all([
+        res.text(),
+        sanRes.ok ? sanRes.text() : Promise.resolve(''),
+        estRes.ok ? estRes.text() : Promise.resolve(''),
+        osRes.ok  ? osRes.text()  : Promise.resolve(''),
+      ]);
+      console.log('Fetch OK — panen:', text.length, 'chars | sanitasi:', sanText.length, 'chars | estimasi:', estText.length, 'chars | outspec:', osText.length, 'chars');
+    } catch(fetchErr){
+      clearTimeout(timeoutId);
+      if(fetchErr.name==='AbortError') throw new Error('Timeout 35 detik — Apps Script tidak merespons. Coba refresh.');
+      throw new Error('Gagal fetch: '+fetchErr.message);
     }
 
     if(!text || text.length < 10) throw new Error('Data kosong ('+text.length+' chars) — cek Apps Script');
@@ -2328,11 +2319,8 @@ async function loadData(isRefresh=false){
       // Sembunyikan JS internal error dari user, tampilkan pesan yang actionable
       const rawMsg = e.message || '';
       const isJsInternalErr = rawMsg.includes('Cannot read') || rawMsg.includes('null') || rawMsg.includes('undefined');
-      const isTimeout = rawMsg.includes('Timeout') || rawMsg.includes('timeout');
       const userMsg = isJsInternalErr
         ? 'Gagal terhubung ke Apps Script. Pastikan: 1) URL Apps Script benar, 2) sudah di-deploy sebagai Web App, 3) akses "Anyone".'
-        : isTimeout
-        ? 'Apps Script lambat merespons (timeout 60 detik). Kemungkinan: 1) Apps Script cold-start, 2) koneksi lambat. Coba klik "Coba Lagi" — biasanya berhasil percobaan kedua.'
         : rawMsg + ' — cek koneksi internet atau Apps Script.';
       document.getElementById('err-msg').textContent = userMsg;
       // Log error asli ke console untuk debugging
@@ -5367,30 +5355,25 @@ function renderEvaluasi(){
 
   // ─ Pisahkan actual (sudah terjadi) vs future (sisa terjadwal)
   const actualEntries = entries.filter(e => !e.isFuture);
-  const futureEntries = entries.filter(e =>  e.isFuture);
 
   // Hitung dari actual entries
   const actPrem = actualEntries.reduce((a,d)=>a+d.premium,0);
   const actImp  = actualEntries.reduce((a,d)=>a+d.imperfect,0);
   const actOS   = actualEntries.reduce((a,d)=>a+d.outspec,0);
-  const actReal = actPrem + actImp; // aktual P+I saja (untuk baris 2)
+  const actReal = actPrem + actImp; // aktual P+I saja
 
-  // Hitung dari semua entries (actual + future) untuk baris 1 Realisasi+Sisa
+  // Hitung dari semua entries (actual + future) untuk Realisasi+Sisa
   const totPrem = entries.reduce((a,d)=>a+d.premium,0);
   const totImp  = entries.reduce((a,d)=>a+d.imperfect,0);
   const totOS   = entries.reduce((a,d)=>a+d.outspec,0);
 
-  // Apakah bulan ini sudah ada panen aktual sama sekali?
   const hasActualData = actualEntries.length > 0;
-
-  // totReal: hanya tampilkan jika ada actual data, kalau belum ada panen sama sekali → 0
-  // (jangan tampilkan sisa/future sebagai "realisasi" jika belum ada 1 pun panen terjadi)
   const totReal = hasActualData ? (totPrem + totImp + totOS) : 0;
 
-  // ─ Estimasi
+  // ─ Estimasi dari sheet estimasi
   const estTotal = getEvEstimasi();
 
-  // ─ Deviasi — hanya bermakna jika ada actual data
+  // ─ Deviasi
   const devReal = hasActualData ? (totReal - estTotal) : 0;
   const devAct  = hasActualData ? (actReal - estTotal) : 0;
 
@@ -5412,48 +5395,30 @@ function renderEvaluasi(){
   document.getElementById('ev-info-txt').textContent =
     `${labelBulan}${ghLabel} · ${actualEntries.length} entri data${!hasActualData ? ' (belum ada panen)' : ''}`;
   document.getElementById('ev-est-label').textContent =
-    `Estimasi Panen — ${labelBulan}`;
-  document.getElementById('ev-real-label').textContent =
-    `Update Buah Terpanen s.d. Hari Ini — ${labelBulan}`;
+    `Estimasi vs Realisasi Panen — ${labelBulan}${ghLabel}`;
 
-  // ─ Update KPI baris 1 (estimasi vs real+sisa P/I/O)
-  document.getElementById('ev-k-est').textContent  = fmtKg(estTotal);
-  document.getElementById('ev-k-real').textContent = hasActualData ? fmtKg(totReal) : '—';
-  document.getElementById('ev-k-os').textContent   = hasActualData ? fmtKg(totOS)   : '—';
-  document.getElementById('ev-k-est-sub').textContent  = estTotal > 0 ? 'dari sheet estimasi' : 'data estimasi tidak tersedia';
-  document.getElementById('ev-k-real-sub').textContent = hasActualData
-    ? `${actualEntries.length} entri · P+I+O`
-    : 'belum ada panen di periode ini';
-  document.getElementById('ev-k-os-sub').textContent   = (hasActualData && totReal > 0)
-    ? `${(totOS/totReal*100).toFixed(1)}% dari total`
+  // ─ Scorecard 5 kolom (satu baris)
+  document.getElementById('ev-k-est').textContent      = fmtKg(estTotal);
+  document.getElementById('ev-k-est-sub').textContent  = estTotal > 0 ? 'dari sheet estimasi' : 'data tidak tersedia';
+  document.getElementById('ev-k-real2').textContent    = hasActualData ? fmtKg(actReal) : '—';
+  document.getElementById('ev-k-real').textContent     = hasActualData ? fmtKg(totReal) : '—';
+  document.getElementById('ev-k-real-sub').textContent = hasActualData ? `${actualEntries.length} entri · P+I+O` : 'belum ada panen';
+  document.getElementById('ev-k-os').textContent       = hasActualData ? fmtKg(actOS)   : '—';
+  document.getElementById('ev-k-os-sub').textContent   = (hasActualData && actReal > 0)
+    ? `${(actOS/(actReal+actOS)*100).toFixed(1)}% dari total`
     : '—';
 
+  // Deviasi aktual (P+I vs estimasi)
   const devCard = document.getElementById('ev-k-dev-card');
   document.getElementById('ev-k-dev').textContent = hasActualData
-    ? ((devReal >= 0 ? '+' : '') + fmtKg(devReal))
-    : '—';
-  devCard.className = hasActualData
-    ? 'kpi ' + (devReal >= 0 ? 'ok' : 'warn')
-    : 'kpi';
-  devCard.style.textAlign = 'center';
-
-  // ─ Update KPI baris 2 (aktual P+I vs estimasi)
-  document.getElementById('ev-k-est2').textContent  = fmtKg(estTotal);
-  document.getElementById('ev-k-real2').textContent = hasActualData ? fmtKg(actReal) : '—';
-  document.getElementById('ev-k-os2').textContent   = hasActualData ? fmtKg(actOS)   : '—';
-
-  const devCard2 = document.getElementById('ev-k-dev2-card');
-  document.getElementById('ev-k-dev2').textContent = hasActualData
     ? ((devAct >= 0 ? '+' : '') + fmtKg(devAct))
     : '—';
-  devCard2.className = hasActualData
-    ? 'kpi ' + (devAct >= 0 ? 'ok' : 'warn')
-    : 'kpi';
-  devCard2.style.textAlign = 'center';
+  devCard.className = 'kpi ' + (!hasActualData ? '' : devAct >= 0 ? 'ok' : 'warn');
+  devCard.style.textAlign = 'center';
 
-  // ─ Tabel per varian
+  // ─ Tabel per GH + per Varian
+  renderEvGHEstTable(entries);
   renderEvVarianTable(entries);
-  renderEvCharts(entries);
 
   // ─ Footer
   const ghCount = new Set(actualEntries.map(e=>e.gh)).size;
@@ -5461,6 +5426,142 @@ function renderEvaluasi(){
     hasActualData
       ? `${actualEntries.length} entri · ${ghCount} GH · ${labelBulan}`
       : `Belum ada panen di ${labelBulan} · Estimasi tersedia: ${fmtKg(estTotal)}`;
+}
+
+// ── Tabel Estimasi vs Realisasi per GH ───────────────────────
+const _evGHKeterangan = {}; // keterangan editable per GH, persisten dalam sesi
+
+function getEvEstimasiPerGH(){
+  const result = {};
+  if(!RAW_ESTIMASI || !RAW_ESTIMASI.data) return result;
+  const fGH = document.getElementById('ev-gh')?.value || '';
+
+  let targetMonths = null;
+  if(evMode === 'bulan'){
+    const fBulan = document.getElementById('ev-bulan')?.value || '';
+    if(fBulan) targetMonths = new Set([parseInt(fBulan.split('-')[1])]);
+  } else {
+    const from = document.getElementById('ev-from')?.value || '';
+    const to   = document.getElementById('ev-to')?.value   || '';
+    if(from || to){
+      targetMonths = new Set();
+      const start = new Date((from || to).substring(0,7)+'-01');
+      const end   = new Date((to || from).substring(0,7)+'-01');
+      let cur = new Date(start);
+      while(cur <= end){ targetMonths.add(cur.getMonth()+1); cur.setMonth(cur.getMonth()+1); }
+    }
+  }
+
+  RAW_ESTIMASI.data.forEach(r => {
+    if(fGH && r.gh !== fGH) return;
+    if(evOwnershipMode !== 'all' && !ghMatchesOwnership(r.gh, evOwnershipMode)) return;
+    if(targetMonths !== null){
+      const rowMonth = MONTH_EN_MAP[r.month] || 0;
+      if(!targetMonths.has(rowMonth)) return;
+    }
+    result[r.gh] = (result[r.gh]||0) + r.total;
+  });
+  return result;
+}
+
+function getEvRealisasiPerGH(entries){
+  // Realisasi aktual P+I per GH (exclude future)
+  const result = {};
+  entries.filter(e => !e.isFuture).forEach(e => {
+    if(!result[e.gh]) result[e.gh] = {prem:0, imp:0, os:0};
+    result[e.gh].prem += e.premium;
+    result[e.gh].imp  += e.imperfect;
+    result[e.gh].os   += e.outspec;
+  });
+  return result;
+}
+
+function renderEvGHEstTable(entries){
+  const tbody = document.getElementById('ev-gh-est-body');
+  const tfoot = document.getElementById('ev-gh-est-foot');
+  if(!tbody) return;
+
+  const estPerGH  = getEvEstimasiPerGH();
+  const realPerGH = getEvRealisasiPerGH(entries);
+
+  // Gabung semua GH
+  const fGH = document.getElementById('ev-gh')?.value || '';
+  const allGHs = new Set([...Object.keys(estPerGH), ...Object.keys(realPerGH)]);
+  const ghList = [...allGHs]
+    .filter(g => !fGH || g === fGH)
+    .sort();
+
+  if(!ghList.length){
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:28px;color:var(--hint);font-size:11px;">Tidak ada data untuk filter yang dipilih</td></tr>`;
+    if(tfoot) tfoot.style.display = 'none';
+    return;
+  }
+
+  let grandEst = 0, grandReal = 0, grandOS = 0;
+  let html = '';
+
+  ghList.forEach((gh, i) => {
+    const est  = estPerGH[gh]  || 0;
+    const r    = realPerGH[gh] || {prem:0, imp:0, os:0};
+    const real = r.prem + r.imp;  // P+I aktual
+    const os   = r.os;
+    const dev  = real - est;
+    const pct  = est > 0 ? (real / est * 100) : null;
+
+    grandEst  += est;
+    grandReal += real;
+    grandOS   += os;
+
+    const devColor = dev >= 0 ? 'var(--green)' : 'var(--red)';
+    const devSign  = dev >= 0 ? '+' : '';
+    const pctCls   = pct === null ? 'chip-neu' : pct >= 85 ? 'chip-ok' : pct >= 50 ? 'chip-mid' : 'chip-bad';
+    const pctHtml  = pct !== null
+      ? `<span class="tbl-pct-chip ${pctCls}">${pct.toFixed(1)}%</span>`
+      : `<span class="tbl-pct-chip chip-neu">—</span>`;
+    const rowBg = i % 2 === 1 ? 'background:var(--surface2);' : '';
+    const ket = _evGHKeterangan[gh] || '';
+
+    html += `<tr style="${rowBg}border-bottom:1px solid var(--border);">
+      <td style="padding:9px 12px;font-weight:600;color:var(--text);white-space:nowrap;">${gh}</td>
+      <td style="padding:9px 12px;text-align:center;color:var(--blue);font-weight:600;">${est > 0 ? fmtKg(est) : '<span style="color:var(--hint);">—</span>'}</td>
+      <td style="padding:9px 12px;text-align:center;color:var(--teal);font-weight:600;">${real > 0 ? fmtKg(real) : '<span style="color:var(--hint);">—</span>'}</td>
+      <td style="padding:9px 12px;text-align:center;color:var(--red);font-weight:600;">${os > 0 ? fmtKg(os) : '<span style="color:var(--hint);">—</span>'}</td>
+      <td style="padding:9px 12px;text-align:center;font-weight:700;color:${devColor};">${(est>0||real>0) ? devSign+fmtKg(dev) : '—'}</td>
+      <td style="padding:9px 12px;text-align:center;">${pctHtml}</td>
+      <td style="padding:6px 10px;">
+        <input type="text" placeholder="Isi keterangan..." value="${ket}"
+          data-gh="${gh.replace(/"/g,'&quot;')}"
+          oninput="_evGHKeterangan[this.dataset.gh]=this.value"
+          style="width:100%;border:1px solid var(--border-med);border-radius:6px;padding:5px 9px;font-size:11px;color:var(--text);background:var(--surface2);outline:none;transition:border-color .15s;"
+          onfocus="this.style.borderColor='var(--blue-mid)';this.style.background='var(--blue-bg)'"
+          onblur="this.style.borderColor='var(--border-med)';this.style.background='var(--surface2)'">
+      </td>
+    </tr>`;
+  });
+
+  tbody.innerHTML = html;
+
+  // Grand total footer
+  if(tfoot){
+    tfoot.style.display = '';
+    const grandDev = grandReal - grandEst;
+    const grandPct = grandEst > 0 ? (grandReal/grandEst*100) : null;
+    const devColor = grandDev >= 0 ? 'var(--green)' : 'var(--red)';
+    const devSign  = grandDev >= 0 ? '+' : '';
+    document.getElementById('ev-gh-foot-est').textContent  = grandEst  > 0 ? fmtKg(grandEst)  : '—';
+    document.getElementById('ev-gh-foot-real').textContent = grandReal > 0 ? fmtKg(grandReal) : '—';
+    document.getElementById('ev-gh-foot-os').textContent   = grandOS   > 0 ? fmtKg(grandOS)   : '—';
+    const devEl = document.getElementById('ev-gh-foot-dev');
+    devEl.textContent = (grandEst>0||grandReal>0) ? devSign+fmtKg(grandDev) : '—';
+    devEl.style.color = devColor;
+    const pctEl = document.getElementById('ev-gh-foot-pct');
+    if(grandPct !== null){
+      const cls = grandPct >= 85 ? 'chip-ok' : grandPct >= 50 ? 'chip-mid' : 'chip-bad';
+      pctEl.innerHTML = `<span class="tbl-pct-chip ${cls}">${grandPct.toFixed(1)}%</span>`;
+    } else {
+      pctEl.innerHTML = '<span class="tbl-pct-chip chip-neu">—</span>';
+    }
+  }
 }
 
 function renderEvVarianTable(entries){
@@ -5566,89 +5667,6 @@ function buildVarianRows(rows, isGH){
   return html || '<tr><td colspan="11" style="text-align:center;padding:28px;color:var(--hint);">Tidak ada data.</td></tr>';
 }
 
-function renderEvCharts(entries){
-  // ─ Donut distribusi kualitas total
-  const totPrem = entries.reduce((a,d)=>a+d.premium,0);
-  const totImp  = entries.reduce((a,d)=>a+d.imperfect,0);
-  const totOS   = entries.reduce((a,d)=>a+d.outspec,0);
-  const totAll  = totPrem + totImp + totOS;
-
-  if(totAll > 0){
-    const pPct = (totPrem/totAll*100).toFixed(1);
-    const iPct = (totImp/totAll*100).toFixed(1);
-    const oPct = (totOS/totAll*100).toFixed(1);
-    document.getElementById('ev-lpct-p').textContent = pPct + '%';
-    document.getElementById('ev-lpct-i').textContent = iPct + '%';
-    document.getElementById('ev-lpct-o').textContent = oPct + '%';
-  }
-
-  destroyChart('ev-quality-donut');
-  const donutCvs = document.getElementById('ev-quality-donut');
-  if(donutCvs && totAll > 0){
-    charts['ev-quality-donut'] = new Chart(donutCvs.getContext('2d'), {
-      type: 'doughnut',
-      data: {
-        labels: ['Perfect','Imperfect','Outspec'],
-        datasets:[{
-          data: [totPrem, totImp, totOS],
-          backgroundColor: ['#639922','#ef9f27','#e24b4a'],
-          borderWidth: 2, borderColor: '#fff', hoverOffset: 8,
-        }]
-      },
-      options:{
-        responsive:true, maintainAspectRatio:false, cutout:'68%',
-        plugins:{
-          legend:{display:false},
-          tooltip:{callbacks:{label:c=>{
-            const pct = totAll ? (c.raw/totAll*100).toFixed(1) : 0;
-            return ` ${c.label}: ${fmtKg(c.raw)} (${pct}%)`;
-          }}}
-        }
-      }
-    });
-  }
-
-  // ─ Bar chart per varian
-  const vaData = getEvVarianData(entries);
-  const chartRows = vaData && vaData.length ? vaData : (() => {
-    const byGH = {};
-    entries.forEach(e => {
-      if(!byGH[e.gh]) byGH[e.gh] = {varian:e.gh, premium:0, imperfect:0, outspec:0, total:0};
-      byGH[e.gh].premium+=e.premium; byGH[e.gh].imperfect+=e.imperfect;
-      byGH[e.gh].outspec+=e.outspec; byGH[e.gh].total+=e.total;
-    });
-    return Object.values(byGH).sort((a,b)=>b.total-a.total);
-  })();
-
-  destroyChart('ev-varian-bar');
-  const barCvs = document.getElementById('ev-varian-bar');
-  if(barCvs && chartRows.length){
-    charts['ev-varian-bar'] = new Chart(barCvs.getContext('2d'), {
-      type: 'bar',
-      data:{
-        labels: chartRows.map(r=>r.varian),
-        datasets:[
-          {label:'Perfect',   data:chartRows.map(r=>r.premium/1000),   backgroundColor:'#639922', stack:'s', borderRadius:{topLeft:0,topRight:0}},
-          {label:'Imperfect', data:chartRows.map(r=>r.imperfect/1000), backgroundColor:'#ef9f27', stack:'s'},
-          {label:'Outspec',   data:chartRows.map(r=>r.outspec/1000),   backgroundColor:'#e24b4a', stack:'s', borderRadius:{topLeft:2,topRight:2}},
-        ]
-      },
-      options:{
-        responsive:true, maintainAspectRatio:false,
-        plugins:{
-          legend:{display:false},
-          tooltip:{callbacks:{
-            label:c=>` ${c.dataset.label}: ${c.raw.toFixed(3)} Ton`
-          }}
-        },
-        scales:{
-          x:{stacked:true, grid:{display:false}, ticks:{font:{size:10},color:'#9ca3af'}},
-          y:{stacked:true, grid:{color:'rgba(0,0,0,0.04)'}, ticks:{font:{size:9},color:'#9ca3af',callback:v=>v+' T'}}
-        }
-      }
-    });
-  }
-}
 
 // ── KEPEMILIKAN FILTER ────────────────────────────────────────────────────────
 // GH Mitra: bergas 1-7, safaritex, densus, cangkirang
