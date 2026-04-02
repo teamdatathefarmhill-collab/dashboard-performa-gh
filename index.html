@@ -2220,36 +2220,73 @@ async function loadData(isRefresh=false){
       return;
     }
 
-    // ── Fetch kedua sheet SECARA PARALEL ─────────────────────────────────────
-    console.log('[loadData] Fetching panen + sanitasi in parallel...');
-    const panenUrl  = PROXY_URL + '?t=' + Date.now();
-    const sanUrl    = PROXY_URL + '?type=sanitasi&t=' + Date.now();
-    const estUrl    = PROXY_URL + '?type=estimasi&t=' + Date.now();
-    const outspecUrl= PROXY_URL + '?type=outspec&t='  + Date.now();
+    // ── Fetch SEMUA sheet dalam 1 request (type=all) → jauh lebih cepat ────────
+    // GAS fetch 4 sheet secara paralel lalu return JSON bundle dalam 1 roundtrip
+    console.log('[loadData] Fetching all sheets in single bundle request...');
+    const bundleUrl = PROXY_URL + '?type=all&t=' + Date.now();
 
     const controller = new AbortController();
-    const timeoutId  = setTimeout(()=>controller.abort(), 35000);
+    const timeoutId  = setTimeout(()=>controller.abort(), 40000);
 
     let text = '', sanText = '', estText = '', osText = '';
     try {
-      const [res, sanRes, estRes, osRes] = await Promise.all([
-        fetch(panenUrl,   { redirect:'follow', cache:'no-cache', signal: controller.signal }),
-        fetch(sanUrl,     { redirect:'follow', cache:'no-cache', signal: controller.signal }),
-        fetch(estUrl,     { redirect:'follow', cache:'no-cache', signal: controller.signal }),
-        fetch(outspecUrl, { redirect:'follow', cache:'no-cache', signal: controller.signal }),
-      ]);
+      const res = await fetch(bundleUrl, { redirect:'follow', cache:'no-cache', signal: controller.signal });
       clearTimeout(timeoutId);
-      if(!res.ok) throw new Error('HTTP '+res.status+' dari Apps Script (panen)');
-      [text, sanText, estText, osText] = await Promise.all([
-        res.text(),
-        sanRes.ok ? sanRes.text() : Promise.resolve(''),
-        estRes.ok ? estRes.text() : Promise.resolve(''),
-        osRes.ok  ? osRes.text()  : Promise.resolve(''),
-      ]);
-      console.log('Fetch OK — panen:', text.length, 'chars | sanitasi:', sanText.length, 'chars | estimasi:', estText.length, 'chars | outspec:', osText.length, 'chars');
+      if(!res.ok) throw new Error('HTTP '+res.status+' dari Apps Script');
+      const raw = await res.text();
+
+      // Coba parse sebagai JSON bundle {panen, sanitasi, estimasi, outspec}
+      if(raw.trim().startsWith('{')){
+        try {
+          const bundle = JSON.parse(raw);
+          text    = bundle.panen    || '';
+          sanText = bundle.sanitasi || '';
+          estText = bundle.estimasi || '';
+          osText  = bundle.outspec  || '';
+          console.log('Bundle OK — panen:', text.length, 'sanitasi:', sanText.length, 'estimasi:', estText.length, 'outspec:', osText.length);
+        } catch(jsonErr){
+          // GAS belum diupdate — fallback ke 4 request paralel
+          console.warn('Bundle parse gagal, fallback ke parallel fetch:', jsonErr.message);
+          text = raw; // raw adalah panen CSV
+          const controller2 = new AbortController();
+          const tid2 = setTimeout(()=>controller2.abort(), 35000);
+          try {
+            const [sanRes, estRes, osRes] = await Promise.all([
+              fetch(PROXY_URL+'?type=sanitasi&t='+Date.now(), {redirect:'follow',cache:'no-cache',signal:controller2.signal}),
+              fetch(PROXY_URL+'?type=estimasi&t='+Date.now(), {redirect:'follow',cache:'no-cache',signal:controller2.signal}),
+              fetch(PROXY_URL+'?type=outspec&t='+Date.now(),  {redirect:'follow',cache:'no-cache',signal:controller2.signal}),
+            ]);
+            clearTimeout(tid2);
+            [sanText, estText, osText] = await Promise.all([
+              sanRes.ok ? sanRes.text() : Promise.resolve(''),
+              estRes.ok ? estRes.text() : Promise.resolve(''),
+              osRes.ok  ? osRes.text()  : Promise.resolve(''),
+            ]);
+          } catch(e){ clearTimeout(tid2); }
+        }
+      } else {
+        // GAS belum diupdate — return plain CSV (panen saja), fallback parallel
+        text = raw;
+        console.warn('GAS belum support type=all, fallback parallel fetch');
+        const controller2 = new AbortController();
+        const tid2 = setTimeout(()=>controller2.abort(), 35000);
+        try {
+          const [sanRes, estRes, osRes] = await Promise.all([
+            fetch(PROXY_URL+'?type=sanitasi&t='+Date.now(), {redirect:'follow',cache:'no-cache',signal:controller2.signal}),
+            fetch(PROXY_URL+'?type=estimasi&t='+Date.now(), {redirect:'follow',cache:'no-cache',signal:controller2.signal}),
+            fetch(PROXY_URL+'?type=outspec&t='+Date.now(),  {redirect:'follow',cache:'no-cache',signal:controller2.signal}),
+          ]);
+          clearTimeout(tid2);
+          [sanText, estText, osText] = await Promise.all([
+            sanRes.ok ? sanRes.text() : Promise.resolve(''),
+            estRes.ok ? estRes.text() : Promise.resolve(''),
+            osRes.ok  ? osRes.text()  : Promise.resolve(''),
+          ]);
+        } catch(e){ clearTimeout(tid2); }
+      }
     } catch(fetchErr){
       clearTimeout(timeoutId);
-      if(fetchErr.name==='AbortError') throw new Error('Timeout 35 detik — Apps Script tidak merespons. Coba refresh.');
+      if(fetchErr.name==='AbortError') throw new Error('Timeout 40 detik — Apps Script tidak merespons. Coba refresh.');
       throw new Error('Gagal fetch: '+fetchErr.message);
     }
 
