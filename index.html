@@ -1522,7 +1522,45 @@ body {
     </div>
   </div>
 
-  <!-- BAGIAN 2: Analisa per Varian -->
+  <!-- BAGIAN 2: Tabel Estimasi vs Realisasi per GH -->
+  <div class="sec" id="ev-sec-gh-table">Estimasi vs Realisasi per Greenhouse</div>
+
+  <div class="card" style="overflow-x:auto;padding:0;margin-bottom:14px;" id="ev-gh-est-card">
+    <div style="padding:14px 18px 12px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px;">Tabel Estimasi–Realisasi Panen</div>
+        <div style="font-size:11px;color:var(--hint);" id="ev-gh-tbl-subtitle">Estimasi Total/GH vs Realisasi Total/GH per periode filter aktif</div>
+      </div>
+      <div style="font-size:10px;color:var(--hint);background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:6px;padding:4px 10px;align-self:center;">
+        ✏️ Kolom Keterangan dapat diisi langsung
+      </div>
+    </div>
+    <table id="ev-gh-est-table" style="width:100%;border-collapse:collapse;font-size:11.5px;">
+      <thead>
+        <tr style="background:var(--surface2);text-align:center;">
+          <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);text-align:left;white-space:nowrap;">Greenhouse</th>
+          <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Estimasi<br><span style="font-weight:500;font-size:9px;">Total/GH Est.</span></th>
+          <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Realisasi<br><span style="font-weight:500;font-size:9px;">Total/GH Real</span></th>
+          <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Deviasi</th>
+          <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);text-align:left;white-space:nowrap;min-width:180px;">Keterangan</th>
+        </tr>
+      </thead>
+      <tbody id="ev-gh-est-body">
+        <tr><td colspan="5" style="text-align:center;padding:28px;color:var(--hint);font-size:11px;">Memuat data...</td></tr>
+      </tbody>
+      <tfoot>
+        <tr id="ev-gh-est-foot" style="background:var(--surface2);font-weight:700;display:none;">
+          <td style="padding:10px 12px;font-size:11px;font-weight:700;color:var(--text);">Grand Total</td>
+          <td style="padding:10px 12px;text-align:center;font-size:11px;font-weight:700;color:var(--blue);" id="ev-gh-foot-est">—</td>
+          <td style="padding:10px 12px;text-align:center;font-size:11px;font-weight:700;color:var(--green);" id="ev-gh-foot-real">—</td>
+          <td style="padding:10px 12px;text-align:center;font-size:11px;font-weight:700;" id="ev-gh-foot-dev">—</td>
+          <td style="padding:10px 12px;"></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <!-- BAGIAN 3: Analisa per Varian -->
   <div class="sec">Analisa Panen per Varian <span class="bnew">PER VARIAN</span></div>
 
   <div class="card" style="overflow-x:auto;padding:0;margin-bottom:14px;">
@@ -1558,28 +1596,6 @@ body {
         <tr><td colspan="11" style="text-align:center;padding:28px;color:var(--hint);font-size:11px;">Memuat data evaluasi...</td></tr>
       </tbody>
     </table>
-  </div>
-
-  <!-- BAGIAN 3: Chart Varian -->
-  <div style="display:grid;grid-template-columns:2fr 1fr;gap:10px;margin-bottom:14px;">
-    <div class="card">
-      <div class="card-ttl">Volume Panen per Varian (kg)</div>
-      <div style="position:relative;height:240px;"><canvas id="ev-varian-bar"></canvas></div>
-      <div class="leg" style="margin-top:8px;">
-        <div class="leg-item"><div class="leg-sq" style="background:#639922"></div>Perfect</div>
-        <div class="leg-item"><div class="leg-sq" style="background:#ef9f27"></div>Imperfect</div>
-        <div class="leg-item"><div class="leg-sq" style="background:#e24b4a"></div>Outspec</div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-ttl">Distribusi Kualitas Total</div>
-      <div style="position:relative;height:180px;"><canvas id="ev-quality-donut"></canvas></div>
-      <div class="leg" style="justify-content:center;margin-top:8px;">
-        <div class="leg-item"><div class="leg-sq" style="background:#639922"></div>Perfect <strong id="ev-lpct-p"></strong></div>
-        <div class="leg-item"><div class="leg-sq" style="background:#ef9f27"></div>Imperfect <strong id="ev-lpct-i"></strong></div>
-        <div class="leg-item"><div class="leg-sq" style="background:#e24b4a"></div>Outspec <strong id="ev-lpct-o"></strong></div>
-      </div>
-    </div>
   </div>
 
   <div style="text-align:center;font-size:10px;color:var(--hint);padding:10px 0 2px;" id="ev-footer"></div>
@@ -5347,6 +5363,123 @@ function getVarianRingkasan(pPct, iPct, oPct){
   return issues.join(' dan ');
 }
 
+// ── RENDER TABEL ESTIMASI PER GH ─────────────────────────────
+// Keterangan disimpan in-memory per sesi (editable oleh user)
+const _evGHKeterangan = {}; // key: gh → string
+
+function getEvEstimasiPerGH(){
+  // Kembalikan Map: gh → estimasiTotal (sesuai filter mode bulan/tanggal)
+  const result = {};
+  if(!RAW_ESTIMASI || !RAW_ESTIMASI.data) return result;
+  const fGH = document.getElementById('ev-gh')?.value || '';
+
+  // Tentukan set bulan yang relevan
+  let targetMonths = null;
+  if(evMode === 'bulan'){
+    const fBulan = document.getElementById('ev-bulan')?.value || '';
+    if(fBulan) targetMonths = new Set([parseInt(fBulan.split('-')[1])]);
+  } else {
+    const from = document.getElementById('ev-from')?.value || '';
+    const to   = document.getElementById('ev-to')?.value   || '';
+    if(from || to){
+      targetMonths = new Set();
+      const start = new Date((from || to).substring(0,7)+'-01');
+      const end   = new Date((to || from).substring(0,7)+'-01');
+      let cur = new Date(start);
+      while(cur <= end){ targetMonths.add(cur.getMonth()+1); cur.setMonth(cur.getMonth()+1); }
+    }
+  }
+
+  RAW_ESTIMASI.data.forEach(r => {
+    if(fGH && r.gh !== fGH) return;
+    if(evOwnershipMode !== 'all' && !ghMatchesOwnership(r.gh, evOwnershipMode)) return;
+    if(targetMonths !== null){
+      const rowMonth = MONTH_EN_MAP[r.month] || 0;
+      if(!targetMonths.has(rowMonth)) return;
+    }
+    result[r.gh] = (result[r.gh]||0) + r.total;
+  });
+  return result;
+}
+
+function getEvRealisasiPerGH(entries){
+  // entries sudah difilter dari getEvDailyEntries()
+  // Gunakan actual saja (P+I, bukan future) → sesuai "Realisasi"
+  const result = {};
+  entries.filter(e => !e.isFuture).forEach(e => {
+    result[e.gh] = (result[e.gh]||0) + e.premium + e.imperfect;
+  });
+  return result;
+}
+
+function renderEvGHEstTable(entries){
+  const tbody = document.getElementById('ev-gh-est-body');
+  const tfoot = document.getElementById('ev-gh-est-foot');
+  if(!tbody) return;
+
+  const estPerGH  = getEvEstimasiPerGH();
+  const realPerGH = getEvRealisasiPerGH(entries);
+
+  // Gabung semua GH yang ada di estimasi atau realisasi
+  const allGHs = new Set([...Object.keys(estPerGH), ...Object.keys(realPerGH)]);
+  // Filter oleh ev-gh dropdown jika ada
+  const fGH = document.getElementById('ev-gh')?.value || '';
+  const ghList = [...allGHs]
+    .filter(g => !fGH || g === fGH)
+    .sort();
+
+  if(!ghList.length){
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:28px;color:var(--hint);font-size:11px;">Tidak ada data untuk filter yang dipilih</td></tr>`;
+    if(tfoot) tfoot.style.display = 'none';
+    return;
+  }
+
+  let grandEst = 0, grandReal = 0;
+  let html = '';
+  ghList.forEach(gh => {
+    const est  = estPerGH[gh]  || 0;
+    const real = realPerGH[gh] || 0;
+    const dev  = real - est;
+    grandEst  += est;
+    grandReal += real;
+
+    const devColor = dev >= 0 ? 'var(--green)' : 'var(--red)';
+    const devSign  = dev >= 0 ? '+' : '';
+    const ketKey   = gh;
+    const ket      = _evGHKeterangan[ketKey] || '';
+
+    html += `<tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:9px 12px;font-weight:600;color:var(--text);white-space:nowrap;">${gh}</td>
+      <td style="padding:9px 12px;text-align:center;color:var(--blue);font-weight:600;">${est > 0 ? est.toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—'}</td>
+      <td style="padding:9px 12px;text-align:center;color:var(--green-mid);font-weight:600;">${real > 0 ? real.toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—'}</td>
+      <td style="padding:9px 12px;text-align:center;font-weight:700;color:${devColor};">${(est > 0 || real > 0) ? devSign + dev.toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—'}</td>
+      <td style="padding:6px 10px;">
+        <input type="text" placeholder="Isi keterangan..." value="${ket}"
+          data-gh="${gh.replace(/"/g,'&quot;')}"
+          oninput="_evGHKeterangan[this.dataset.gh]=this.value"
+          style="width:100%;border:1px solid var(--border-med);border-radius:6px;padding:5px 9px;font-size:11px;color:var(--text);background:var(--surface2);outline:none;transition:border-color .15s;"
+          onfocus="this.style.borderColor='var(--blue-mid)';this.style.background='var(--blue-bg)'"
+          onblur="this.style.borderColor='var(--border-med)';this.style.background='var(--surface2)'">
+      </td>
+    </tr>`;
+  });
+
+  tbody.innerHTML = html;
+
+  // Grand total footer
+  if(tfoot){
+    tfoot.style.display = '';
+    const grandDev = grandReal - grandEst;
+    const devColor = grandDev >= 0 ? 'var(--green)' : 'var(--red)';
+    document.getElementById('ev-gh-foot-est').textContent  = grandEst  > 0 ? grandEst.toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
+    document.getElementById('ev-gh-foot-real').textContent = grandReal > 0 ? grandReal.toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
+    const devEl = document.getElementById('ev-gh-foot-dev');
+    devEl.textContent = (grandEst>0||grandReal>0)
+      ? (grandDev>=0?'+':'')+grandDev.toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
+    devEl.style.color = devColor;
+  }
+}
+
 // ── RENDER UTAMA EVALUASI ─────────────────────────────────────
 function renderEvaluasi(){
   if(!RAW) return;
@@ -5442,7 +5575,7 @@ function renderEvaluasi(){
 
   // ─ Tabel per varian
   renderEvVarianTable(entries);
-  renderEvCharts(entries);
+  renderEvGHEstTable(entries);
 
   // ─ Footer
   const ghCount = new Set(actualEntries.map(e=>e.gh)).size;
