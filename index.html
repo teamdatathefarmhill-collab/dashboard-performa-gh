@@ -1702,7 +1702,7 @@ function buildEstimasiDataset(rows){
       if(dmyMatch) return `${dmyMatch[3]}-${dmyMatch[2].padStart(2,'0')}-${dmyMatch[1].padStart(2,'0')}`;
       // Handle yyyy-mm-dd atau format ISO lain
       return raw.substring(0,10);
-    })()
+    })(),
     total:   parseFloat(r['Total']||r['TOTAL']||0),
   })).filter(r=>r.gh && r.total>0);
   return { data };
