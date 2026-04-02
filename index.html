@@ -1689,11 +1689,20 @@ const MONTH_EN_MAP = {
 
 function buildEstimasiDataset(rows){
   // rows: array of objects dari parseCSV
-  // Simpan semua baris dengan field yang diperlukan
+  // Sheet estimasi kolom: Tanggal, Greenhouse, Varian, Grade, Total, Month, ...
   const data = rows.map(r=>({
     gh:      (r['Greenhouse']||r['GREENHOUSE']||'').trim(),
     periode: (r['Periode']||r['PERIODE']||'').trim(),
     month:   (r['Month']||r['MONTH']||'').trim().toLowerCase(),
+    tanggal: (()=>{
+      const raw = (r['Tanggal']||r['TANGGAL']||'').trim();
+      if(!raw) return '';
+      // Handle dd/mm/yyyy → yyyy-mm-dd
+      const dmyMatch = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
+      if(dmyMatch) return `${dmyMatch[3]}-${dmyMatch[2].padStart(2,'0')}-${dmyMatch[1].padStart(2,'0')}`;
+      // Handle yyyy-mm-dd atau format ISO lain
+      return raw.substring(0,10);
+    })()
     total:   parseFloat(r['Total']||r['TOTAL']||0),
   })).filter(r=>r.gh && r.total>0);
   return { data };
@@ -5223,56 +5232,49 @@ function getEvDailyEntries(){
 }
 
 // ── Helper: dapatkan estimasi yang sesuai filter ev ──────────
+// Logika filter:
+// - Mode bulan  → filter by Month (nama bulan di sheet estimasi)
+// - Mode tanggal → filter by Tanggal (kolom tanggal panen estimasi, YYYY-MM-DD)
+//   Jika tanggal kosong di sheet, fallback ke filter bulan dari range
 function getEvEstimasi(){
   if(!RAW_ESTIMASI || !RAW_ESTIMASI.data) return 0;
-
-  // Tidak filter whitelist di evaluasi — semua GH termasuk mitra
   const fGH = document.getElementById('ev-gh')?.value || '';
 
-  let targetMonth = null; // angka bulan 1-12
-
   if(evMode === 'bulan'){
-    const fBulan = document.getElementById('ev-bulan')?.value || '';
-    if(fBulan){
-      targetMonth = parseInt(fBulan.split('-')[1]);
-    }
-  } else {
-    // Ambil bulan dari range tanggal (bisa multi-bulan, kita sum semua bulan dalam range)
-    const from = document.getElementById('ev-from')?.value || '';
-    const to   = document.getElementById('ev-to')?.value   || '';
-    const ymSet = new Set();
-    if(from) ymSet.add(from.substring(0,7));
-    if(to)   ymSet.add(to.substring(0,7));
-    // Kita pakai semua bulan dalam range
-    if(from && to){
-      let cur = new Date(from.substring(0,7)+'-01');
-      const end = new Date(to.substring(0,7)+'-01');
-      while(cur <= end){
-        ymSet.add(cur.toISOString().substring(0,7));
-        cur.setMonth(cur.getMonth()+1);
-      }
-    }
-    // Sum estimasi untuk semua bulan dalam range
+    const fBulan = document.getElementById('ev-bulan')?.value || ''; // YYYY-MM
+    const targetMonth = fBulan ? parseInt(fBulan.split('-')[1]) : null;
     let total = 0;
-    ymSet.forEach(ym => {
-      const mn = parseInt(ym.split('-')[1]);
-      RAW_ESTIMASI.data.forEach(r => {
-        if(fGH && r.gh !== fGH) return;
-        if(evOwnershipMode !== 'all' && !ghMatchesOwnership(r.gh, evOwnershipMode)) return;
+    RAW_ESTIMASI.data.forEach(r => {
+      if(fGH && r.gh !== fGH) return;
+      if(evOwnershipMode !== 'all' && !ghMatchesOwnership(r.gh, evOwnershipMode)) return;
+      if(targetMonth !== null){
         const rowMonth = MONTH_EN_MAP[r.month] || 0;
-        if(rowMonth === mn) total += r.total;
-      });
+        if(rowMonth !== targetMonth) return;
+      }
+      total += r.total;
     });
     return total;
   }
 
+  // Mode tanggal: filter by kolom Tanggal jika tersedia, fallback ke Month
+  const from = document.getElementById('ev-from')?.value || '';
+  const to   = document.getElementById('ev-to')?.value   || '';
   let total = 0;
   RAW_ESTIMASI.data.forEach(r => {
     if(fGH && r.gh !== fGH) return;
     if(evOwnershipMode !== 'all' && !ghMatchesOwnership(r.gh, evOwnershipMode)) return;
-    if(targetMonth !== null){
+    if(r.tanggal){
+      // Gunakan tanggal estimasi langsung
+      if(from && r.tanggal < from) return;
+      if(to   && r.tanggal > to)   return;
+    } else {
+      // Fallback: filter by bulan dalam range
       const rowMonth = MONTH_EN_MAP[r.month] || 0;
-      if(rowMonth !== targetMonth) return;
+      if(from || to){
+        const fromM = from ? parseInt(from.split('-')[1]) : 1;
+        const toM   = to   ? parseInt(to.split('-')[1])   : 12;
+        if(rowMonth < fromM || rowMonth > toM) return;
+      }
     }
     total += r.total;
   });
@@ -5369,33 +5371,42 @@ const _evGHKeterangan = {}; // key: gh → string
 
 function getEvEstimasiPerGH(){
   // Kembalikan Map: gh → estimasiTotal (sesuai filter mode bulan/tanggal)
+  // Konsisten dengan getEvEstimasi() — pakai tanggal bila tersedia di mode tanggal
   const result = {};
   if(!RAW_ESTIMASI || !RAW_ESTIMASI.data) return result;
   const fGH = document.getElementById('ev-gh')?.value || '';
 
-  // Tentukan set bulan yang relevan
-  let targetMonths = null;
   if(evMode === 'bulan'){
     const fBulan = document.getElementById('ev-bulan')?.value || '';
-    if(fBulan) targetMonths = new Set([parseInt(fBulan.split('-')[1])]);
-  } else {
-    const from = document.getElementById('ev-from')?.value || '';
-    const to   = document.getElementById('ev-to')?.value   || '';
-    if(from || to){
-      targetMonths = new Set();
-      const start = new Date((from || to).substring(0,7)+'-01');
-      const end   = new Date((to || from).substring(0,7)+'-01');
-      let cur = new Date(start);
-      while(cur <= end){ targetMonths.add(cur.getMonth()+1); cur.setMonth(cur.getMonth()+1); }
-    }
+    const targetMonth = fBulan ? parseInt(fBulan.split('-')[1]) : null;
+    RAW_ESTIMASI.data.forEach(r => {
+      if(fGH && r.gh !== fGH) return;
+      if(evOwnershipMode !== 'all' && !ghMatchesOwnership(r.gh, evOwnershipMode)) return;
+      if(targetMonth !== null){
+        const rowMonth = MONTH_EN_MAP[r.month] || 0;
+        if(rowMonth !== targetMonth) return;
+      }
+      result[r.gh] = (result[r.gh]||0) + r.total;
+    });
+    return result;
   }
 
+  // Mode tanggal: filter by kolom Tanggal jika tersedia
+  const from = document.getElementById('ev-from')?.value || '';
+  const to   = document.getElementById('ev-to')?.value   || '';
   RAW_ESTIMASI.data.forEach(r => {
     if(fGH && r.gh !== fGH) return;
     if(evOwnershipMode !== 'all' && !ghMatchesOwnership(r.gh, evOwnershipMode)) return;
-    if(targetMonths !== null){
+    if(r.tanggal){
+      if(from && r.tanggal < from) return;
+      if(to   && r.tanggal > to)   return;
+    } else {
       const rowMonth = MONTH_EN_MAP[r.month] || 0;
-      if(!targetMonths.has(rowMonth)) return;
+      if(from || to){
+        const fromM = from ? parseInt(from.split('-')[1]) : 1;
+        const toM   = to   ? parseInt(to.split('-')[1])   : 12;
+        if(rowMonth < fromM || rowMonth > toM) return;
+      }
     }
     result[r.gh] = (result[r.gh]||0) + r.total;
   });
