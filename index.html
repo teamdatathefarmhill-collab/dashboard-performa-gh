@@ -1522,45 +1522,7 @@ body {
     </div>
   </div>
 
-  <!-- BAGIAN 2: Tabel Estimasi vs Realisasi per GH -->
-  <div class="sec" id="ev-sec-gh-table">Estimasi vs Realisasi per Greenhouse</div>
-
-  <div class="card" style="overflow-x:auto;padding:0;margin-bottom:14px;" id="ev-gh-est-card">
-    <div style="padding:14px 18px 12px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;">
-      <div>
-        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px;">Tabel Estimasi–Realisasi Panen</div>
-        <div style="font-size:11px;color:var(--hint);" id="ev-gh-tbl-subtitle">Estimasi Total/GH vs Realisasi Total/GH per periode filter aktif</div>
-      </div>
-      <div style="font-size:10px;color:var(--hint);background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:6px;padding:4px 10px;align-self:center;">
-        ✏️ Kolom Keterangan dapat diisi langsung
-      </div>
-    </div>
-    <table id="ev-gh-est-table" style="width:100%;border-collapse:collapse;font-size:11.5px;">
-      <thead>
-        <tr style="background:var(--surface2);text-align:center;">
-          <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);text-align:left;white-space:nowrap;">Greenhouse</th>
-          <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Estimasi<br><span style="font-weight:500;font-size:9px;">Total/GH Est.</span></th>
-          <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Realisasi<br><span style="font-weight:500;font-size:9px;">Total/GH Real</span></th>
-          <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Deviasi</th>
-          <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);text-align:left;white-space:nowrap;min-width:180px;">Keterangan</th>
-        </tr>
-      </thead>
-      <tbody id="ev-gh-est-body">
-        <tr><td colspan="5" style="text-align:center;padding:28px;color:var(--hint);font-size:11px;">Memuat data...</td></tr>
-      </tbody>
-      <tfoot>
-        <tr id="ev-gh-est-foot" style="background:var(--surface2);font-weight:700;display:none;">
-          <td style="padding:10px 12px;font-size:11px;font-weight:700;color:var(--text);">Grand Total</td>
-          <td style="padding:10px 12px;text-align:center;font-size:11px;font-weight:700;color:var(--blue);" id="ev-gh-foot-est">—</td>
-          <td style="padding:10px 12px;text-align:center;font-size:11px;font-weight:700;color:var(--green);" id="ev-gh-foot-real">—</td>
-          <td style="padding:10px 12px;text-align:center;font-size:11px;font-weight:700;" id="ev-gh-foot-dev">—</td>
-          <td style="padding:10px 12px;"></td>
-        </tr>
-      </tfoot>
-    </table>
-  </div>
-
-  <!-- BAGIAN 3: Analisa per Varian -->
+  <!-- BAGIAN 2: Analisa per Varian -->
   <div class="sec">Analisa Panen per Varian <span class="bnew">PER VARIAN</span></div>
 
   <div class="card" style="overflow-x:auto;padding:0;margin-bottom:14px;">
@@ -1596,6 +1558,28 @@ body {
         <tr><td colspan="11" style="text-align:center;padding:28px;color:var(--hint);font-size:11px;">Memuat data evaluasi...</td></tr>
       </tbody>
     </table>
+  </div>
+
+  <!-- BAGIAN 3: Chart Varian -->
+  <div style="display:grid;grid-template-columns:2fr 1fr;gap:10px;margin-bottom:14px;">
+    <div class="card">
+      <div class="card-ttl">Volume Panen per Varian (kg)</div>
+      <div style="position:relative;height:240px;"><canvas id="ev-varian-bar"></canvas></div>
+      <div class="leg" style="margin-top:8px;">
+        <div class="leg-item"><div class="leg-sq" style="background:#639922"></div>Perfect</div>
+        <div class="leg-item"><div class="leg-sq" style="background:#ef9f27"></div>Imperfect</div>
+        <div class="leg-item"><div class="leg-sq" style="background:#e24b4a"></div>Outspec</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-ttl">Distribusi Kualitas Total</div>
+      <div style="position:relative;height:180px;"><canvas id="ev-quality-donut"></canvas></div>
+      <div class="leg" style="justify-content:center;margin-top:8px;">
+        <div class="leg-item"><div class="leg-sq" style="background:#639922"></div>Perfect <strong id="ev-lpct-p"></strong></div>
+        <div class="leg-item"><div class="leg-sq" style="background:#ef9f27"></div>Imperfect <strong id="ev-lpct-i"></strong></div>
+        <div class="leg-item"><div class="leg-sq" style="background:#e24b4a"></div>Outspec <strong id="ev-lpct-o"></strong></div>
+      </div>
+    </div>
   </div>
 
   <div style="text-align:center;font-size:10px;color:var(--hint);padding:10px 0 2px;" id="ev-footer"></div>
@@ -1689,20 +1673,11 @@ const MONTH_EN_MAP = {
 
 function buildEstimasiDataset(rows){
   // rows: array of objects dari parseCSV
-  // Sheet estimasi kolom: Tanggal, Greenhouse, Varian, Grade, Total, Month, ...
+  // Simpan semua baris dengan field yang diperlukan
   const data = rows.map(r=>({
     gh:      (r['Greenhouse']||r['GREENHOUSE']||'').trim(),
     periode: (r['Periode']||r['PERIODE']||'').trim(),
     month:   (r['Month']||r['MONTH']||'').trim().toLowerCase(),
-    tanggal: (()=>{
-      const raw = (r['Tanggal']||r['TANGGAL']||'').trim();
-      if(!raw) return '';
-      // Handle dd/mm/yyyy → yyyy-mm-dd
-      const dmyMatch = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
-      if(dmyMatch) return `${dmyMatch[3]}-${dmyMatch[2].padStart(2,'0')}-${dmyMatch[1].padStart(2,'0')}`;
-      // Handle yyyy-mm-dd atau format ISO lain
-      return raw.substring(0,10);
-    })(),
     total:   parseFloat(r['Total']||r['TOTAL']||0),
   })).filter(r=>r.gh && r.total>0);
   return { data };
@@ -2220,73 +2195,36 @@ async function loadData(isRefresh=false){
       return;
     }
 
-    // ── Fetch SEMUA sheet dalam 1 request (type=all) → jauh lebih cepat ────────
-    // GAS fetch 4 sheet secara paralel lalu return JSON bundle dalam 1 roundtrip
-    console.log('[loadData] Fetching all sheets in single bundle request...');
-    const bundleUrl = PROXY_URL + '?type=all&t=' + Date.now();
+    // ── Fetch kedua sheet SECARA PARALEL ─────────────────────────────────────
+    console.log('[loadData] Fetching panen + sanitasi in parallel...');
+    const panenUrl  = PROXY_URL + '?t=' + Date.now();
+    const sanUrl    = PROXY_URL + '?type=sanitasi&t=' + Date.now();
+    const estUrl    = PROXY_URL + '?type=estimasi&t=' + Date.now();
+    const outspecUrl= PROXY_URL + '?type=outspec&t='  + Date.now();
 
     const controller = new AbortController();
-    const timeoutId  = setTimeout(()=>controller.abort(), 40000);
+    const timeoutId  = setTimeout(()=>controller.abort(), 35000);
 
     let text = '', sanText = '', estText = '', osText = '';
     try {
-      const res = await fetch(bundleUrl, { redirect:'follow', cache:'no-cache', signal: controller.signal });
+      const [res, sanRes, estRes, osRes] = await Promise.all([
+        fetch(panenUrl,   { redirect:'follow', cache:'no-cache', signal: controller.signal }),
+        fetch(sanUrl,     { redirect:'follow', cache:'no-cache', signal: controller.signal }),
+        fetch(estUrl,     { redirect:'follow', cache:'no-cache', signal: controller.signal }),
+        fetch(outspecUrl, { redirect:'follow', cache:'no-cache', signal: controller.signal }),
+      ]);
       clearTimeout(timeoutId);
-      if(!res.ok) throw new Error('HTTP '+res.status+' dari Apps Script');
-      const raw = await res.text();
-
-      // Coba parse sebagai JSON bundle {panen, sanitasi, estimasi, outspec}
-      if(raw.trim().startsWith('{')){
-        try {
-          const bundle = JSON.parse(raw);
-          text    = bundle.panen    || '';
-          sanText = bundle.sanitasi || '';
-          estText = bundle.estimasi || '';
-          osText  = bundle.outspec  || '';
-          console.log('Bundle OK — panen:', text.length, 'sanitasi:', sanText.length, 'estimasi:', estText.length, 'outspec:', osText.length);
-        } catch(jsonErr){
-          // GAS belum diupdate — fallback ke 4 request paralel
-          console.warn('Bundle parse gagal, fallback ke parallel fetch:', jsonErr.message);
-          text = raw; // raw adalah panen CSV
-          const controller2 = new AbortController();
-          const tid2 = setTimeout(()=>controller2.abort(), 35000);
-          try {
-            const [sanRes, estRes, osRes] = await Promise.all([
-              fetch(PROXY_URL+'?type=sanitasi&t='+Date.now(), {redirect:'follow',cache:'no-cache',signal:controller2.signal}),
-              fetch(PROXY_URL+'?type=estimasi&t='+Date.now(), {redirect:'follow',cache:'no-cache',signal:controller2.signal}),
-              fetch(PROXY_URL+'?type=outspec&t='+Date.now(),  {redirect:'follow',cache:'no-cache',signal:controller2.signal}),
-            ]);
-            clearTimeout(tid2);
-            [sanText, estText, osText] = await Promise.all([
-              sanRes.ok ? sanRes.text() : Promise.resolve(''),
-              estRes.ok ? estRes.text() : Promise.resolve(''),
-              osRes.ok  ? osRes.text()  : Promise.resolve(''),
-            ]);
-          } catch(e){ clearTimeout(tid2); }
-        }
-      } else {
-        // GAS belum diupdate — return plain CSV (panen saja), fallback parallel
-        text = raw;
-        console.warn('GAS belum support type=all, fallback parallel fetch');
-        const controller2 = new AbortController();
-        const tid2 = setTimeout(()=>controller2.abort(), 35000);
-        try {
-          const [sanRes, estRes, osRes] = await Promise.all([
-            fetch(PROXY_URL+'?type=sanitasi&t='+Date.now(), {redirect:'follow',cache:'no-cache',signal:controller2.signal}),
-            fetch(PROXY_URL+'?type=estimasi&t='+Date.now(), {redirect:'follow',cache:'no-cache',signal:controller2.signal}),
-            fetch(PROXY_URL+'?type=outspec&t='+Date.now(),  {redirect:'follow',cache:'no-cache',signal:controller2.signal}),
-          ]);
-          clearTimeout(tid2);
-          [sanText, estText, osText] = await Promise.all([
-            sanRes.ok ? sanRes.text() : Promise.resolve(''),
-            estRes.ok ? estRes.text() : Promise.resolve(''),
-            osRes.ok  ? osRes.text()  : Promise.resolve(''),
-          ]);
-        } catch(e){ clearTimeout(tid2); }
-      }
+      if(!res.ok) throw new Error('HTTP '+res.status+' dari Apps Script (panen)');
+      [text, sanText, estText, osText] = await Promise.all([
+        res.text(),
+        sanRes.ok ? sanRes.text() : Promise.resolve(''),
+        estRes.ok ? estRes.text() : Promise.resolve(''),
+        osRes.ok  ? osRes.text()  : Promise.resolve(''),
+      ]);
+      console.log('Fetch OK — panen:', text.length, 'chars | sanitasi:', sanText.length, 'chars | estimasi:', estText.length, 'chars | outspec:', osText.length, 'chars');
     } catch(fetchErr){
       clearTimeout(timeoutId);
-      if(fetchErr.name==='AbortError') throw new Error('Timeout 40 detik — Apps Script tidak merespons. Coba refresh.');
+      if(fetchErr.name==='AbortError') throw new Error('Timeout 35 detik — Apps Script tidak merespons. Coba refresh.');
       throw new Error('Gagal fetch: '+fetchErr.message);
     }
 
@@ -5269,49 +5207,56 @@ function getEvDailyEntries(){
 }
 
 // ── Helper: dapatkan estimasi yang sesuai filter ev ──────────
-// Logika filter:
-// - Mode bulan  → filter by Month (nama bulan di sheet estimasi)
-// - Mode tanggal → filter by Tanggal (kolom tanggal panen estimasi, YYYY-MM-DD)
-//   Jika tanggal kosong di sheet, fallback ke filter bulan dari range
 function getEvEstimasi(){
   if(!RAW_ESTIMASI || !RAW_ESTIMASI.data) return 0;
+
+  // Tidak filter whitelist di evaluasi — semua GH termasuk mitra
   const fGH = document.getElementById('ev-gh')?.value || '';
 
+  let targetMonth = null; // angka bulan 1-12
+
   if(evMode === 'bulan'){
-    const fBulan = document.getElementById('ev-bulan')?.value || ''; // YYYY-MM
-    const targetMonth = fBulan ? parseInt(fBulan.split('-')[1]) : null;
-    let total = 0;
-    RAW_ESTIMASI.data.forEach(r => {
-      if(fGH && r.gh !== fGH) return;
-      if(evOwnershipMode !== 'all' && !ghMatchesOwnership(r.gh, evOwnershipMode)) return;
-      if(targetMonth !== null){
-        const rowMonth = MONTH_EN_MAP[r.month] || 0;
-        if(rowMonth !== targetMonth) return;
+    const fBulan = document.getElementById('ev-bulan')?.value || '';
+    if(fBulan){
+      targetMonth = parseInt(fBulan.split('-')[1]);
+    }
+  } else {
+    // Ambil bulan dari range tanggal (bisa multi-bulan, kita sum semua bulan dalam range)
+    const from = document.getElementById('ev-from')?.value || '';
+    const to   = document.getElementById('ev-to')?.value   || '';
+    const ymSet = new Set();
+    if(from) ymSet.add(from.substring(0,7));
+    if(to)   ymSet.add(to.substring(0,7));
+    // Kita pakai semua bulan dalam range
+    if(from && to){
+      let cur = new Date(from.substring(0,7)+'-01');
+      const end = new Date(to.substring(0,7)+'-01');
+      while(cur <= end){
+        ymSet.add(cur.toISOString().substring(0,7));
+        cur.setMonth(cur.getMonth()+1);
       }
-      total += r.total;
+    }
+    // Sum estimasi untuk semua bulan dalam range
+    let total = 0;
+    ymSet.forEach(ym => {
+      const mn = parseInt(ym.split('-')[1]);
+      RAW_ESTIMASI.data.forEach(r => {
+        if(fGH && r.gh !== fGH) return;
+        if(evOwnershipMode !== 'all' && !ghMatchesOwnership(r.gh, evOwnershipMode)) return;
+        const rowMonth = MONTH_EN_MAP[r.month] || 0;
+        if(rowMonth === mn) total += r.total;
+      });
     });
     return total;
   }
 
-  // Mode tanggal: filter by kolom Tanggal jika tersedia, fallback ke Month
-  const from = document.getElementById('ev-from')?.value || '';
-  const to   = document.getElementById('ev-to')?.value   || '';
   let total = 0;
   RAW_ESTIMASI.data.forEach(r => {
     if(fGH && r.gh !== fGH) return;
     if(evOwnershipMode !== 'all' && !ghMatchesOwnership(r.gh, evOwnershipMode)) return;
-    if(r.tanggal){
-      // Gunakan tanggal estimasi langsung
-      if(from && r.tanggal < from) return;
-      if(to   && r.tanggal > to)   return;
-    } else {
-      // Fallback: filter by bulan dalam range
+    if(targetMonth !== null){
       const rowMonth = MONTH_EN_MAP[r.month] || 0;
-      if(from || to){
-        const fromM = from ? parseInt(from.split('-')[1]) : 1;
-        const toM   = to   ? parseInt(to.split('-')[1])   : 12;
-        if(rowMonth < fromM || rowMonth > toM) return;
-      }
+      if(rowMonth !== targetMonth) return;
     }
     total += r.total;
   });
@@ -5400,165 +5345,6 @@ function getVarianRingkasan(pPct, iPct, oPct){
   if(iPct > 25)  issues.push('Daun / Batang');
   if(issues.length === 0) return 'Normal';
   return issues.join(' dan ');
-}
-
-// ── RENDER TABEL ESTIMASI PER GH ─────────────────────────────
-// Keterangan disimpan in-memory per sesi (editable oleh user)
-const _evGHKeterangan = {}; // key: gh → string
-
-function getEvEstimasiPerGH(){
-  // Kembalikan Map: gh → estimasiTotal (sesuai filter mode bulan/tanggal)
-  // Konsisten dengan getEvEstimasi() — pakai tanggal bila tersedia di mode tanggal
-  const result = {};
-  if(!RAW_ESTIMASI || !RAW_ESTIMASI.data) return result;
-  const fGH = document.getElementById('ev-gh')?.value || '';
-
-  if(evMode === 'bulan'){
-    const fBulan = document.getElementById('ev-bulan')?.value || '';
-    const targetMonth = fBulan ? parseInt(fBulan.split('-')[1]) : null;
-    RAW_ESTIMASI.data.forEach(r => {
-      if(fGH && r.gh !== fGH) return;
-      if(evOwnershipMode !== 'all' && !ghMatchesOwnership(r.gh, evOwnershipMode)) return;
-      if(targetMonth !== null){
-        const rowMonth = MONTH_EN_MAP[r.month] || 0;
-        if(rowMonth !== targetMonth) return;
-      }
-      result[r.gh] = (result[r.gh]||0) + r.total;
-    });
-    return result;
-  }
-
-  // Mode tanggal: filter by kolom Tanggal jika tersedia
-  const from = document.getElementById('ev-from')?.value || '';
-  const to   = document.getElementById('ev-to')?.value   || '';
-  RAW_ESTIMASI.data.forEach(r => {
-    if(fGH && r.gh !== fGH) return;
-    if(evOwnershipMode !== 'all' && !ghMatchesOwnership(r.gh, evOwnershipMode)) return;
-    if(r.tanggal){
-      if(from && r.tanggal < from) return;
-      if(to   && r.tanggal > to)   return;
-    } else {
-      const rowMonth = MONTH_EN_MAP[r.month] || 0;
-      if(from || to){
-        const fromM = from ? parseInt(from.split('-')[1]) : 1;
-        const toM   = to   ? parseInt(to.split('-')[1])   : 12;
-        if(rowMonth < fromM || rowMonth > toM) return;
-      }
-    }
-    result[r.gh] = (result[r.gh]||0) + r.total;
-  });
-  return result;
-}
-
-function getEvRealisasiPerGH(){
-  // Baca langsung dari _rawRows (sheet panen/report) — lebih akurat dari aggregate daily
-  // Filter: Tanggal Ref sesuai range aktif, GH filter, kepemilikan
-  // Hanya PERFECT + IMPERFECT (realisasi aktual, bukan outspec/sisa)
-  const result = {};
-  if(!_rawRows || !_rawRows.length) return result;
-
-  const fGH  = document.getElementById('ev-gh')?.value || '';
-  let from='', to='';
-
-  if(evMode === 'bulan'){
-    const fBulan = document.getElementById('ev-bulan')?.value || ''; // YYYY-MM
-    if(fBulan){
-      from = fBulan + '-01';
-      // last day of month
-      const [yr,mn] = fBulan.split('-').map(Number);
-      const lastDay = new Date(yr, mn, 0).getDate();
-      to = `${fBulan}-${String(lastDay).padStart(2,'0')}`;
-    }
-  } else {
-    from = document.getElementById('ev-from')?.value || '';
-    to   = document.getElementById('ev-to')?.value   || '';
-  }
-
-  _rawRows.forEach(r => {
-    const gh    = (r['GH']||'').trim();
-    const grade = (r['GRADE']||'').toUpperCase().trim();
-    const val   = parseFloat(r['DATA KEBUN']||r['Total']||0);
-    // Tanggal realisasi: kolom "Tanggal Ref" (Real Panen) atau "Tanggal"
-    const tgl   = (r['Tanggal Ref']||r['Real Panen']||r['Tanggal']||'').substring(0,10);
-
-    if(!gh || val <= 0) return;
-    if(grade !== 'PERFECT' && grade !== 'IMPERFECT') return; // hanya realisasi
-    if(fGH && gh !== fGH) return;
-    if(evOwnershipMode !== 'all' && !ghMatchesOwnership(gh, evOwnershipMode)) return;
-    if(from && tgl < from) return;
-    if(to   && tgl > to)   return;
-
-    result[gh] = (result[gh]||0) + val;
-  });
-  return result;
-}
-
-function renderEvGHEstTable(entries){
-  const tbody = document.getElementById('ev-gh-est-body');
-  const tfoot = document.getElementById('ev-gh-est-foot');
-  if(!tbody) return;
-
-  const estPerGH  = getEvEstimasiPerGH();
-  const realPerGH = getEvRealisasiPerGH();
-
-  // Gabung semua GH yang ada di estimasi atau realisasi
-  const allGHs = new Set([...Object.keys(estPerGH), ...Object.keys(realPerGH)]);
-  // Filter oleh ev-gh dropdown jika ada
-  const fGH = document.getElementById('ev-gh')?.value || '';
-  const ghList = [...allGHs]
-    .filter(g => !fGH || g === fGH)
-    .sort();
-
-  if(!ghList.length){
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:28px;color:var(--hint);font-size:11px;">Tidak ada data untuk filter yang dipilih</td></tr>`;
-    if(tfoot) tfoot.style.display = 'none';
-    return;
-  }
-
-  let grandEst = 0, grandReal = 0;
-  let html = '';
-  ghList.forEach(gh => {
-    const est  = estPerGH[gh]  || 0;
-    const real = realPerGH[gh] || 0;
-    const dev  = real - est;
-    grandEst  += est;
-    grandReal += real;
-
-    const devColor = dev >= 0 ? 'var(--green)' : 'var(--red)';
-    const devSign  = dev >= 0 ? '+' : '';
-    const ketKey   = gh;
-    const ket      = _evGHKeterangan[ketKey] || '';
-
-    html += `<tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:9px 12px;font-weight:600;color:var(--text);white-space:nowrap;">${gh}</td>
-      <td style="padding:9px 12px;text-align:center;color:var(--blue);font-weight:600;">${est > 0 ? est.toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—'}</td>
-      <td style="padding:9px 12px;text-align:center;color:var(--green-mid);font-weight:600;">${real > 0 ? real.toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—'}</td>
-      <td style="padding:9px 12px;text-align:center;font-weight:700;color:${devColor};">${(est > 0 || real > 0) ? devSign + dev.toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—'}</td>
-      <td style="padding:6px 10px;">
-        <input type="text" placeholder="Isi keterangan..." value="${ket}"
-          data-gh="${gh.replace(/"/g,'&quot;')}"
-          oninput="_evGHKeterangan[this.dataset.gh]=this.value"
-          style="width:100%;border:1px solid var(--border-med);border-radius:6px;padding:5px 9px;font-size:11px;color:var(--text);background:var(--surface2);outline:none;transition:border-color .15s;"
-          onfocus="this.style.borderColor='var(--blue-mid)';this.style.background='var(--blue-bg)'"
-          onblur="this.style.borderColor='var(--border-med)';this.style.background='var(--surface2)'">
-      </td>
-    </tr>`;
-  });
-
-  tbody.innerHTML = html;
-
-  // Grand total footer
-  if(tfoot){
-    tfoot.style.display = '';
-    const grandDev = grandReal - grandEst;
-    const devColor = grandDev >= 0 ? 'var(--green)' : 'var(--red)';
-    document.getElementById('ev-gh-foot-est').textContent  = grandEst  > 0 ? grandEst.toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
-    document.getElementById('ev-gh-foot-real').textContent = grandReal > 0 ? grandReal.toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
-    const devEl = document.getElementById('ev-gh-foot-dev');
-    devEl.textContent = (grandEst>0||grandReal>0)
-      ? (grandDev>=0?'+':'')+grandDev.toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
-    devEl.style.color = devColor;
-  }
 }
 
 // ── RENDER UTAMA EVALUASI ─────────────────────────────────────
@@ -5656,7 +5442,7 @@ function renderEvaluasi(){
 
   // ─ Tabel per varian
   renderEvVarianTable(entries);
-  renderEvGHEstTable(entries);
+  renderEvCharts(entries);
 
   // ─ Footer
   const ghCount = new Set(actualEntries.map(e=>e.gh)).size;
