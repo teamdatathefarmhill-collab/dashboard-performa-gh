@@ -3354,15 +3354,18 @@ function renderOsSubBars(subEl, entries, defaultColor, notesKatMap, ghBreakdownM
     return;
   }
 
-  // Warna kategori (sama dengan pie)
+  // Warna kategori (sama dengan pie) — semua variant nama terdaftar
   const KATEGORI_COLORS = {
-    'Crack':                '#e24b4a',
-    'Brix':                 '#ef9f27',
-    'Visual':               '#378add',
-    'Tanaman Layu':         '#9c59c2',
-    'Tanaman Layu Kering':  '#9c59c2',
-    'Busuk':                '#d85a30',
-    'Belum Ada Keterangan': '#9ca3af',
+    'Crack':                    '#e24b4a',
+    'Brix':                     '#ef9f27',
+    'Visual':                   '#378add',
+    'Tanaman Layu':             '#9c59c2',
+    'Tanaman Layu Kering':      '#9c59c2',
+    'Tanaman Layu (Layu Akar)': '#9c59c2',
+    'Busuk':                    '#d85a30',
+    'Belum Ada Keterangan':     '#9ca3af',
+    'GSB':                      '#5aac1a',
+    'Tanaman Keriting':         '#14b8a6',
   };
 
   const maxVal = entries[0][1]||1;
@@ -4567,13 +4570,16 @@ function render(){
 
   // Kategori warna — konsisten antara pie dan sub-bar
   const KATEGORI_COLORS = {
-    'Crack':                '#e24b4a',
-    'Brix':                 '#ef9f27',
-    'Visual':               '#378add',
-    'Tanaman Layu':         '#9c59c2',
-    'Tanaman Layu Kering':  '#9c59c2',
-    'Busuk':                '#d85a30',
-    'Belum Ada Keterangan': '#14b8a6',
+    'Crack':                    '#e24b4a',
+    'Brix':                     '#ef9f27',
+    'Visual':                   '#378add',
+    'Tanaman Layu':             '#9c59c2',
+    'Tanaman Layu Kering':      '#9c59c2',
+    'Tanaman Layu (Layu Akar)': '#9c59c2',
+    'Busuk':                    '#d85a30',
+    'Belum Ada Keterangan':     '#14b8a6',
+    'GSB':                      '#5aac1a',
+    'Tanaman Keriting':         '#14b8a6',
   };
   const DEFAULT_PIE_COLORS = ['#e24b4a','#ef9f27','#378add','#5aac1a','#d85a30','#9c59c2','#14b8a6','#185fa5','#0ea5e9'];
 
