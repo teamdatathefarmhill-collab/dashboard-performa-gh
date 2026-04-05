@@ -4047,6 +4047,30 @@ function render(){
     return a.gh.localeCompare(b.gh);
   });
 
+  // ── Override r.est per GH dari sheet estimasi (RAW_ESTIMASI) ─────────────────
+  // Jika ada data estimasi untuk GH+periode di sheet estimasi → gunakan totalnya.
+  // Jika tidak ada → fallback ke populasi awal × 1 kg (r.pop).
+  // Logika: sum semua baris RAW_ESTIMASI yang cocok GH+periode (tanpa filter bulan),
+  // agar estimasi total periode tetap dipakai meski filter bulan aktif.
+  if(RAW_ESTIMASI && RAW_ESTIMASI.data && RAW_ESTIMASI.data.length) {
+    // Buat map: "GH||periode" (lowercase) → total estimasi
+    const _estMapPerGH = {};
+    RAW_ESTIMASI.data.forEach(er => {
+      const key = (er.gh + '||' + er.periode).toLowerCase();
+      _estMapPerGH[key] = (_estMapPerGH[key] || 0) + er.total;
+    });
+    ghList.forEach(r => {
+      const key = (r.gh + '||' + r.periode).toLowerCase();
+      if(_estMapPerGH[key] && _estMapPerGH[key] > 0) {
+        r.est = _estMapPerGH[key];
+      } else {
+        // Belum ada estimasi di sheet → populasi awal × 1 kg
+        r.est = r.pop || r.est;
+      }
+    });
+  }
+  // ─────────────────────────────────────────────────────────────────────────────
+
   // Agregasi — gunakan daily jika mode rentang harian, monthly jika mode bulan
   const ymRange = getActiveYMRange();
   const isRangeMode = activeQuick === 'range' && activeDateRange && (activeDateRange.from || activeDateRange.to);
