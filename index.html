@@ -850,9 +850,24 @@ body {
   #sanitasi-insight-grid .card:first-child { width:100%!important; }
   /* Pie + legend horizontal */
   #sanitasi-insight-grid .card:first-child > div[style*="display:flex"],
-  #sanitasi-insight-grid .card:first-child > div { flex-direction:row!important; align-items:center!important; flex-wrap:nowrap!important; gap:16px!important; }
-  #c-sanitasi-kategori-pie { flex:0 0 120px!important; width:120px!important; height:120px!important; display:block!important; }
-  #sanitasi-donut-center { width:120px!important; height:120px!important; }
+  #sanitasi-insight-grid .card:first-child > div { flex-direction:row!important; align-items:center!important; flex-wrap:nowrap!important; gap:20px!important; }
+  /* Container: width=height agar canvas tetap lingkaran */
+  #sanitasi-insight-grid .card:first-child > div > div:first-child {
+    flex:0 0 140px!important; width:140px!important; height:140px!important;
+    min-width:140px!important; min-height:140px!important; position:relative!important;
+  }
+  /* Canvas harus mengisi container secara penuh & persegi */
+  #c-sanitasi-kategori-pie {
+    width:140px!important; height:140px!important;
+    min-width:140px!important; min-height:140px!important;
+    display:block!important; position:absolute!important;
+    top:0!important; left:0!important;
+  }
+  /* Overlay teks tengah donut */
+  #sanitasi-donut-center {
+    position:absolute!important; inset:0!important;
+    width:140px!important; height:140px!important;
+  }
   #sanitasi-donut-total { font-size:16px!important; }
   #sanitasi-kategori-legend { display:grid!important; grid-template-columns:1fr 1fr 1fr!important; gap:3px 12px!important; flex:1!important; }
   #sanitasi-kategori-legend > div { font-size:9px!important; gap:5px!important; }
@@ -5991,13 +6006,29 @@ loadData();
 
 // ── PRINT: resize semua chart agar render benar di PDF ───────────────────────
 window.addEventListener('beforeprint', () => {
-  Object.values(charts).forEach(c => { try { c.resize(); } catch(e){} });
+  // Paksa canvas pie sanitasi ke ukuran persegi agar tetap lingkaran
+  const pieCvs = document.getElementById('c-sanitasi-kategori-pie');
+  const pieWrap = pieCvs && pieCvs.parentElement;
+  if(pieCvs && pieWrap) {
+    pieWrap.style.width  = '140px';
+    pieWrap.style.height = '140px';
+    pieWrap.style.minWidth  = '140px';
+    pieWrap.style.minHeight = '140px';
+    pieWrap.style.flex = '0 0 140px';
+    pieCvs.style.width  = '140px';
+    pieCvs.style.height = '140px';
+    pieCvs.style.position = 'absolute';
+    pieCvs.style.top  = '0';
+    pieCvs.style.left = '0';
+  }
   // Pastikan sanitasi section visible
   const san = document.getElementById('sanitasi-kategori-section');
   if(san) san.style.display = 'block';
+  Object.values(charts).forEach(c => { try { c.resize(); } catch(e){} });
   setTimeout(() => {
+    if(pieCvs) { pieCvs.style.width='140px'; pieCvs.style.height='140px'; }
     Object.values(charts).forEach(c => { try { c.resize(); } catch(e){} });
-  }, 100);
+  }, 150);
 });
 
 </script>
