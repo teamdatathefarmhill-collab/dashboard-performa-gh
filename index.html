@@ -784,7 +784,7 @@ body {
 @media print{
   * { -webkit-print-color-adjust:exact!important; print-color-adjust:exact!important; }
 
-  @page { margin:6mm 6mm; size:210mm 270mm portrait; }
+  @page { margin:6mm 6mm; size:297mm 210mm landscape; }
 
   /* ── HIDE ── */
   #loading-screen,#err-screen,#popup-panen-overlay,
@@ -820,16 +820,14 @@ body {
   canvas { max-width:100%!important; max-height:140px!important; }
 
   /* ── TABEL RIWAYAT ── */
-  .card[style*="overflow-x"] { padding:0!important; overflow:hidden!important; }
-  #tbl-periode { font-size:6.5px!important; table-layout:fixed!important; width:100%!important; }
+  .card[style*="overflow-x"] { padding:0!important; overflow:visible!important; }
+  #tbl-periode { font-size:6px!important; table-layout:auto!important; width:100%!important; }
   #tbl-periode td,#tbl-periode th { padding:2px 3px!important; white-space:nowrap!important; overflow:hidden!important; text-overflow:ellipsis!important; }
-  #tbl-periode th { font-size:6px!important; letter-spacing:0!important; background:var(--surface2)!important; }
-  .tbl-pct-chip { padding:1px 2px!important; font-size:5.5px!important; border-radius:3px!important; }
-  .sbadge { font-size:5.5px!important; padding:1px 3px!important; }
-  /* Sembunyikan Pop.Awal Pop.Akhir AvgGramasi */
-  #tbl-periode th:nth-child(3),#tbl-periode td:nth-child(3),
-  #tbl-periode th:nth-child(4),#tbl-periode td:nth-child(4),
-  #tbl-periode th:nth-child(12),#tbl-periode td:nth-child(12) { display:none!important; }
+  #tbl-periode th { font-size:5.5px!important; letter-spacing:0!important; background:var(--surface2)!important; }
+  .tbl-pct-chip { padding:1px 2px!important; font-size:5px!important; border-radius:3px!important; }
+  .sbadge { font-size:5px!important; padding:1px 3px!important; }
+  /* Tampilkan semua kolom termasuk Pop.Awal, Pop.Akhir, dan Avg Gramasi */
+  #tbl-periode th,#tbl-periode td { display:table-cell!important; }
 
   /* ── GRADE BARS ── */
   .grade-bar { height:7px!important; }
