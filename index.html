@@ -821,13 +821,16 @@ body {
 
   /* ── TABEL RIWAYAT ── */
   .card[style*="overflow-x"] { padding:0!important; overflow:visible!important; }
-  #tbl-periode { font-size:6px!important; table-layout:auto!important; width:100%!important; }
-  #tbl-periode td,#tbl-periode th { padding:2px 3px!important; white-space:nowrap!important; overflow:hidden!important; text-overflow:ellipsis!important; }
-  #tbl-periode th { font-size:5.5px!important; letter-spacing:0!important; background:var(--surface2)!important; }
-  .tbl-pct-chip { padding:1px 2px!important; font-size:5px!important; border-radius:3px!important; }
-  .sbadge { font-size:5px!important; padding:1px 3px!important; }
+  #tbl-periode { font-size:8px!important; table-layout:auto!important; width:100%!important; }
+  #tbl-periode td,#tbl-periode th { padding:3px 5px!important; white-space:nowrap!important; overflow:hidden!important; text-overflow:ellipsis!important; }
+  #tbl-periode th { font-size:7.5px!important; letter-spacing:0!important; background:var(--surface2)!important; }
+  .tbl-pct-chip { padding:1px 4px!important; font-size:7px!important; border-radius:3px!important; }
+  .sbadge { font-size:7px!important; padding:1px 4px!important; }
   /* Tampilkan semua kolom termasuk Pop.Awal, Pop.Akhir, dan Avg Gramasi */
   #tbl-periode th,#tbl-periode td { display:table-cell!important; }
+  /* Kecilkan indikator naik/turun (trend) */
+  .tbl-trend-up, .tbl-trend-dn, .tbl-trend-eq { font-size:7px!important; }
+  #tbl-periode td div[style*="font-size:9px"] { font-size:7px!important; }
 
   /* ── GRADE BARS ── */
   .grade-bar { height:7px!important; }
@@ -841,18 +844,18 @@ body {
 
   /* ── SANITASI ── */
   #sanitasi-kategori-section { display:block!important; break-inside:avoid; margin-bottom:5px!important; }
-  #sanitasi-insight-grid { display:grid!important; grid-template-columns:1fr 1fr!important; gap:6px!important; }
-  /* Kiri: pie + legend horizontal */
+  /* Sembunyikan Ringkasan Insight, tampilkan hanya pie chart full width */
+  #insight-beside-pie { display:none!important; }
+  #sanitasi-insight-grid { display:block!important; }
+  #sanitasi-insight-grid .card:first-child { width:100%!important; }
+  /* Pie + legend horizontal */
   #sanitasi-insight-grid .card:first-child > div[style*="display:flex"],
-  #sanitasi-insight-grid .card:first-child > div { flex-direction:row!important; align-items:center!important; flex-wrap:nowrap!important; gap:10px!important; }
-  #c-sanitasi-kategori-pie { flex:0 0 100px!important; width:100px!important; height:100px!important; display:block!important; }
-  #sanitasi-donut-center { width:100px!important; height:100px!important; }
-  #sanitasi-donut-total { font-size:14px!important; }
-  #sanitasi-kategori-legend { display:grid!important; grid-template-columns:1fr 1fr!important; gap:2px 8px!important; flex:1!important; }
-  #sanitasi-kategori-legend > div { font-size:8px!important; gap:4px!important; }
-  /* Kanan: insight text */
-  #insight-text { font-size:9px!important; line-height:1.6!important; }
-  #insight-beside-pie .card-ttl { font-size:8px!important; margin-bottom:5px!important; }
+  #sanitasi-insight-grid .card:first-child > div { flex-direction:row!important; align-items:center!important; flex-wrap:nowrap!important; gap:16px!important; }
+  #c-sanitasi-kategori-pie { flex:0 0 120px!important; width:120px!important; height:120px!important; display:block!important; }
+  #sanitasi-donut-center { width:120px!important; height:120px!important; }
+  #sanitasi-donut-total { font-size:16px!important; }
+  #sanitasi-kategori-legend { display:grid!important; grid-template-columns:1fr 1fr 1fr!important; gap:3px 12px!important; flex:1!important; }
+  #sanitasi-kategori-legend > div { font-size:9px!important; gap:5px!important; }
 
   /* ── LEGEND ── */
   .leg { margin-top:4px!important; gap:6px!important; }
