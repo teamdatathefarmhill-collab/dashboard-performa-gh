@@ -1290,207 +1290,108 @@ body {
   <div id="sanitasi-section" style="display:none;"></div>
 
   <!-- ══ TABEL STANDAR PRODUKSI ══════════════════════════════════════════════ -->
-  <div class="sec" style="margin-top:20px;">Standar Produksi per Varietas <span class="bnew">REF</span></div>
+  <div class="sec" style="margin-top:20px;">Standar Produksi GH <span class="bnew">REF</span></div>
   <div class="card" style="padding:0;overflow:hidden;">
     <table id="tbl-standar" style="width:100%;border-collapse:separate;border-spacing:0;font-size:12px;">
       <thead>
-        <tr style="background:var(--surface2);">
-          <th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Varietas</th>
-          <th style="padding:10px 12px;text-align:center;font-size:10px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Tipe</th>
-          <th style="padding:10px 12px;text-align:center;font-size:10px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Pop. Awal (tanaman)</th>
-          <th style="padding:10px 12px;text-align:center;font-size:10px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Pop. Akhir Min (%)</th>
-          <th style="padding:10px 12px;text-align:center;font-size:10px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Gramasi Ideal (g/buah)</th>
-          <th style="padding:10px 12px;text-align:center;font-size:10px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Target Premium (%)</th>
-          <th style="padding:10px 12px;text-align:center;font-size:10px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Max Imperfect (%)</th>
-          <th style="padding:10px 12px;text-align:center;font-size:10px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Max Outspec (%)</th>
-          <th style="padding:10px 14px;text-align:center;font-size:10px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Keterangan</th>
+        <tr>
+          <th style="padding:9px 14px;text-align:left;font-size:10px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);background:var(--surface3);white-space:nowrap;min-width:160px;">Aspek</th>
+          <th style="padding:9px 14px;text-align:center;font-size:10px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);background:#dcfce7;white-space:nowrap;">Good</th>
+          <th style="padding:9px 14px;text-align:center;font-size:10px;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);background:#dbeafe;white-space:nowrap;">Ok</th>
+          <th style="padding:9px 14px;text-align:center;font-size:10px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);background:#fef3c7;white-space:nowrap;">Poor</th>
+          <th style="padding:9px 14px;text-align:center;font-size:10px;font-weight:700;color:#991b1b;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);background:#fee2e2;white-space:nowrap;">Bad</th>
+          <th style="padding:9px 14px;text-align:left;font-size:10px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border-med);background:var(--surface3);white-space:nowrap;">Satuan</th>
         </tr>
       </thead>
       <tbody>
-        <!-- Elysia -->
+        <!-- Semai -->
         <tr>
-          <td style="padding:9px 14px;border-bottom:1px solid var(--border);">
-            <span style="display:inline-flex;align-items:center;gap:7px;">
-              <span style="width:10px;height:10px;border-radius:3px;background:#e07b54;flex-shrink:0;display:inline-block;"></span>
-              <strong style="color:#e07b54;">Elysia</strong>
-            </span>
-          </td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);color:var(--muted);font-size:11px;">Beef Tomat</td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);font-weight:600;">2.000 – 4.000</td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);">
-            <span class="tbl-pct-chip chip-ok">≥ 85%</span>
-          </td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);font-weight:700;color:var(--green);">150 – 200 g</td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-ok">≥ 70%</span></td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-mid">≤ 15%</span></td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-bad">≤ 15%</span></td>
-          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);font-size:11px;color:var(--muted);">Tomat medium, rentan crack</td>
+          <td style="padding:9px 14px;border-bottom:1px solid var(--border);font-weight:700;color:var(--text);">Semai</td>
+          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);background:#f0fdf4;font-weight:700;color:#166534;">&gt; 93.50%</td>
+          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);background:#eff6ff;font-weight:600;color:#1e40af;">88.50%</td>
+          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);background:#fffbeb;font-weight:600;color:#92400e;">83.50%</td>
+          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);background:#fef2f2;font-weight:700;color:#991b1b;">&lt; 83.50%</td>
+          <td style="padding:9px 14px;border-bottom:1px solid var(--border);color:var(--muted);font-size:11px;">Benih Layak Tanam</td>
         </tr>
-        <!-- Greeniegal -->
+        <!-- Populasi -->
         <tr style="background:var(--surface2);">
-          <td style="padding:9px 14px;border-bottom:1px solid var(--border);">
-            <span style="display:inline-flex;align-items:center;gap:7px;">
-              <span style="width:10px;height:10px;border-radius:3px;background:#4a9e5c;flex-shrink:0;display:inline-block;"></span>
-              <strong style="color:#4a9e5c;">Greeniegal</strong>
-            </span>
-          </td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);color:var(--muted);font-size:11px;">Tomat Hijau</td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);font-weight:600;">2.000 – 4.000</td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);">
-            <span class="tbl-pct-chip chip-ok">≥ 85%</span>
-          </td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);font-weight:700;color:var(--green);">150 – 200 g</td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-ok">≥ 70%</span></td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-mid">≤ 15%</span></td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-bad">≤ 15%</span></td>
-          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);font-size:11px;color:var(--muted);">Tomat hijau, tampilan unik</td>
+          <td style="padding:9px 14px;border-bottom:1px solid var(--border);font-weight:700;color:var(--text);">Populasi</td>
+          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);background:#f0fdf4;font-weight:700;color:#166534;">≥ 100%</td>
+          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);background:#eff6ff;font-weight:600;color:#1e40af;">95%</td>
+          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);background:#fffbeb;font-weight:600;color:#92400e;">90%</td>
+          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);background:#fef2f2;font-weight:700;color:#991b1b;">&lt; 90%</td>
+          <td style="padding:9px 14px;border-bottom:1px solid var(--border);color:var(--muted);font-size:11px;"><strong style="color:var(--text);">Standar Populasi</strong></td>
         </tr>
-        <!-- Aruni -->
+        <!-- Gramasi -->
         <tr>
-          <td style="padding:9px 14px;border-bottom:1px solid var(--border);">
-            <span style="display:inline-flex;align-items:center;gap:7px;">
-              <span style="width:10px;height:10px;border-radius:3px;background:#c0392b;flex-shrink:0;display:inline-block;"></span>
-              <strong style="color:#c0392b;">Aruni</strong>
-            </span>
-          </td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);color:var(--muted);font-size:11px;">Tomat Cherry</td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);font-weight:600;">3.000 – 6.000</td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);">
-            <span class="tbl-pct-chip chip-ok">≥ 85%</span>
-          </td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);font-weight:700;color:var(--green);">15 – 30 g</td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-ok">≥ 70%</span></td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-mid">≤ 15%</span></td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-bad">≤ 15%</span></td>
-          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);font-size:11px;color:var(--muted);">Cherry merah, populasi tinggi</td>
+          <td style="padding:9px 14px;border-bottom:1px solid var(--border);font-weight:700;color:var(--text);">Gramasi</td>
+          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);background:#f0fdf4;font-weight:700;color:#166534;">&gt; 105%</td>
+          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);background:#eff6ff;font-weight:600;color:#1e40af;">100%</td>
+          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);background:#fffbeb;font-weight:600;color:#92400e;">95%</td>
+          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);background:#fef2f2;font-weight:700;color:#991b1b;">&lt; 95%</td>
+          <td style="padding:9px 14px;border-bottom:1px solid var(--border);color:var(--muted);font-size:11px;"><strong style="color:var(--text);">Standar Gramasi</strong></td>
         </tr>
-        <!-- Midori -->
+        <!-- % Premium Solo -->
         <tr style="background:var(--surface2);">
-          <td style="padding:9px 14px;border-bottom:1px solid var(--border);">
-            <span style="display:inline-flex;align-items:center;gap:7px;">
-              <span style="width:10px;height:10px;border-radius:3px;background:#27ae60;flex-shrink:0;display:inline-block;"></span>
-              <strong style="color:#27ae60;">Midori</strong>
-            </span>
-          </td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);color:var(--muted);font-size:11px;">Cherry Hijau</td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);font-weight:600;">3.000 – 6.000</td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);">
-            <span class="tbl-pct-chip chip-ok">≥ 85%</span>
-          </td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);font-weight:700;color:var(--green);">15 – 30 g</td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-ok">≥ 70%</span></td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-mid">≤ 15%</span></td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-bad">≤ 15%</span></td>
-          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);font-size:11px;color:var(--muted);">Cherry hijau, populasi tinggi</td>
+          <td style="padding:9px 14px;border-bottom:1px solid var(--border);font-weight:600;color:var(--text);">% Premium <span style="font-size:10px;color:var(--hint);font-weight:500;">(Solo)</span></td>
+          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);background:#f0fdf4;color:#166534;">—</td>
+          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);background:#eff6ff;font-weight:600;color:#1e40af;">≥ 80%</td>
+          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);background:#fffbeb;font-weight:600;color:#92400e;">&lt; 80%</td>
+          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);background:#fef2f2;color:#991b1b;">—</td>
+          <td style="padding:9px 14px;border-bottom:1px solid var(--border);color:var(--muted);font-size:11px;">Share Panen Premium</td>
         </tr>
-        <!-- Sarasuka -->
+        <!-- % Imperfect Solo -->
         <tr>
-          <td style="padding:9px 14px;border-bottom:1px solid var(--border);">
-            <span style="display:inline-flex;align-items:center;gap:7px;">
-              <span style="width:10px;height:10px;border-radius:3px;background:#8e44ad;flex-shrink:0;display:inline-block;"></span>
-              <strong style="color:#8e44ad;">Sarasuka</strong>
-            </span>
-          </td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);color:var(--muted);font-size:11px;">Tomat Ungu</td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);font-weight:600;">2.000 – 4.000</td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);">
-            <span class="tbl-pct-chip chip-ok">≥ 85%</span>
-          </td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);font-weight:700;color:var(--green);">150 – 200 g</td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-ok">≥ 70%</span></td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-mid">≤ 15%</span></td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-bad">≤ 15%</span></td>
-          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);font-size:11px;color:var(--muted);">Tomat ungu, nilai premium tinggi</td>
+          <td style="padding:9px 14px;border-bottom:1px solid var(--border);font-weight:600;color:var(--text);">% Imperfect <span style="font-size:10px;color:var(--hint);font-weight:500;">(Solo)</span></td>
+          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);background:#f0fdf4;color:#166534;">—</td>
+          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);background:#eff6ff;font-weight:600;color:#1e40af;">≤ 20%</td>
+          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);background:#fffbeb;font-weight:600;color:#92400e;">&gt; 20%</td>
+          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);background:#fef2f2;color:#991b1b;">—</td>
+          <td style="padding:9px 14px;border-bottom:1px solid var(--border);color:var(--muted);font-size:11px;">Share Panen Imperfect</td>
         </tr>
-        <!-- Sunray -->
+        <!-- % Premium Bergas FR -->
         <tr style="background:var(--surface2);">
-          <td style="padding:9px 14px;border-bottom:1px solid var(--border);">
-            <span style="display:inline-flex;align-items:center;gap:7px;">
-              <span style="width:10px;height:10px;border-radius:3px;background:#f39c12;flex-shrink:0;display:inline-block;"></span>
-              <strong style="color:#f39c12;">Sunray</strong>
-            </span>
-          </td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);color:var(--muted);font-size:11px;">Tomat Kuning</td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);font-weight:600;">2.000 – 4.000</td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);">
-            <span class="tbl-pct-chip chip-ok">≥ 85%</span>
-          </td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);font-weight:700;color:var(--green);">150 – 200 g</td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-ok">≥ 70%</span></td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-mid">≤ 15%</span></td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-bad">≤ 15%</span></td>
-          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);font-size:11px;color:var(--muted);">Tomat kuning, tampilan cerah</td>
+          <td style="padding:9px 14px;border-bottom:1px solid var(--border);font-weight:600;color:var(--text);">% Premium <span style="font-size:10px;color:var(--hint);font-weight:500;">(Bergas FR)</span></td>
+          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);background:#f0fdf4;color:#166534;">—</td>
+          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);background:#eff6ff;font-weight:600;color:#1e40af;">≥ 70%</td>
+          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);background:#fffbeb;font-weight:600;color:#92400e;">&lt; 70%</td>
+          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);background:#fef2f2;color:#991b1b;">—</td>
+          <td style="padding:9px 14px;border-bottom:1px solid var(--border);color:var(--muted);font-size:11px;">Share Panen Premium</td>
         </tr>
-        <!-- Emeralda -->
+        <!-- % Imperfect Bergas FR -->
         <tr>
-          <td style="padding:9px 14px;border-bottom:1px solid var(--border);">
-            <span style="display:inline-flex;align-items:center;gap:7px;">
-              <span style="width:10px;height:10px;border-radius:3px;background:#16a085;flex-shrink:0;display:inline-block;"></span>
-              <strong style="color:#16a085;">Emeralda</strong>
-            </span>
-          </td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);color:var(--muted);font-size:11px;">Tomat Hijau Besar</td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);font-weight:600;">2.000 – 4.000</td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);">
-            <span class="tbl-pct-chip chip-ok">≥ 85%</span>
-          </td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);font-weight:700;color:var(--green);">150 – 250 g</td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-ok">≥ 70%</span></td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-mid">≤ 15%</span></td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-bad">≤ 15%</span></td>
-          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);font-size:11px;color:var(--muted);">Tomat hijau besar, gramasi tinggi</td>
+          <td style="padding:9px 14px;border-bottom:1px solid var(--border);font-weight:600;color:var(--text);">% Imperfect <span style="font-size:10px;color:var(--hint);font-weight:500;">(Bergas FR)</span></td>
+          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);background:#f0fdf4;color:#166534;">—</td>
+          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);background:#eff6ff;font-weight:600;color:#1e40af;">≤ 30%</td>
+          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);background:#fffbeb;font-weight:600;color:#92400e;">&gt; 30%</td>
+          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);background:#fef2f2;color:#991b1b;">—</td>
+          <td style="padding:9px 14px;border-bottom:1px solid var(--border);color:var(--muted);font-size:11px;">Share Panen Imperfect</td>
         </tr>
-        <!-- Greenie Sweet -->
+        <!-- Panen -->
         <tr style="background:var(--surface2);">
-          <td style="padding:9px 14px;border-bottom:1px solid var(--border);">
-            <span style="display:inline-flex;align-items:center;gap:7px;">
-              <span style="width:10px;height:10px;border-radius:3px;background:#2ecc71;flex-shrink:0;display:inline-block;"></span>
-              <strong style="color:#2ecc71;">Greenie Sweet</strong>
-            </span>
-          </td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);color:var(--muted);font-size:11px;">Cherry Hijau Manis</td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);font-weight:600;">3.000 – 6.000</td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);">
-            <span class="tbl-pct-chip chip-ok">≥ 85%</span>
-          </td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);font-weight:700;color:var(--green);">15 – 30 g</td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-ok">≥ 70%</span></td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-mid">≤ 15%</span></td>
-          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-bad">≤ 15%</span></td>
-          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);font-size:11px;color:var(--muted);">Cherry hijau manis, BRIX tinggi</td>
-        </tr>
-        <!-- S7 -->
-        <tr>
-          <td style="padding:9px 14px;">
-            <span style="display:inline-flex;align-items:center;gap:7px;">
-              <span style="width:10px;height:10px;border-radius:3px;background:#2980b9;flex-shrink:0;display:inline-block;"></span>
-              <strong style="color:#2980b9;">S7</strong>
-            </span>
-          </td>
-          <td style="padding:9px 12px;text-align:center;color:var(--muted);font-size:11px;">Tomat Spesial</td>
-          <td style="padding:9px 12px;text-align:center;font-weight:600;">2.000 – 4.000</td>
-          <td style="padding:9px 12px;text-align:center;">
-            <span class="tbl-pct-chip chip-ok">≥ 85%</span>
-          </td>
-          <td style="padding:9px 12px;text-align:center;font-weight:700;color:var(--green);">150 – 250 g</td>
-          <td style="padding:9px 12px;text-align:center;"><span class="tbl-pct-chip chip-ok">≥ 70%</span></td>
-          <td style="padding:9px 12px;text-align:center;"><span class="tbl-pct-chip chip-mid">≤ 15%</span></td>
-          <td style="padding:9px 12px;text-align:center;"><span class="tbl-pct-chip chip-bad">≤ 15%</span></td>
-          <td style="padding:9px 14px;text-align:center;font-size:11px;color:var(--muted);">Varietas spesial, seleksi ketat</td>
+          <td style="padding:9px 14px;font-weight:700;color:var(--text);">Panen</td>
+          <td style="padding:9px 14px;text-align:center;background:#f0fdf4;font-weight:700;color:#166534;">&gt; 105%</td>
+          <td style="padding:9px 14px;text-align:center;background:#eff6ff;font-weight:600;color:#1e40af;">100%</td>
+          <td style="padding:9px 14px;text-align:center;background:#fffbeb;font-weight:600;color:#92400e;">95%</td>
+          <td style="padding:9px 14px;text-align:center;background:#fef2f2;font-weight:700;color:#991b1b;">&lt; 95%</td>
+          <td style="padding:9px 14px;color:var(--muted);font-size:11px;"><strong style="color:var(--text);">Standar Panen</strong></td>
         </tr>
       </tbody>
     </table>
-    <!-- Keterangan warna chip -->
-    <div style="display:flex;gap:16px;flex-wrap:wrap;padding:10px 14px;border-top:1px solid var(--border);background:var(--surface2);">
-      <span style="font-size:10px;color:var(--hint);font-weight:600;">Keterangan:</span>
-      <span style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);">
-        <span class="tbl-pct-chip chip-ok" style="font-size:9px;padding:1px 6px;">Hijau</span> = Target terpenuhi / nilai ideal
+    <!-- Keterangan warna -->
+    <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;padding:9px 14px;border-top:1px solid var(--border);background:var(--surface2);">
+      <span style="font-size:10px;color:var(--hint);font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Keterangan:</span>
+      <span style="display:inline-flex;align-items:center;gap:6px;font-size:10px;color:var(--muted);">
+        <span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#dcfce7;border:1px solid #bbf7d0;"></span>Hijau (Good) — Melebihi target
       </span>
-      <span style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);">
-        <span class="tbl-pct-chip chip-mid" style="font-size:9px;padding:1px 6px;">Kuning</span> = Batas toleransi / perlu pemantauan
+      <span style="display:inline-flex;align-items:center;gap:6px;font-size:10px;color:var(--muted);">
+        <span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#dbeafe;border:1px solid #bfdbfe;"></span>Biru (Ok) — Memenuhi standar
       </span>
-      <span style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);">
-        <span class="tbl-pct-chip chip-bad" style="font-size:9px;padding:1px 6px;">Merah</span> = Batas maksimum, jika terlampaui = kritis
+      <span style="display:inline-flex;align-items:center;gap:6px;font-size:10px;color:var(--muted);">
+        <span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#fef3c7;border:1px solid #fde68a;"></span>Kuning (Poor) — Di bawah standar
+      </span>
+      <span style="display:inline-flex;align-items:center;gap:6px;font-size:10px;color:var(--muted);">
+        <span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#fee2e2;border:1px solid #fecaca;"></span>Merah (Bad) — Kritis
       </span>
     </div>
   </div>
@@ -1869,6 +1770,42 @@ let RAW = null;
 let RAW_SANITASI = null;
 let RAW_ESTIMASI = null;
 let RAW_OUTSPEC  = null; // sheet outspec baru (gid=1180138925)
+
+// ── STANDAR POPULASI AKHIR & GRAMASI (dari sheet Standar) ──
+const STANDAR_POP_AKHIR = {
+  bergas: [
+    {hstMax:10,pct:100},{hstMax:20,pct:97},{hstMax:30,pct:94},{hstMax:99,pct:92}
+  ],
+  default: [
+    {hstMax:10,pct:100},{hstMax:20,pct:97},{hstMax:30,pct:94},{hstMax:99,pct:90}
+  ]
+};
+const STANDAR_GRAMASI_BERGAS = [
+  {hst:32,qty:425},{hst:33,qty:476},{hst:34,qty:527},{hst:35,qty:578},
+  {hst:36,qty:629},{hst:37,qty:680},{hst:38,qty:714},{hst:39,qty:748},
+  {hst:40,qty:782},{hst:41,qty:816},{hst:42,qty:850},{hst:43,qty:867},
+  {hst:44,qty:884},{hst:45,qty:901},{hst:46,qty:918},{hst:47,qty:935},
+  {hst:48,qty:952},{hst:49,qty:969},{hst:50,qty:986},{hst:51,qty:1003},
+  {hst:52,qty:1020},{hst:53,qty:1020},{hst:54,qty:1020},{hst:55,qty:1020},
+  {hst:56,qty:1020},{hst:57,qty:1020},{hst:58,qty:1020},{hst:59,qty:1020},
+  {hst:60,qty:1020},{hst:61,qty:1020},{hst:62,qty:1020},{hst:63,qty:1020}
+];
+
+function getStandarPopPct(hst, klasifikasi){
+  const hstInt = Math.floor(parseFloat(hst)||0);
+  const tbl = (klasifikasi||'').toLowerCase().includes('bergas')
+    ? STANDAR_POP_AKHIR.bergas : STANDAR_POP_AKHIR.default;
+  for(const row of tbl){ if(hstInt <= row.hstMax) return row.pct; }
+  return tbl[tbl.length-1].pct;
+}
+
+function getStandarGramasi(hst, klasifikasi){
+  const hstInt = Math.floor(parseFloat(hst)||0);
+  if(!(klasifikasi||'').toLowerCase().includes('bergas')) return null;
+  const sorted = STANDAR_GRAMASI_BERGAS.slice().sort((a,b)=>a.hst-b.hst);
+  for(const row of sorted){ if(hstInt <= row.hst) return row.qty; }
+  return sorted[sorted.length-1].qty;
+}
 let charts = {};
 
 // ── HELPERS ──────────────────────────────────────────────────────────────────
@@ -3844,6 +3781,7 @@ function renderPeriodeTable(){
       pop_awal:  curr.pop      || 0,
       pop_akhir: curr.pop_akhir|| 0,
       avgGramasi: getAvgGramasiForGH(gh, curr.periode),
+      klasifikasi: curr.klasifikasi || '',
     });
   });
 
@@ -3958,7 +3896,17 @@ function renderPeriodeTable(){
         ${r.prev ? `<div style="font-size:9px;color:var(--hint);margin-top:1px;">sblm: ${r.prev.periode}</div>` : ''}
       </td>
       <td style="text-align:center;color:var(--muted);white-space:nowrap;">${r.pop_awal > 0 ? r.pop_awal.toLocaleString('id-ID') : '—'}</td>
-      <td style="text-align:center;color:var(--muted);white-space:nowrap;">${r.pop_akhir > 0 ? r.pop_akhir.toLocaleString('id-ID') : '—'}</td>
+      <td style="text-align:center;white-space:nowrap;">${(()=>{
+        if(r.pop_akhir <= 0 || r.pop_awal <= 0) return '<span style="color:var(--hint);">&#x2014;</span>';
+        const hst = r.curr.periode;
+        const stdPct = getStandarPopPct(hst, r.klasifikasi);
+        const actualPct = (r.pop_akhir / r.pop_awal) * 100;
+        let chipCls;
+        if(actualPct >= stdPct)            chipCls = 'chip-ok';
+        else if(actualPct >= stdPct - 2)   chipCls = 'chip-mid';
+        else                               chipCls = 'chip-bad';
+        return `<span class="tbl-pct-chip ${chipCls}">${r.pop_akhir.toLocaleString('id-ID')}</span><div style="font-size:9px;color:var(--hint);margin-top:1px;">${actualPct.toFixed(1)}% <span style="opacity:.7">(std: ${stdPct}%)</span></div>`;
+      })()}</td>
       <td style="text-align:center;white-space:nowrap;">${sanitasiHtml}</td>
       <td style="text-align:center;color:var(--muted);white-space:nowrap;">${r.pPanen !== null && r.pPanen > 0 ? fmt(r.pPanen) : '—'}</td>
       <td style="text-align:center;font-weight:700;white-space:nowrap;">${r.cPanen > 0 ? fmt(r.cPanen) : '<span style="color:var(--hint);">—</span>'}</td>
@@ -3967,10 +3915,20 @@ function renderPeriodeTable(){
       <td style="text-align:center;padding:4px 9px;">${r.cPanen > 0 ? impCell  : '<span class="tbl-pct-chip chip-neu">—</span>'}</td>
       <td style="text-align:center;padding:4px 9px;">${r.cPanen > 0 ? osPctCell(r.cOsPct, r.pOsPct) : '<span class="tbl-pct-chip chip-neu">—</span>'}</td>
       <td style="text-align:center;padding:4px 9px;">${(()=>{
-        if(r.avgGramasi <= 0) return '<span style="color:var(--hint);">—</span>';
+        if(r.avgGramasi <= 0) return '<span style="color:var(--hint);">&#x2014;</span>';
         const g = r.avgGramasi.toFixed(0);
-        const cls = r.avgGramasi >= 250 ? 'color:var(--green);font-weight:700;' : r.avgGramasi < 180 ? 'color:var(--red);font-weight:700;' : 'color:var(--muted);font-weight:600;';
-        return `<span style="${cls}">${g} g</span>`;
+        const stdG = getStandarGramasi(r.curr.periode, r.klasifikasi);
+        if(stdG === null){
+          const cls = r.avgGramasi >= 250 ? 'color:var(--green);font-weight:700;' : r.avgGramasi < 180 ? 'color:var(--red);font-weight:700;' : 'color:var(--muted);font-weight:600;';
+          return `<span style="${cls}">${g} g</span>`;
+        }
+        const ratio = (r.avgGramasi / stdG) * 100;
+        let chipCls;
+        if(ratio >= 105)      chipCls = 'chip-ok';
+        else if(ratio >= 100) chipCls = 'chip-ok';
+        else if(ratio >= 95)  chipCls = 'chip-mid';
+        else                  chipCls = 'chip-bad';
+        return `<span class="tbl-pct-chip ${chipCls}" title="Standar HST ${Math.floor(parseFloat(r.curr.periode))}: ${stdG}g">${g} g</span><div style="font-size:9px;color:var(--hint);margin-top:1px;">${ratio.toFixed(0)}% <span style="opacity:.7">(std: ${stdG}g)</span></div>`;
       })()}</td>
       <td style="text-align:center;padding:4px 9px;">${statusHtml}</td>
       <td style="text-align:center;padding:4px 9px;">${r.cPanen > 0 ? pctEstHtml : '<span class="tbl-pct-chip chip-neu">—</span>'}</td>
