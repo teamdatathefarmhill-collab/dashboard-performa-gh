@@ -880,6 +880,11 @@ body {
   /* ── STANDALONE INSIGHT ── */
   #insight-section-standalone { break-inside:avoid; }
 
+  /* ── TABEL STANDAR ── */
+  #tbl-standar { font-size:7px!important; }
+  #tbl-standar td, #tbl-standar th { padding:3px 5px!important; white-space:nowrap!important; }
+  #tbl-standar th { font-size:6.5px!important; }
+
   /* ── PDF POPUP MODE ── */
   body.pdf-popup-mode #pdf-popup-header { display:block!important; margin-bottom:6px; padding:6px 10px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:6px; }
   body.pdf-popup-mode .kpi-row { grid-template-columns:repeat(5,1fr)!important; gap:4px!important; }
@@ -1283,6 +1288,212 @@ body {
 
   <!-- SANITASI per Varietas: dihapus per permintaan -->
   <div id="sanitasi-section" style="display:none;"></div>
+
+  <!-- ══ TABEL STANDAR PRODUKSI ══════════════════════════════════════════════ -->
+  <div class="sec" style="margin-top:20px;">Standar Produksi per Varietas <span class="bnew">REF</span></div>
+  <div class="card" style="padding:0;overflow:hidden;">
+    <table id="tbl-standar" style="width:100%;border-collapse:separate;border-spacing:0;font-size:12px;">
+      <thead>
+        <tr style="background:var(--surface2);">
+          <th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Varietas</th>
+          <th style="padding:10px 12px;text-align:center;font-size:10px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Tipe</th>
+          <th style="padding:10px 12px;text-align:center;font-size:10px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Pop. Awal (tanaman)</th>
+          <th style="padding:10px 12px;text-align:center;font-size:10px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Pop. Akhir Min (%)</th>
+          <th style="padding:10px 12px;text-align:center;font-size:10px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Gramasi Ideal (g/buah)</th>
+          <th style="padding:10px 12px;text-align:center;font-size:10px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Target Premium (%)</th>
+          <th style="padding:10px 12px;text-align:center;font-size:10px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Max Imperfect (%)</th>
+          <th style="padding:10px 12px;text-align:center;font-size:10px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Max Outspec (%)</th>
+          <th style="padding:10px 14px;text-align:center;font-size:10px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Keterangan</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Elysia -->
+        <tr>
+          <td style="padding:9px 14px;border-bottom:1px solid var(--border);">
+            <span style="display:inline-flex;align-items:center;gap:7px;">
+              <span style="width:10px;height:10px;border-radius:3px;background:#e07b54;flex-shrink:0;display:inline-block;"></span>
+              <strong style="color:#e07b54;">Elysia</strong>
+            </span>
+          </td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);color:var(--muted);font-size:11px;">Beef Tomat</td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);font-weight:600;">2.000 – 4.000</td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);">
+            <span class="tbl-pct-chip chip-ok">≥ 85%</span>
+          </td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);font-weight:700;color:var(--green);">150 – 200 g</td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-ok">≥ 70%</span></td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-mid">≤ 15%</span></td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-bad">≤ 15%</span></td>
+          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);font-size:11px;color:var(--muted);">Tomat medium, rentan crack</td>
+        </tr>
+        <!-- Greeniegal -->
+        <tr style="background:var(--surface2);">
+          <td style="padding:9px 14px;border-bottom:1px solid var(--border);">
+            <span style="display:inline-flex;align-items:center;gap:7px;">
+              <span style="width:10px;height:10px;border-radius:3px;background:#4a9e5c;flex-shrink:0;display:inline-block;"></span>
+              <strong style="color:#4a9e5c;">Greeniegal</strong>
+            </span>
+          </td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);color:var(--muted);font-size:11px;">Tomat Hijau</td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);font-weight:600;">2.000 – 4.000</td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);">
+            <span class="tbl-pct-chip chip-ok">≥ 85%</span>
+          </td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);font-weight:700;color:var(--green);">150 – 200 g</td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-ok">≥ 70%</span></td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-mid">≤ 15%</span></td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-bad">≤ 15%</span></td>
+          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);font-size:11px;color:var(--muted);">Tomat hijau, tampilan unik</td>
+        </tr>
+        <!-- Aruni -->
+        <tr>
+          <td style="padding:9px 14px;border-bottom:1px solid var(--border);">
+            <span style="display:inline-flex;align-items:center;gap:7px;">
+              <span style="width:10px;height:10px;border-radius:3px;background:#c0392b;flex-shrink:0;display:inline-block;"></span>
+              <strong style="color:#c0392b;">Aruni</strong>
+            </span>
+          </td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);color:var(--muted);font-size:11px;">Tomat Cherry</td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);font-weight:600;">3.000 – 6.000</td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);">
+            <span class="tbl-pct-chip chip-ok">≥ 85%</span>
+          </td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);font-weight:700;color:var(--green);">15 – 30 g</td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-ok">≥ 70%</span></td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-mid">≤ 15%</span></td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-bad">≤ 15%</span></td>
+          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);font-size:11px;color:var(--muted);">Cherry merah, populasi tinggi</td>
+        </tr>
+        <!-- Midori -->
+        <tr style="background:var(--surface2);">
+          <td style="padding:9px 14px;border-bottom:1px solid var(--border);">
+            <span style="display:inline-flex;align-items:center;gap:7px;">
+              <span style="width:10px;height:10px;border-radius:3px;background:#27ae60;flex-shrink:0;display:inline-block;"></span>
+              <strong style="color:#27ae60;">Midori</strong>
+            </span>
+          </td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);color:var(--muted);font-size:11px;">Cherry Hijau</td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);font-weight:600;">3.000 – 6.000</td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);">
+            <span class="tbl-pct-chip chip-ok">≥ 85%</span>
+          </td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);font-weight:700;color:var(--green);">15 – 30 g</td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-ok">≥ 70%</span></td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-mid">≤ 15%</span></td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-bad">≤ 15%</span></td>
+          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);font-size:11px;color:var(--muted);">Cherry hijau, populasi tinggi</td>
+        </tr>
+        <!-- Sarasuka -->
+        <tr>
+          <td style="padding:9px 14px;border-bottom:1px solid var(--border);">
+            <span style="display:inline-flex;align-items:center;gap:7px;">
+              <span style="width:10px;height:10px;border-radius:3px;background:#8e44ad;flex-shrink:0;display:inline-block;"></span>
+              <strong style="color:#8e44ad;">Sarasuka</strong>
+            </span>
+          </td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);color:var(--muted);font-size:11px;">Tomat Ungu</td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);font-weight:600;">2.000 – 4.000</td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);">
+            <span class="tbl-pct-chip chip-ok">≥ 85%</span>
+          </td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);font-weight:700;color:var(--green);">150 – 200 g</td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-ok">≥ 70%</span></td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-mid">≤ 15%</span></td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-bad">≤ 15%</span></td>
+          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);font-size:11px;color:var(--muted);">Tomat ungu, nilai premium tinggi</td>
+        </tr>
+        <!-- Sunray -->
+        <tr style="background:var(--surface2);">
+          <td style="padding:9px 14px;border-bottom:1px solid var(--border);">
+            <span style="display:inline-flex;align-items:center;gap:7px;">
+              <span style="width:10px;height:10px;border-radius:3px;background:#f39c12;flex-shrink:0;display:inline-block;"></span>
+              <strong style="color:#f39c12;">Sunray</strong>
+            </span>
+          </td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);color:var(--muted);font-size:11px;">Tomat Kuning</td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);font-weight:600;">2.000 – 4.000</td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);">
+            <span class="tbl-pct-chip chip-ok">≥ 85%</span>
+          </td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);font-weight:700;color:var(--green);">150 – 200 g</td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-ok">≥ 70%</span></td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-mid">≤ 15%</span></td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-bad">≤ 15%</span></td>
+          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);font-size:11px;color:var(--muted);">Tomat kuning, tampilan cerah</td>
+        </tr>
+        <!-- Emeralda -->
+        <tr>
+          <td style="padding:9px 14px;border-bottom:1px solid var(--border);">
+            <span style="display:inline-flex;align-items:center;gap:7px;">
+              <span style="width:10px;height:10px;border-radius:3px;background:#16a085;flex-shrink:0;display:inline-block;"></span>
+              <strong style="color:#16a085;">Emeralda</strong>
+            </span>
+          </td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);color:var(--muted);font-size:11px;">Tomat Hijau Besar</td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);font-weight:600;">2.000 – 4.000</td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);">
+            <span class="tbl-pct-chip chip-ok">≥ 85%</span>
+          </td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);font-weight:700;color:var(--green);">150 – 250 g</td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-ok">≥ 70%</span></td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-mid">≤ 15%</span></td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-bad">≤ 15%</span></td>
+          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);font-size:11px;color:var(--muted);">Tomat hijau besar, gramasi tinggi</td>
+        </tr>
+        <!-- Greenie Sweet -->
+        <tr style="background:var(--surface2);">
+          <td style="padding:9px 14px;border-bottom:1px solid var(--border);">
+            <span style="display:inline-flex;align-items:center;gap:7px;">
+              <span style="width:10px;height:10px;border-radius:3px;background:#2ecc71;flex-shrink:0;display:inline-block;"></span>
+              <strong style="color:#2ecc71;">Greenie Sweet</strong>
+            </span>
+          </td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);color:var(--muted);font-size:11px;">Cherry Hijau Manis</td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);font-weight:600;">3.000 – 6.000</td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);">
+            <span class="tbl-pct-chip chip-ok">≥ 85%</span>
+          </td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);font-weight:700;color:var(--green);">15 – 30 g</td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-ok">≥ 70%</span></td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-mid">≤ 15%</span></td>
+          <td style="padding:9px 12px;text-align:center;border-bottom:1px solid var(--border);"><span class="tbl-pct-chip chip-bad">≤ 15%</span></td>
+          <td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);font-size:11px;color:var(--muted);">Cherry hijau manis, BRIX tinggi</td>
+        </tr>
+        <!-- S7 -->
+        <tr>
+          <td style="padding:9px 14px;">
+            <span style="display:inline-flex;align-items:center;gap:7px;">
+              <span style="width:10px;height:10px;border-radius:3px;background:#2980b9;flex-shrink:0;display:inline-block;"></span>
+              <strong style="color:#2980b9;">S7</strong>
+            </span>
+          </td>
+          <td style="padding:9px 12px;text-align:center;color:var(--muted);font-size:11px;">Tomat Spesial</td>
+          <td style="padding:9px 12px;text-align:center;font-weight:600;">2.000 – 4.000</td>
+          <td style="padding:9px 12px;text-align:center;">
+            <span class="tbl-pct-chip chip-ok">≥ 85%</span>
+          </td>
+          <td style="padding:9px 12px;text-align:center;font-weight:700;color:var(--green);">150 – 250 g</td>
+          <td style="padding:9px 12px;text-align:center;"><span class="tbl-pct-chip chip-ok">≥ 70%</span></td>
+          <td style="padding:9px 12px;text-align:center;"><span class="tbl-pct-chip chip-mid">≤ 15%</span></td>
+          <td style="padding:9px 12px;text-align:center;"><span class="tbl-pct-chip chip-bad">≤ 15%</span></td>
+          <td style="padding:9px 14px;text-align:center;font-size:11px;color:var(--muted);">Varietas spesial, seleksi ketat</td>
+        </tr>
+      </tbody>
+    </table>
+    <!-- Keterangan warna chip -->
+    <div style="display:flex;gap:16px;flex-wrap:wrap;padding:10px 14px;border-top:1px solid var(--border);background:var(--surface2);">
+      <span style="font-size:10px;color:var(--hint);font-weight:600;">Keterangan:</span>
+      <span style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);">
+        <span class="tbl-pct-chip chip-ok" style="font-size:9px;padding:1px 6px;">Hijau</span> = Target terpenuhi / nilai ideal
+      </span>
+      <span style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);">
+        <span class="tbl-pct-chip chip-mid" style="font-size:9px;padding:1px 6px;">Kuning</span> = Batas toleransi / perlu pemantauan
+      </span>
+      <span style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);">
+        <span class="tbl-pct-chip chip-bad" style="font-size:9px;padding:1px 6px;">Merah</span> = Batas maksimum, jika terlampaui = kritis
+      </span>
+    </div>
+  </div>
 
   <div style="text-align:center;font-size:10px;color:var(--hint);padding:14px 0 2px" id="footer"></div>
 </div>
