@@ -1701,11 +1701,8 @@ let RAW_ESTIMASI = null;
 let RAW_OUTSPEC  = null; // sheet outspec baru (gid=1180138925)
 
 // ── STANDAR POPULASI AKHIR & GRAMASI (dari sheet Standar) ──
-// Standar populasi akhir: ambil nilai PALING AKHIR (HST tertinggi) dari sheet
-const STANDAR_POP_AKHIR = {
-  bergas:  92,  // HST akhir Bergas = 92%
-  default: 90   // HST akhir Tohudan/Solo = 90%
-};
+// Standar populasi akhir: sama untuk semua lokasi
+const STANDAR_POP_AKHIR = 90;  // HST akhir = 90%
 // Standar gramasi per HST — Bergas
 const STANDAR_GRAMASI_BERGAS = [
   {hst:32,qty:425},{hst:33,qty:476},{hst:34,qty:527},{hst:35,qty:578},
@@ -1735,9 +1732,7 @@ const STANDAR_GRAMASI_SAWAHAN = [
 ];
 
 function getStandarPopPct(hst, klasifikasi){
-  return (klasifikasi||'').toLowerCase().includes('bergas')
-    ? STANDAR_POP_AKHIR.bergas
-    : STANDAR_POP_AKHIR.default;
+  return STANDAR_POP_AKHIR; // sama untuk semua lokasi
 }
 
 function _lookupGramasi(tbl, hstInt){
@@ -6135,8 +6130,8 @@ function renderStandarTable(){
   if(!tbody) return;
 
   // Ambil nilai PALING AKHIR (HST max) dari tiap tabel standar
-  const popBergas  = STANDAR_POP_AKHIR.bergas;   // 92%
-  const popTohudan = STANDAR_POP_AKHIR.default;  // 90%
+  // Populasi akhir standar sama semua lokasi
+  void 0;
   const gramBergas = STANDAR_GRAMASI_BERGAS[STANDAR_GRAMASI_BERGAS.length - 1].qty;        // 1020g
 
   // Helper: buat sel dengan warna
@@ -6276,8 +6271,7 @@ function renderStandarTable(){
 
   const rows = [
     tr(false,  tdAspek('Semai',false)         + tdLokasi('Semua',false)           + cellG('&gt; 93.50%') + cellB('88.50%')                         + cellY('83.50%')                         + cellR('&lt; 83.50%')                   + tdSatuan('Benih Layak Tanam',false,false)),
-    tr(true,   tdAspek('Populasi Akhir',true) + tdLokasi('Bergas',true)           + cellG('&#x2265; 100%') + cellB('&#x2265; 97%')                  + cellY('&#x2265; 94%')                   + cellR('&lt; 94%')                      + tdSatuan('Standar Populasi',true,true)),
-    tr(false,  tdAspek('Populasi Akhir',false)+ tdLokasi('Tohudan / Solo',false)  + cellG('&#x2265; 100%') + cellB('&#x2265; 95%')                  + cellY('&#x2265; 90%')                   + cellR('&lt; 90%')                      + tdSatuan('Standar Populasi',true,false)),
+    tr(true,   tdAspek('Populasi Akhir',true) + tdLokasi('Semua',true)            + cellG('&#x2265; 100%') + cellB('&#x2265; 95%')                  + cellY('&#x2265; 90%')                   + cellR('&lt; 90%')                      + tdSatuan('Standar Populasi',true,true)),
     tr(true,   tdAspek('Gramasi',true)        + tdLokasi('Bergas',true)           + cellG('&gt; '+Math.round(gramBergas*1.05)+'g')   + cellB(gramBergas+'g')   + cellY(Math.round(gramBergas*0.95)+'g')   + cellR('&lt; '+Math.round(gramBergas*0.95)+'g')   + tdSatuan('Standar Gramasi (HST akhir)',true,true)),
     tr(false,  tdAspek('Gramasi',false)       + tdLokasi('Tohudan',false)         + cellG('&gt; '+Math.round(gramTohudan*1.05)+'g') + cellB(gramTohudan+'g') + cellY(Math.round(gramTohudan*0.95)+'g') + cellR('&lt; '+Math.round(gramTohudan*0.95)+'g') + tdSatuan('Standar Gramasi (HST akhir)',true,false)),
     tr(true,   tdAspek('Gramasi',true)        + tdLokasi('Sawahan',true)          + cellG('&gt; '+Math.round(gramSawahan*1.05)+'g')  + cellB(gramSawahan+'g')  + cellY(Math.round(gramSawahan*0.95)+'g')  + cellR('&lt; '+Math.round(gramSawahan*0.95)+'g')  + tdSatuan('Standar Gramasi (HST akhir)',true,true)),
