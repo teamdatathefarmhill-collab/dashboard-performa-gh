@@ -1706,6 +1706,7 @@ const STANDAR_POP_AKHIR = {
   bergas:  92,  // HST akhir Bergas = 92%
   default: 90   // HST akhir Tohudan/Solo = 90%
 };
+// Standar gramasi per HST — Bergas
 const STANDAR_GRAMASI_BERGAS = [
   {hst:32,qty:425},{hst:33,qty:476},{hst:34,qty:527},{hst:35,qty:578},
   {hst:36,qty:629},{hst:37,qty:680},{hst:38,qty:714},{hst:39,qty:748},
@@ -1717,19 +1718,55 @@ const STANDAR_GRAMASI_BERGAS = [
   {hst:60,qty:1020},{hst:61,qty:1020},{hst:62,qty:1020},{hst:63,qty:1020}
 ];
 
+// Standar gramasi per HST — Tohudan
+const STANDAR_GRAMASI_TOHUDAN = [
+  {hst:74,qty:1169},{hst:75,qty:1169},{hst:76,qty:1169},{hst:77,qty:1169},
+  {hst:78,qty:1169},{hst:79,qty:1169},{hst:80,qty:1169},{hst:81,qty:1169},
+  {hst:82,qty:1169}
+];
+
+// Standar gramasi per HST — Sawahan
+const STANDAR_GRAMASI_SAWAHAN = [
+  {hst:25,qty:425},{hst:26,qty:480},{hst:27,qty:536},{hst:28,qty:591},
+  {hst:29,qty:646},{hst:30,qty:701},{hst:31,qty:757},{hst:32,qty:812},
+  {hst:33,qty:867},{hst:34,qty:922},{hst:35,qty:952},{hst:36,qty:982},
+  {hst:37,qty:1012},{hst:38,qty:1041},{hst:39,qty:1071},{hst:40,qty:1101},
+  {hst:41,qty:1131},{hst:42,qty:1135},{hst:43,qty:1139},{hst:44,qty:1143}
+];
+
 function getStandarPopPct(hst, klasifikasi){
-  // Gunakan nilai standar paling akhir (HST tertinggi) sesuai lokasi
   return (klasifikasi||'').toLowerCase().includes('bergas')
     ? STANDAR_POP_AKHIR.bergas
     : STANDAR_POP_AKHIR.default;
 }
 
-function getStandarGramasi(hst, klasifikasi){
-  const hstInt = Math.floor(parseFloat(hst)||0);
-  if(!(klasifikasi||'').toLowerCase().includes('bergas')) return null;
-  const sorted = STANDAR_GRAMASI_BERGAS.slice().sort((a,b)=>a.hst-b.hst);
+function _lookupGramasi(tbl, hstInt){
+  const sorted = tbl.slice().sort((a,b)=>a.hst-b.hst);
   for(const row of sorted){ if(hstInt <= row.hst) return row.qty; }
   return sorted[sorted.length-1].qty;
+}
+
+function getStandarGramasi(hst, klasifikasi){
+  const hstInt = Math.floor(parseFloat(hst)||0);
+  const klas   = (klasifikasi||'').toLowerCase();
+  if(klas.includes('bergas'))   return _lookupGramasi(STANDAR_GRAMASI_BERGAS,  hstInt);
+  if(klas.includes('tohudan'))  return _lookupGramasi(STANDAR_GRAMASI_TOHUDAN, hstInt);
+  if(klas.includes('sawahan'))  return _lookupGramasi(STANDAR_GRAMASI_SAWAHAN, hstInt);
+  // Fallback: tidak ada data standar untuk lokasi ini
+  return null;
+}
+
+// Sama seperti getStandarGramasi tapi menerima nama GH sebagai fallback
+function getStandarGramasiByGH(hst, klasifikasi, ghName){
+  const res = getStandarGramasi(hst, klasifikasi);
+  if(res !== null) return res;
+  // Coba deteksi dari nama GH
+  const gh = (ghName||'').toLowerCase();
+  const hstInt = Math.floor(parseFloat(hst)||0);
+  if(gh.includes('tohudan'))  return _lookupGramasi(STANDAR_GRAMASI_TOHUDAN, hstInt);
+  if(gh.includes('sawahan'))  return _lookupGramasi(STANDAR_GRAMASI_SAWAHAN, hstInt);
+  if(gh.includes('bergas'))   return _lookupGramasi(STANDAR_GRAMASI_BERGAS,  hstInt);
+  return null;
 }
 let charts = {};
 
@@ -3842,7 +3879,7 @@ function renderPeriodeTable(){
       <td style="text-align:center;padding:4px 9px;">${(()=>{
         if(r.avgGramasi <= 0) return '<span style="color:var(--hint);">&#x2014;</span>';
         const g = r.avgGramasi.toFixed(0);
-        const stdG = getStandarGramasi(r.curr.periode, r.klasifikasi);
+        const stdG = getStandarGramasiByGH(r.curr.periode, r.klasifikasi, r.gh);
         if(stdG === null){
           const cls = r.avgGramasi >= 250 ? 'color:var(--green);font-weight:700;' : r.avgGramasi < 180 ? 'color:var(--red);font-weight:700;' : 'color:var(--muted);font-weight:600;';
           return `<span style="${cls}">${g} g</span>`;
@@ -6223,7 +6260,9 @@ function renderStandarTable(){
   const tbody = document.getElementById('tbl-standar-body');
   if(!tbody) return;
 
-  const gramBergas = STANDAR_GRAMASI_BERGAS[STANDAR_GRAMASI_BERGAS.length - 1].qty; // 1020g
+  const gramBergas  = STANDAR_GRAMASI_BERGAS[STANDAR_GRAMASI_BERGAS.length  - 1].qty; // 1020g
+  const gramTohudan = STANDAR_GRAMASI_TOHUDAN[STANDAR_GRAMASI_TOHUDAN.length - 1].qty; // 1169g
+  const gramSawahan = STANDAR_GRAMASI_SAWAHAN[STANDAR_GRAMASI_SAWAHAN.length - 1].qty; // 1143g
 
   const cellG = v => `<td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);background:#f0fdf4;font-weight:700;color:#166534;">${v}</td>`;
   const cellB = v => `<td style="padding:9px 14px;text-align:center;border-bottom:1px solid var(--border);background:#eff6ff;font-weight:600;color:#1e40af;">${v}</td>`;
@@ -6239,8 +6278,9 @@ function renderStandarTable(){
     tr(false,  tdAspek('Semai',false)         + tdLokasi('Semua',false)           + cellG('&gt; 93.50%') + cellB('88.50%')                         + cellY('83.50%')                         + cellR('&lt; 83.50%')                   + tdSatuan('Benih Layak Tanam',false,false)),
     tr(true,   tdAspek('Populasi Akhir',true) + tdLokasi('Bergas',true)           + cellG('&#x2265; 100%') + cellB('&#x2265; 97%')                  + cellY('&#x2265; 94%')                   + cellR('&lt; 94%')                      + tdSatuan('Standar Populasi',true,true)),
     tr(false,  tdAspek('Populasi Akhir',false)+ tdLokasi('Tohudan / Solo',false)  + cellG('&#x2265; 100%') + cellB('&#x2265; 95%')                  + cellY('&#x2265; 90%')                   + cellR('&lt; 90%')                      + tdSatuan('Standar Populasi',true,false)),
-    tr(true,   tdAspek('Gramasi',true)        + tdLokasi('Bergas',true)           + cellG('&gt; '+Math.round(gramBergas*1.05)+'g') + cellB(gramBergas+'g') + cellY(Math.round(gramBergas*0.95)+'g') + cellR('&lt; '+Math.round(gramBergas*0.95)+'g') + tdSatuan('Standar Gramasi (HST akhir)',true,true)),
-    tr(false,  tdAspek('Gramasi',false)       + tdLokasi('Tohudan / Solo',false)  + cellN() + cellN() + cellN() + cellN()                           + tdSatuan('Data standar belum tersedia',false,false)),
+    tr(true,   tdAspek('Gramasi',true)        + tdLokasi('Bergas',true)           + cellG('&gt; '+Math.round(gramBergas*1.05)+'g')   + cellB(gramBergas+'g')   + cellY(Math.round(gramBergas*0.95)+'g')   + cellR('&lt; '+Math.round(gramBergas*0.95)+'g')   + tdSatuan('Standar Gramasi (HST akhir)',true,true)),
+    tr(false,  tdAspek('Gramasi',false)       + tdLokasi('Tohudan',false)         + cellG('&gt; '+Math.round(gramTohudan*1.05)+'g') + cellB(gramTohudan+'g') + cellY(Math.round(gramTohudan*0.95)+'g') + cellR('&lt; '+Math.round(gramTohudan*0.95)+'g') + tdSatuan('Standar Gramasi (HST akhir)',true,false)),
+    tr(true,   tdAspek('Gramasi',true)        + tdLokasi('Sawahan',true)          + cellG('&gt; '+Math.round(gramSawahan*1.05)+'g')  + cellB(gramSawahan+'g')  + cellY(Math.round(gramSawahan*0.95)+'g')  + cellR('&lt; '+Math.round(gramSawahan*0.95)+'g')  + tdSatuan('Standar Gramasi (HST akhir)',true,true)),
     tr(true,   tdAspek('% Premium',true)      + tdLokasi('Tohudan / Solo',true)   + cellN() + cellB('&#x2265; 80%')                                 + cellY('&lt; 80%')                       + cellN()                                + tdSatuan('Share Panen Premium',false,true)),
     tr(false,  tdAspek('% Imperfect',false)   + tdLokasi('Tohudan / Solo',false)  + cellN() + cellB('&#x2264; 20%')                                 + cellY('&gt; 20%')                       + cellN()                                + tdSatuan('Share Panen Imperfect',false,false)),
     tr(true,   tdAspek('% Premium',true)      + tdLokasi('Bergas FR',true)        + cellN() + cellB('&#x2265; 70%')                                 + cellY('&lt; 70%')                       + cellN()                                + tdSatuan('Share Panen Premium',false,true)),
