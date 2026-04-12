@@ -1787,8 +1787,20 @@ function getStandarPopPct(hst, klasifikasi){
 
 function _lookupGramasi(tbl, hstInt){
   const sorted = tbl.slice().sort((a,b)=>a.hst-b.hst);
-  for(const row of sorted){ if(hstInt <= row.hst) return row.qty; }
-  return sorted[sorted.length-1].qty;
+  // Exact match dulu
+  const exact = sorted.find(r => r.hst === hstInt);
+  if(exact) return exact.qty;
+  // Sudah lewat HST max → ambil max
+  if(hstInt > sorted[sorted.length-1].hst) return sorted[sorted.length-1].qty;
+  // Belum sampai HST min → ambil min
+  if(hstInt < sorted[0].hst) return sorted[0].qty;
+  // Ambil row terdekat di bawah hstInt
+  let prev = sorted[0];
+  for(const row of sorted){
+    if(row.hst > hstInt) break;
+    prev = row;
+  }
+  return prev.qty;
 }
 
 function getStandarGramasi(hst, klasifikasi, tglTanam){
