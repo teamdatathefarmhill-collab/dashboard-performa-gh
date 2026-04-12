@@ -1704,32 +1704,82 @@ let RAW_OUTSPEC  = null; // sheet outspec baru (gid=1180138925)
 // Standar populasi akhir: sama untuk semua lokasi
 const STANDAR_POP_AKHIR = 90;  // HST akhir = 90%
 // Standar gramasi per HST — Bergas
-const STANDAR_GRAMASI_BERGAS = [
-  {hst:32,qty:425},{hst:33,qty:476},{hst:34,qty:527},{hst:35,qty:578},
-  {hst:36,qty:629},{hst:37,qty:680},{hst:38,qty:714},{hst:39,qty:748},
-  {hst:40,qty:782},{hst:41,qty:816},{hst:42,qty:850},{hst:43,qty:867},
-  {hst:44,qty:884},{hst:45,qty:901},{hst:46,qty:918},{hst:47,qty:935},
-  {hst:48,qty:952},{hst:49,qty:969},{hst:50,qty:986},{hst:51,qty:1003},
-  {hst:52,qty:1020},{hst:53,qty:1020},{hst:54,qty:1020},{hst:55,qty:1020},
-  {hst:56,qty:1020},{hst:57,qty:1020},{hst:58,qty:1020},{hst:59,qty:1020},
-  {hst:60,qty:1020},{hst:61,qty:1020},{hst:62,qty:1020},{hst:63,qty:1020}
+// Standar Gramasi Bergas — Kemarau (Bulan tanam 3–10, termasuk Pancaroba)
+const STANDAR_GRAMASI_BERGAS_KEMARAU = [
+  {hst:32,qty:500},{hst:33,qty:560},{hst:34,qty:620},{hst:35,qty:680},
+  {hst:36,qty:740},{hst:37,qty:800},{hst:38,qty:840},{hst:39,qty:880},
+  {hst:40,qty:920},{hst:41,qty:960},{hst:42,qty:1000},{hst:43,qty:1020},
+  {hst:44,qty:1040},{hst:45,qty:1060},{hst:46,qty:1080},{hst:47,qty:1100},
+  {hst:48,qty:1120},{hst:49,qty:1140},{hst:50,qty:1160},{hst:51,qty:1180},
+  {hst:52,qty:1200},{hst:53,qty:1200},{hst:54,qty:1200},{hst:55,qty:1200}
 ];
 
-// Standar gramasi per HST — Tohudan
-const STANDAR_GRAMASI_TOHUDAN = [
-  {hst:74,qty:1169},{hst:75,qty:1169},{hst:76,qty:1169},{hst:77,qty:1169},
-  {hst:78,qty:1169},{hst:79,qty:1169},{hst:80,qty:1169},{hst:81,qty:1169},
-  {hst:82,qty:1169}
+// Standar Gramasi Bergas — Penghujan (Bulan tanam 1, 2, 11, 12)
+const STANDAR_GRAMASI_BERGAS_PENGHUJAN = [
+  {hst:33,qty:476},{hst:34,qty:527},{hst:35,qty:578},{hst:36,qty:629},
+  {hst:37,qty:680},{hst:38,qty:714},{hst:39,qty:748},{hst:40,qty:782},
+  {hst:41,qty:816},{hst:42,qty:850},{hst:43,qty:867},{hst:44,qty:884},
+  {hst:45,qty:901},{hst:46,qty:918},{hst:47,qty:935},{hst:48,qty:952},
+  {hst:49,qty:969},{hst:50,qty:986},{hst:51,qty:1003},{hst:52,qty:1020},
+  {hst:53,qty:1020},{hst:54,qty:1020},{hst:55,qty:1020}
 ];
 
-// Standar gramasi per HST — Sawahan
-const STANDAR_GRAMASI_SAWAHAN = [
-  {hst:25,qty:425},{hst:26,qty:480},{hst:27,qty:536},{hst:28,qty:591},
-  {hst:29,qty:646},{hst:30,qty:701},{hst:31,qty:757},{hst:32,qty:812},
-  {hst:33,qty:867},{hst:34,qty:922},{hst:35,qty:952},{hst:36,qty:982},
-  {hst:37,qty:1012},{hst:38,qty:1041},{hst:39,qty:1071},{hst:40,qty:1101},
-  {hst:41,qty:1131},{hst:42,qty:1135},{hst:43,qty:1139},{hst:44,qty:1143}
+// Standar Gramasi Tohudan — Kemarau (Bulan tanam 3–10, termasuk Pancaroba)
+const STANDAR_GRAMASI_TOHUDAN_KEMARAU = [
+  {hst:29,qty:630},{hst:30,qty:695},{hst:31,qty:760},{hst:32,qty:825},
+  {hst:33,qty:890},{hst:34,qty:955},{hst:35,qty:1020},{hst:36,qty:1085},
+  {hst:37,qty:1120},{hst:38,qty:1155},{hst:39,qty:1190},{hst:40,qty:1225},
+  {hst:41,qty:1260},{hst:42,qty:1295},{hst:43,qty:1330},{hst:44,qty:1335},
+  {hst:45,qty:1340},{hst:46,qty:1345},{hst:47,qty:1350},{hst:48,qty:1355},
+  {hst:49,qty:1360},{hst:50,qty:1365},{hst:51,qty:1370},{hst:52,qty:1375},
+  {hst:53,qty:1375},{hst:54,qty:1375},{hst:55,qty:1375}
 ];
+
+// Standar Gramasi Tohudan — Penghujan (Bulan tanam 1, 2, 11, 12)
+const STANDAR_GRAMASI_TOHUDAN_PENGHUJAN = [
+  {hst:32,qty:701},{hst:33,qty:757},{hst:34,qty:812},{hst:35,qty:867},
+  {hst:36,qty:922},{hst:37,qty:952},{hst:38,qty:982},{hst:39,qty:1012},
+  {hst:40,qty:1041},{hst:41,qty:1071},{hst:42,qty:1101},{hst:43,qty:1131},
+  {hst:44,qty:1135},{hst:45,qty:1139},{hst:46,qty:1143},{hst:47,qty:1148},
+  {hst:48,qty:1152},{hst:49,qty:1156},{hst:50,qty:1160},{hst:51,qty:1165},
+  {hst:52,qty:1169},{hst:53,qty:1169},{hst:54,qty:1169},{hst:55,qty:1169}
+];
+
+// Standar Gramasi Sawahan — Kemarau (Bulan tanam 3–10, termasuk Pancaroba)
+const STANDAR_GRAMASI_SAWAHAN_KEMARAU = [
+  {hst:30,qty:825},{hst:31,qty:890},{hst:32,qty:955},{hst:33,qty:1020},
+  {hst:34,qty:1085},{hst:35,qty:1120},{hst:36,qty:1155},{hst:37,qty:1190},
+  {hst:38,qty:1225},{hst:39,qty:1260},{hst:40,qty:1295},{hst:41,qty:1330},
+  {hst:42,qty:1335},{hst:43,qty:1340},{hst:44,qty:1345},{hst:45,qty:1350},
+  {hst:46,qty:1355},{hst:47,qty:1360},{hst:48,qty:1365},{hst:49,qty:1370},
+  {hst:50,qty:1375},{hst:51,qty:1375},{hst:52,qty:1375},{hst:53,qty:1375},
+  {hst:54,qty:1375},{hst:55,qty:1375}
+];
+
+// Standar Gramasi Sawahan — Penghujan (Bulan tanam 1, 2, 11, 12)
+const STANDAR_GRAMASI_SAWAHAN_PENGHUJAN = [
+  {hst:32,qty:812},{hst:33,qty:867},{hst:34,qty:922},{hst:35,qty:952},
+  {hst:36,qty:982},{hst:37,qty:1012},{hst:38,qty:1041},{hst:39,qty:1071},
+  {hst:40,qty:1101},{hst:41,qty:1131},{hst:42,qty:1135},{hst:43,qty:1139},
+  {hst:44,qty:1143},{hst:45,qty:1148},{hst:46,qty:1152},{hst:47,qty:1156},
+  {hst:48,qty:1160},{hst:49,qty:1165},{hst:50,qty:1169},{hst:51,qty:1169},
+  {hst:52,qty:1169},{hst:53,qty:1169},{hst:54,qty:1169},{hst:55,qty:1169}
+];
+
+// Fallback lama (untuk backward-compat jika tgl_tanam tidak tersedia)
+const STANDAR_GRAMASI_BERGAS  = STANDAR_GRAMASI_BERGAS_PENGHUJAN;
+const STANDAR_GRAMASI_TOHUDAN = STANDAR_GRAMASI_TOHUDAN_PENGHUJAN;
+const STANDAR_GRAMASI_SAWAHAN = STANDAR_GRAMASI_SAWAHAN_PENGHUJAN;
+
+// Deteksi musim dari tanggal tanam (string YYYY-MM-DD atau Date)
+// Bulan 1,2,11,12 = Penghujan | Bulan 3–10 = Kemarau (Pancaroba masuk Kemarau)
+function getMusimFromTglTanam(tglTanam){
+  if(!tglTanam) return null;
+  const d = new Date(tglTanam);
+  if(isNaN(d.getTime())) return null;
+  const bulan = d.getMonth() + 1; // 1-based
+  return (bulan === 1 || bulan === 2 || bulan === 11 || bulan === 12) ? 'penghujan' : 'kemarau';
+}
 
 function getStandarPopPct(hst, klasifikasi){
   return STANDAR_POP_AKHIR; // sama untuk semua lokasi
@@ -1741,26 +1791,45 @@ function _lookupGramasi(tbl, hstInt){
   return sorted[sorted.length-1].qty;
 }
 
-function getStandarGramasi(hst, klasifikasi){
+function getStandarGramasi(hst, klasifikasi, tglTanam){
   const hstInt = Math.floor(parseFloat(hst)||0);
   const klas   = (klasifikasi||'').toLowerCase();
-  if(klas.includes('bergas'))   return _lookupGramasi(STANDAR_GRAMASI_BERGAS,  hstInt);
-  if(klas.includes('tohudan'))  return _lookupGramasi(STANDAR_GRAMASI_TOHUDAN, hstInt);
-  if(klas.includes('sawahan'))  return _lookupGramasi(STANDAR_GRAMASI_SAWAHAN, hstInt);
-  // Fallback: tidak ada data standar untuk lokasi ini
+  const musim  = getMusimFromTglTanam(tglTanam);
+  if(klas.includes('bergas')){
+    const tbl = (musim === 'penghujan') ? STANDAR_GRAMASI_BERGAS_PENGHUJAN : STANDAR_GRAMASI_BERGAS_KEMARAU;
+    return _lookupGramasi(tbl, hstInt);
+  }
+  if(klas.includes('tohudan')){
+    const tbl = (musim === 'penghujan') ? STANDAR_GRAMASI_TOHUDAN_PENGHUJAN : STANDAR_GRAMASI_TOHUDAN_KEMARAU;
+    return _lookupGramasi(tbl, hstInt);
+  }
+  if(klas.includes('sawahan')){
+    const tbl = (musim === 'penghujan') ? STANDAR_GRAMASI_SAWAHAN_PENGHUJAN : STANDAR_GRAMASI_SAWAHAN_KEMARAU;
+    return _lookupGramasi(tbl, hstInt);
+  }
   return null;
 }
 
 // Sama seperti getStandarGramasi tapi menerima nama GH sebagai fallback
-function getStandarGramasiByGH(hst, klasifikasi, ghName){
-  const res = getStandarGramasi(hst, klasifikasi);
+function getStandarGramasiByGH(hst, klasifikasi, ghName, tglTanam){
+  const res = getStandarGramasi(hst, klasifikasi, tglTanam);
   if(res !== null) return res;
   // Coba deteksi dari nama GH
-  const gh = (ghName||'').toLowerCase();
+  const gh    = (ghName||'').toLowerCase();
   const hstInt = Math.floor(parseFloat(hst)||0);
-  if(gh.includes('tohudan'))  return _lookupGramasi(STANDAR_GRAMASI_TOHUDAN, hstInt);
-  if(gh.includes('sawahan'))  return _lookupGramasi(STANDAR_GRAMASI_SAWAHAN, hstInt);
-  if(gh.includes('bergas'))   return _lookupGramasi(STANDAR_GRAMASI_BERGAS,  hstInt);
+  const musim  = getMusimFromTglTanam(tglTanam);
+  if(gh.includes('tohudan')){
+    const tbl = (musim === 'penghujan') ? STANDAR_GRAMASI_TOHUDAN_PENGHUJAN : STANDAR_GRAMASI_TOHUDAN_KEMARAU;
+    return _lookupGramasi(tbl, hstInt);
+  }
+  if(gh.includes('sawahan')){
+    const tbl = (musim === 'penghujan') ? STANDAR_GRAMASI_SAWAHAN_PENGHUJAN : STANDAR_GRAMASI_SAWAHAN_KEMARAU;
+    return _lookupGramasi(tbl, hstInt);
+  }
+  if(gh.includes('bergas')){
+    const tbl = (musim === 'penghujan') ? STANDAR_GRAMASI_BERGAS_PENGHUJAN : STANDAR_GRAMASI_BERGAS_KEMARAU;
+    return _lookupGramasi(tbl, hstInt);
+  }
   return null;
 }
 let charts = {};
@@ -2051,6 +2120,7 @@ function buildDataset(rows){
         kategori:r['Kategori_Chart']||'', ket_panen:r['Keterangan Panen']||'',
         tgl_mulai:(r['Tanggal Panen Awal']||'').substring(0,10),
         tgl_akhir:(r['Tanggal Panen Akhir']||'').substring(0,10),
+        tgl_tanam:(r['Tanggal Awal Tanam']||'').substring(0,10),
         seg_selesai:parseFloat(r['seg_Selesai']||0),
         seg_sisa:parseFloat(r['seg_Sisa']||0),
         seg_gap:parseFloat(r['seg_Gap']||0),
@@ -3739,6 +3809,7 @@ function renderPeriodeTable(){
       pop_akhir: curr.pop_akhir|| 0,
       avgGramasi: getAvgGramasiForGH(gh, curr.periode),
       klasifikasi: curr.klasifikasi || '',
+      tgl_tanam: curr.tgl_tanam || '',
     });
   });
 
@@ -3874,7 +3945,7 @@ function renderPeriodeTable(){
       <td style="text-align:center;padding:4px 9px;">${(()=>{
         if(r.avgGramasi <= 0) return '<span style="color:var(--hint);">&#x2014;</span>';
         const g = r.avgGramasi.toFixed(0);
-        const stdG = getStandarGramasiByGH(r.curr.periode, r.klasifikasi, r.gh);
+        const stdG = getStandarGramasiByGH(r.curr.periode, r.klasifikasi, r.gh, r.tgl_tanam);
         if(stdG === null){
           const cls = r.avgGramasi >= 250 ? 'color:var(--green);font-weight:700;' : r.avgGramasi < 180 ? 'color:var(--red);font-weight:700;' : 'color:var(--muted);font-weight:600;';
           return `<span style="${cls}">${g} g</span>`;
@@ -3885,7 +3956,8 @@ function renderPeriodeTable(){
         else if(ratio >= 100) chipCls = 'chip-ok';
         else if(ratio >= 95)  chipCls = 'chip-mid';
         else                  chipCls = 'chip-bad';
-        return `<span class="tbl-pct-chip ${chipCls}" title="Standar HST ${Math.floor(parseFloat(r.curr.periode))}: ${stdG}g">${g} g</span><div style="font-size:9px;color:var(--hint);margin-top:1px;">${ratio.toFixed(0)}% <span style="opacity:.7">(std: ${stdG}g)</span></div>`;
+        const musimLabel = (()=>{ const m=getMusimFromTglTanam(r.tgl_tanam); return m==='penghujan'?'Penghujan':m==='kemarau'?'Kemarau':'?'; })();
+        return `<span class="tbl-pct-chip ${chipCls}" title="Standar HST ${Math.floor(parseFloat(r.curr.periode))} (${musimLabel}): ${stdG}g">${g} g</span><div style="font-size:9px;color:var(--hint);margin-top:1px;">${ratio.toFixed(0)}% <span style="opacity:.7">(std: ${stdG}g)</span></div>`;
       })()}</td>
       <td style="text-align:center;padding:4px 9px;">${statusHtml}</td>
       <td style="text-align:center;padding:4px 9px;">${r.cPanen > 0 ? pctEstHtml : '<span class="tbl-pct-chip chip-neu">—</span>'}</td>
