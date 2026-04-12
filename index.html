@@ -5440,6 +5440,17 @@ function downloadPDFPopup(ghName){
   allChecks.forEach(chk => { chk.checked = targetNames.has(chk.value); });
   if(typeof onGHCheckChange === 'function') onGHCheckChange();
 
+  // Set filter Periode ke periode GH yang selesai (ambil periode pertama jika multiple)
+  const targetPeriode = targetGHs[0]?.periode || '';
+  const selPeriode = document.getElementById('f-periode');
+  if(selPeriode && targetPeriode){
+    // Pastikan option periode tersedia, lalu set
+    const optExists = [...selPeriode.options].some(o => o.value === targetPeriode);
+    if(optExists) selPeriode.value = targetPeriode;
+    // Trigger cascade filter supaya dashboard re-render dengan periode yang benar
+    if(typeof cascadeFilters === 'function') cascadeFilters('f-periode');
+  }
+
   // Isi header PDF
   const ghNames = targetGHs.map(r => r.gh + ' (Periode ' + r.periode + ')').join(', ');
   const tglStr  = targetGHs[0]?.tgl_akhir
