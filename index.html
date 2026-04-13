@@ -5896,19 +5896,27 @@ function renderEvaluasi(){
     ? `Panen Real Terakhir — ${lastDateLabel}`
     : 'Panen Real Terakhir';
 
-  // Estimasi khusus tanggal lastActualDate — pakai logika sama persis seperti baris 1
-  // tapi filter month dari lastActualDate, bukan dari UI filter
+  // Estimasi khusus tanggal lastActualDate — filter exact dari kolom Real Panen di sheet estimasi
   const estLastDate = (() => {
     if(!lastActualDate || !RAW_ESTIMASI || !RAW_ESTIMASI.data) return 0;
-    const targetMonth = parseInt(lastActualDate.split('-')[1]);
+    const hasTgl = RAW_ESTIMASI.data.some(r => r.tgl && r.tgl.length >= 10);
     let total = 0;
+    const matchedRows = [];
     RAW_ESTIMASI.data.forEach(r => {
       if(fGHev && r.gh !== fGHev) return;
       if(evOwnershipMode !== 'all' && !ghMatchesOwnership(r.gh, evOwnershipMode)) return;
-      const rowMonth = MONTH_EN_MAP[r.month] || 0;
-      if(rowMonth !== targetMonth) return;
+      if(hasTgl){
+        if(!r.tgl || r.tgl !== lastActualDate) return;
+      } else {
+        // fallback: filter by month
+        const rowMonth = MONTH_EN_MAP[r.month] || 0;
+        const targetMonth = parseInt(lastActualDate.split('-')[1]);
+        if(rowMonth !== targetMonth) return;
+      }
       total += r.total;
+      matchedRows.push({gh: r.gh, tgl: r.tgl, month: r.month, total: r.total});
     });
+    console.log('[estLastDate] lastActualDate:', lastActualDate, '| hasTgl:', hasTgl, '| total:', total, '| rows:', matchedRows.length, matchedRows.slice(0,5));
     return total;
   })();
 
