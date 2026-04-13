@@ -1055,8 +1055,7 @@ body {
         <option value="">Semua</option>
         <option value="Ongoing">Ongoing</option>
         <option value="Belum Panen">Belum Panen</option>
-        <option value="Terpenuhi">Selesai ✓</option>
-        <option value="Tidak Terpenuhi">Selesai (Tidak Penuh)</option>
+        <option value="Selesai">Selesai</option>
       </select></div>
       <!-- Toggle Kepemilikan -->
       <div style="display:flex;gap:2px;background:var(--surface2);border:1px solid var(--border-med);border-radius:8px;padding:3px;align-items:center;">
@@ -1553,7 +1552,7 @@ body {
   </div>
 
   <!-- Baris 2: Update Buah Terpanen s.d. Hari Ini -->
-  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 16px 14px;margin-bottom:14px;box-shadow:var(--shadow);">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 16px 14px;margin-bottom:10px;box-shadow:var(--shadow);">
     <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;text-align:center;" id="ev-real-label">Update Buah Terpanen s.d. Hari Ini</div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
       <div class="kpi info" style="text-align:center;opacity:.75;">
@@ -1575,6 +1574,33 @@ body {
         <div class="kpi-lbl">Outspec (Aktual)</div>
         <div class="kpi-val" id="ev-k-os2">—</div>
         <div class="kpi-sub" id="ev-k-os2-sub">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Baris 3: Estimasi Panen Hari Selanjutnya -->
+  <div style="background:var(--surface);border:1px solid var(--green-border);border-radius:var(--r);padding:10px 16px 14px;margin-bottom:14px;box-shadow:var(--shadow);">
+    <div style="font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;text-align:center;" id="ev-next-label">Estimasi Panen Hari Selanjutnya</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
+      <div class="kpi ok" style="text-align:center;">
+        <div class="kpi-lbl">Estimasi Panen Berikutnya</div>
+        <div class="kpi-val" id="ev-k-next-total">—</div>
+        <div class="kpi-sub" id="ev-k-next-date">tanggal panen berikutnya</div>
+      </div>
+      <div class="kpi" style="text-align:center;background:var(--green-bg);border-color:var(--green-border);">
+        <div class="kpi-lbl" style="color:var(--green-mid);">Premium (Est.)</div>
+        <div class="kpi-val" style="color:var(--green);" id="ev-k-next-prem">—</div>
+        <div class="kpi-sub">berdasarkan jadwal</div>
+      </div>
+      <div class="kpi" style="text-align:center;background:var(--amber-bg);border-color:var(--amber-border);">
+        <div class="kpi-lbl" style="color:var(--amber);">Imperfect (Est.)</div>
+        <div class="kpi-val" style="color:var(--amber);" id="ev-k-next-imp">—</div>
+        <div class="kpi-sub">berdasarkan jadwal</div>
+      </div>
+      <div class="kpi" style="text-align:center;">
+        <div class="kpi-lbl">GH Panen Berikutnya</div>
+        <div class="kpi-val" id="ev-k-next-gh-count" style="font-size:18px;">—</div>
+        <div class="kpi-sub" id="ev-k-next-gh-list">—</div>
       </div>
     </div>
   </div>
@@ -3314,8 +3340,7 @@ function getFiltered(){
   if(kat){
     rows = rows.filter(r => {
       const isSelesai = r.kategori !== 'Ongoing' && r.kategori !== 'Belum Panen';
-      if(kat === 'Terpenuhi')        return isSelesai && (r.selesai / (r.est||1)) >= 0.85;
-      if(kat === 'Tidak Terpenuhi')  return isSelesai && (r.selesai / (r.est||1)) <  0.85;
+      if(kat === 'Selesai') return isSelesai;
       return r.kategori === kat;
     });
   }
@@ -3783,9 +3808,8 @@ function renderPeriodeTable(){
     if(fKategori){
       const isSelesai = curr.kategori !== 'Ongoing' && curr.kategori !== 'Belum Panen';
       let keep = false;
-      if(fKategori === 'Terpenuhi')       keep = isSelesai && (curr.selesai/(curr.est||1)) >= 0.85;
-      else if(fKategori === 'Tidak Terpenuhi') keep = isSelesai && (curr.selesai/(curr.est||1)) < 0.85;
-      else                                keep = curr.kategori === fKategori;
+      if(fKategori === 'Selesai')          keep = isSelesai;
+      else                                 keep = curr.kategori === fKategori;
       if(!keep) return;
     }
 
@@ -3921,6 +3945,8 @@ function renderPeriodeTable(){
     let sCls, sLbl;
     if(kat === 'Ongoing'){
       sCls = 's-ongoing'; sLbl = 'Ongoing';
+    } else if(kat === 'Belum Panen' || kat === 'BELUM PANEN'){
+      sCls = 's-belum'; sLbl = 'Belum Panen';
     } else {
       // Semua non-ongoing = Selesai, warna sesuai pencapaian
       const tercapai = r.cPctEst >= 85;
@@ -5832,6 +5858,69 @@ function renderEvaluasi(){
     : '—';
   devCard2.className = 'kpi ' + (!hasActualData ? '' : devAct >= 0 ? 'ok' : 'warn');
   devCard2.style.textAlign = 'center';
+
+  // ─ Baris 3: Estimasi panen hari selanjutnya (dari RAW.future)
+  // Cari tanggal future terdekat setelah hari ini sesuai filter GH
+  const fGHev = document.getElementById('ev-gh')?.value || '';
+  const todayStr = new Date().toISOString().substring(0,10);
+
+  // Kumpulkan semua tanggal future yang ada
+  const futureDates = new Set();
+  Object.entries(RAW.daily||{}).forEach(([dk, d]) => {
+    if(!d.isFuture) return;
+    const tgl = dk.split('||')[2] || '';
+    if(tgl <= todayStr) return;
+    if(fGHev && d.gh !== fGHev) return;
+    if(evOwnershipMode !== 'all' && !ghMatchesOwnership(d.gh, evOwnershipMode)) return;
+    futureDates.add(tgl);
+  });
+
+  const nextDate = [...futureDates].sort()[0] || null;
+
+  const nextEl        = document.getElementById('ev-k-next-total');
+  const nextDateEl    = document.getElementById('ev-k-next-date');
+  const nextPremEl    = document.getElementById('ev-k-next-prem');
+  const nextImpEl     = document.getElementById('ev-k-next-imp');
+  const nextGHCountEl = document.getElementById('ev-k-next-gh-count');
+  const nextGHListEl  = document.getElementById('ev-k-next-gh-list');
+  const nextLabelEl   = document.getElementById('ev-next-label');
+
+  if(!nextDate){
+    if(nextEl) nextEl.textContent = '—';
+    if(nextDateEl) nextDateEl.textContent = 'tidak ada jadwal tersedia';
+    if(nextPremEl) nextPremEl.textContent = '—';
+    if(nextImpEl)  nextImpEl.textContent  = '—';
+    if(nextGHCountEl) nextGHCountEl.textContent = '—';
+    if(nextGHListEl)  nextGHListEl.textContent  = '—';
+  } else {
+    // Aggregate semua GH yang panen di nextDate
+    let nextPrem = 0, nextImp = 0, nextOS = 0;
+    const nextGHs = new Set();
+    Object.entries(RAW.daily||{}).forEach(([dk, d]) => {
+      const tgl = dk.split('||')[2] || '';
+      if(tgl !== nextDate) return;
+      if(!d.isFuture) return;
+      if(fGHev && d.gh !== fGHev) return;
+      if(evOwnershipMode !== 'all' && !ghMatchesOwnership(d.gh, evOwnershipMode)) return;
+      nextPrem += d.premium;
+      nextImp  += d.imperfect;
+      nextOS   += d.outspec;
+      nextGHs.add(d.gh);
+    });
+    const nextTotal = nextPrem + nextImp + nextOS;
+    const [y,m,dd] = nextDate.split('-');
+    const dateLabel = `${dd}/${m}/${y}`;
+    if(nextLabelEl) nextLabelEl.textContent = `Estimasi Panen Hari Selanjutnya — ${dateLabel}`;
+    if(nextEl)      nextEl.textContent      = fmtKg(nextTotal);
+    if(nextDateEl)  nextDateEl.textContent  = `Jadwal: ${dateLabel}`;
+    if(nextPremEl)  nextPremEl.textContent  = fmtKg(nextPrem);
+    if(nextImpEl)   nextImpEl.textContent   = fmtKg(nextImp);
+    if(nextGHCountEl) nextGHCountEl.textContent = nextGHs.size + ' GH';
+    if(nextGHListEl){
+      const ghArr = [...nextGHs].slice(0, 4);
+      nextGHListEl.textContent = ghArr.join(', ') + (nextGHs.size > 4 ? ` +${nextGHs.size-4} lagi` : '');
+    }
+  }
 
   // ─ Tabel per GH + per Varian
   renderEvGHEstTable(entries);
