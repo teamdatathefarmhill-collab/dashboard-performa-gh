@@ -1556,9 +1556,9 @@ body {
     <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;text-align:center;" id="ev-real-label">Panen Real Terakhir</div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
       <div class="kpi info" style="text-align:center;opacity:.75;">
-        <div class="kpi-lbl">Total Estimasi (Ref)</div>
+        <div class="kpi-lbl">Estimasi Tgl Tersebut</div>
         <div class="kpi-val" id="ev-k-est2">—</div>
-        <div class="kpi-sub">referensi</div>
+        <div class="kpi-sub">dari sheet estimasi</div>
       </div>
       <div class="kpi" style="text-align:center;background:var(--teal-bg);border-color:var(--teal-border);">
         <div class="kpi-lbl" style="color:var(--teal);">Realisasi (P+I)</div>
@@ -5896,7 +5896,12 @@ function renderEvaluasi(){
     ? `Panen Real Terakhir — ${lastDateLabel}`
     : 'Panen Real Terakhir';
 
-  document.getElementById('ev-k-est2').textContent  = fmtKg(estTotal);
+  // Estimasi khusus tanggal lastActualDate (bukan full range)
+  const estLastDate = lastActualDate
+    ? _getEstByDateRange(lastActualDate, lastActualDate, fGHev, false)
+    : 0;
+
+  document.getElementById('ev-k-est2').textContent  = lastActualDate ? fmtKg(estLastDate) : '—';
   document.getElementById('ev-k-real2').textContent = lastActualDate ? fmtKg(lastRealPI) : '—';
   const real2SubEl = document.getElementById('ev-k-real2-sub');
   if(real2SubEl) real2SubEl.textContent = lastActualDate ? `Tanggal: ${lastDateLabel}` : 'tidak ada data';
@@ -5906,7 +5911,7 @@ function renderEvaluasi(){
     ? `${(lastOS/lastTotalAll*100).toFixed(1)}% dari total`
     : '—';
 
-  const devLast = lastActualDate ? (lastRealPI - estTotal) : 0;
+  const devLast = lastActualDate ? (lastRealPI - estLastDate) : 0;
   const devCard2 = document.getElementById('ev-k-dev2-card');
   document.getElementById('ev-k-dev2').textContent = lastActualDate
     ? ((devLast >= 0 ? '+' : '') + fmtKg(devLast))
