@@ -1608,6 +1608,17 @@ body {
   <!-- BAGIAN 2: Tabel Estimasi vs Realisasi per GH -->
   <div class="sec">Estimasi vs Realisasi per Greenhouse</div>
 
+  <!-- Card Analisis Evaluasi Otomatis -->
+  <div class="card" id="ev-analisis-card" style="margin-bottom:14px;padding:18px 20px;display:none;">
+    <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:8px;">
+      <span style="width:8px;height:8px;border-radius:50%;background:var(--green-bar);display:inline-block;flex-shrink:0;"></span>
+      Hasil Evaluasi Realisasi Panen
+      <span id="ev-analisis-date-label" style="font-size:11px;font-weight:500;color:var(--muted);"></span>
+    </div>
+    <div id="ev-analisis-body" style="font-size:12px;color:var(--text);line-height:1.85;"></div>
+    <div id="ev-analisis-kesimpulan" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;"></div>
+  </div>
+
   <div class="card" style="overflow-x:auto;padding:0;margin-bottom:14px;" id="ev-gh-est-card">
     <div style="padding:14px 18px 12px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;">
       <div>
@@ -1669,16 +1680,15 @@ body {
       <thead>
         <tr style="background:var(--surface2);text-align:center;">
           <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);text-align:left;white-space:nowrap;">Varian</th>
-          <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Total (P/I/O)</th>
+          <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Total (P/I)</th>
           <th style="padding:9px 12px;font-weight:700;color:var(--green);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Perfect</th>
           <th style="padding:9px 12px;font-weight:700;color:var(--amber);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Imperfect</th>
-          <th style="padding:9px 12px;font-weight:700;color:var(--red);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Outspec</th>
           <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">% Perfect</th>
           <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">% Imperfect</th>
         </tr>
       </thead>
       <tbody id="ev-varian-body">
-        <tr><td colspan="7" style="text-align:center;padding:28px;color:var(--hint);font-size:11px;">Memuat data evaluasi...</td></tr>
+        <tr><td colspan="6" style="text-align:center;padding:28px;color:var(--hint);font-size:11px;">Memuat data evaluasi...</td></tr>
       </tbody>
     </table>
   </div>
@@ -1753,6 +1763,7 @@ let RAW = null;
 let RAW_SANITASI = null;
 let RAW_ESTIMASI = null;
 let RAW_OUTSPEC  = null; // sheet outspec baru (gid=1180138925)
+let _evLastActualDate = null; // tanggal panen real terakhir, di-set saat renderEvaluasi
 
 // ── STANDAR POPULASI AKHIR & GRAMASI (dari sheet Standar) ──
 // Standar populasi akhir: sama untuk semua lokasi
@@ -5900,6 +5911,7 @@ function renderEvaluasi(){
     actualDatesAll.add(tgl);
   });
   const lastActualDate = [...actualDatesAll].sort().pop() || null;
+  _evLastActualDate = lastActualDate; // expose untuk tabel GH
 
   // Aggregate panen di lastActualDate
   let lastPrem = 0, lastImp = 0, lastOS = 0;
@@ -6014,6 +6026,7 @@ function renderEvaluasi(){
   renderEvGHEstTable(entries);
   renderEvVarianTable(entries);
   renderEvOutspecTemuan();
+  renderEvAnalisisSummary();
 
   // ─ Footer
   const ghCount = new Set(actualEntries.map(e=>e.gh)).size;
@@ -6069,11 +6082,51 @@ function renderEvGHEstTable(entries){
   const tfoot = document.getElementById('ev-gh-est-foot');
   if(!tbody) return;
 
-  const estPerGH  = getEvEstimasiPerGH();
-  const realPerGH = getEvRealisasiPerGH(entries);
-
-  // Gabung semua GH
+  const lastDate = _evLastActualDate;
   const fGH = document.getElementById('ev-gh')?.value || '';
+
+  // Estimasi untuk tanggal lastActualDate saja (per GH)
+  const estPerGH = (() => {
+    const result = {};
+    if(!RAW_ESTIMASI || !RAW_ESTIMASI.data || !lastDate) return result;
+    const hasTgl = RAW_ESTIMASI.data.some(r => r.tgl && r.tgl.length >= 10);
+    RAW_ESTIMASI.data.forEach(r => {
+      if(fGH && r.gh !== fGH) return;
+      if(evOwnershipMode !== 'all' && !ghMatchesOwnership(r.gh, evOwnershipMode)) return;
+      if(r.grade === 'OUTSPEC') return;
+      if(hasTgl){
+        if(!r.tgl || r.tgl !== lastDate) return;
+      } else {
+        const rowMonth = MONTH_EN_MAP[r.month] || 0;
+        const targetMonth = parseInt(lastDate.split('-')[1]);
+        if(rowMonth !== targetMonth) return;
+      }
+      result[r.gh] = (result[r.gh] || 0) + r.total;
+    });
+    return result;
+  })();
+
+  // Realisasi hanya di lastActualDate (per GH)
+  const realPerGH = {};
+  if(RAW && RAW.daily && lastDate){
+    Object.values(RAW.daily).forEach(d => {
+      const tgl = d.tgl || '';
+      if(tgl !== lastDate || d.isFuture) return;
+      if(fGH && d.gh !== fGH) return;
+      if(evOwnershipMode !== 'all' && !ghMatchesOwnership(d.gh, evOwnershipMode)) return;
+      if(!realPerGH[d.gh]) realPerGH[d.gh] = {prem:0, imp:0, os:0};
+      realPerGH[d.gh].prem += d.premium;
+      realPerGH[d.gh].imp  += d.imperfect;
+      realPerGH[d.gh].os   += d.outspec;
+    });
+  }
+
+  // Update subtitle dengan tanggal
+  const subEl = document.getElementById('ev-gh-tbl-subtitle');
+  if(subEl && lastDate){
+    const [ly,lm,ld] = lastDate.split('-');
+    subEl.textContent = `Penjabaran panen real terakhir · ${ld}/${lm}/${ly} · Estimasi vs Realisasi per GH (P+I)`;
+  }
   const allGHs = new Set([...Object.keys(estPerGH), ...Object.keys(realPerGH)]);
   const ghList = [...allGHs]
     .filter(g => !fGH || g === fGH)
@@ -6129,7 +6182,7 @@ function renderEvGHEstTable(entries){
       <td style="padding:9px 12px;text-align:center;">${pctHtml}</td>
       <td style="padding:6px 10px;">
         <select data-gh="${gh.replace(/"/g,'&quot;')}"
-          onchange="_evGHWaktu[this.dataset.gh]=this.value"
+          onchange="_evGHWaktu[this.dataset.gh]=this.value; renderEvAnalisisSummary()"
           style="width:100%;border:1px solid var(--border-med);border-radius:6px;padding:5px 9px;font-size:11px;color:var(--text);background:var(--surface2);outline:none;cursor:pointer;">
           ${waktuOpts}
         </select>
@@ -6181,7 +6234,7 @@ function renderEvVarianTable(entries){
     });
     const ghRows = Object.values(byGH).sort((a,b)=>b.total-a.total);
     if(!ghRows.length){
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:28px;color:var(--hint);">Tidak ada data untuk filter yang dipilih.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:28px;color:var(--hint);">Tidak ada data untuk filter yang dipilih.</td></tr>';
       return;
     }
     tbody.innerHTML = buildVarianRows(ghRows, true);
@@ -6197,11 +6250,14 @@ function renderEvVarianTable(entries){
 }
 
 function buildVarianRows(rows, isGH){
-  // Grand total
-  const gtPrem = rows.reduce((a,r)=>a+r.premium,0);
-  const gtImp  = rows.reduce((a,r)=>a+r.imperfect,0);
-  const gtOS   = rows.reduce((a,r)=>a+r.outspec,0);
-  const gtTot  = rows.reduce((a,r)=>a+r.total,0);
+  // Filter out Melon Hydroponic (masuk outspec semua, tidak relevan di tabel varian)
+  const filteredRows = rows.filter(r => (r.varian||'').toUpperCase() !== 'MELON HYDROPONIC');
+
+  // Grand total (exclude Melon Hydroponic)
+  const gtPrem = filteredRows.reduce((a,r)=>a+r.premium,0);
+  const gtImp  = filteredRows.reduce((a,r)=>a+r.imperfect,0);
+  const gtOS   = filteredRows.reduce((a,r)=>a+r.outspec,0);
+  const gtTot  = filteredRows.reduce((a,r)=>a+r.total,0);
 
   // Warna varian
   const VARIAN_COLORS = {
@@ -6209,7 +6265,7 @@ function buildVarianRows(rows, isGH){
     'Sarasuka':'#8e44ad','Sunray':'#f39c12','Emeralda':'#16a085','Greenie Sweet':'#2ecc71','S7':'#2980b9',
   };
 
-  let html = rows.map((r, i) => {
+  let html = filteredRows.map((r, i) => {
     const tot  = r.total;
     const pPct = tot > 0 ? (r.premium/tot*100)   : 0;
     const iPct = tot > 0 ? (r.imperfect/tot*100)  : 0;
@@ -6225,7 +6281,6 @@ function buildVarianRows(rows, isGH){
       <td style="padding:9px 12px;text-align:right;font-weight:600;">${fmtKg(tot)}</td>
       <td style="padding:9px 12px;text-align:right;color:var(--green);">${fmtKg(r.premium)}</td>
       <td style="padding:9px 12px;text-align:right;color:var(--amber);">${fmtKg(r.imperfect)}</td>
-      <td style="padding:9px 12px;text-align:right;color:var(--red);">${fmtKg(r.outspec)}</td>
       <td style="padding:9px 12px;text-align:center;"><span class="${pPctCls}" style="font-weight:700;">${pPct.toFixed(1)}%</span></td>
       <td style="padding:9px 12px;text-align:center;font-weight:600;">${iPct.toFixed(1)}%</td>
     </tr>`;
@@ -6240,15 +6295,174 @@ function buildVarianRows(rows, isGH){
       <td style="padding:9px 12px;text-align:right;font-weight:800;">${fmtKg(gtTot)}</td>
       <td style="padding:9px 12px;text-align:right;font-weight:700;color:var(--green);">${fmtKg(gtPrem)}</td>
       <td style="padding:9px 12px;text-align:right;font-weight:700;color:var(--amber);">${fmtKg(gtImp)}</td>
-      <td style="padding:9px 12px;text-align:right;font-weight:700;color:var(--red);">${fmtKg(gtOS)}</td>
       <td style="padding:9px 12px;text-align:center;font-weight:800;">${gPct}%</td>
       <td style="padding:9px 12px;text-align:center;font-weight:800;">${giPct}%</td>
     </tr>`;
   }
 
-  return html || '<tr><td colspan="7" style="text-align:center;padding:28px;color:var(--hint);">Tidak ada data.</td></tr>';
+  return html || '<tr><td colspan="6" style="text-align:center;padding:28px;color:var(--hint);">Tidak ada data.</td></tr>';
 }
 
+
+// ── Hasil Evaluasi Realisasi — Auto Summary ───────────────────────────────────
+function renderEvAnalisisSummary(){
+  const card      = document.getElementById('ev-analisis-card');
+  const bodyEl    = document.getElementById('ev-analisis-body');
+  const kesEl     = document.getElementById('ev-analisis-kesimpulan');
+  const dateLabel = document.getElementById('ev-analisis-date-label');
+  if(!card || !bodyEl || !kesEl) return;
+
+  const fGH = document.getElementById('ev-gh')?.value || '';
+
+  // Rebuild realPerGH hanya untuk lastActualDate (sama seperti tabel GH)
+  const lastDate = _evLastActualDate;
+  const realPerGH = {};
+  if(RAW && RAW.daily && lastDate){
+    Object.values(RAW.daily).forEach(d => {
+      const tgl = d.tgl || '';
+      if(tgl !== lastDate || d.isFuture) return;
+      if(fGH && d.gh !== fGH) return;
+      if(evOwnershipMode !== 'all' && !ghMatchesOwnership(d.gh, evOwnershipMode)) return;
+      if(!realPerGH[d.gh]) realPerGH[d.gh] = {prem:0, imp:0, os:0};
+      realPerGH[d.gh].prem += d.premium;
+      realPerGH[d.gh].imp  += d.imperfect;
+      realPerGH[d.gh].os   += d.outspec;
+    });
+  }
+
+  // Estimasi untuk lastDate (per GH) — sama seperti tabel GH
+  const estPerGH = (() => {
+    const result = {};
+    if(!RAW_ESTIMASI || !RAW_ESTIMASI.data || !lastDate) return result;
+    const hasTgl = RAW_ESTIMASI.data.some(r => r.tgl && r.tgl.length >= 10);
+    RAW_ESTIMASI.data.forEach(r => {
+      if(fGH && r.gh !== fGH) return;
+      if(evOwnershipMode !== 'all' && !ghMatchesOwnership(r.gh, evOwnershipMode)) return;
+      if(r.grade === 'OUTSPEC') return;
+      if(hasTgl){
+        if(!r.tgl || r.tgl !== lastDate) return;
+      } else {
+        const rowMonth = MONTH_EN_MAP[r.month] || 0;
+        const targetMonth = parseInt(lastDate.split('-')[1]);
+        if(rowMonth !== targetMonth) return;
+      }
+      result[r.gh] = (result[r.gh] || 0) + r.total;
+    });
+    return result;
+  })();
+
+  const ghKeys = [...new Set([...Object.keys(estPerGH), ...Object.keys(realPerGH)])]
+    .filter(g => !fGH || g === fGH).sort();
+
+  if(!ghKeys.length){ card.style.display = 'none'; return; }
+
+  // Kelompokkan per kategori Waktu
+  const groups = { 'Panen Mundur': [], 'Panen Maju': [], 'Sesuai': [], '': [] };
+  let totalUnderest = 0, totalOverest = 0;
+  const underestGHs = [], overestGHs = [];
+  let grandEst = 0, grandReal = 0;
+
+  ghKeys.forEach(gh => {
+    const est  = estPerGH[gh] || 0;
+    const r    = realPerGH[gh] || {prem:0, imp:0, os:0};
+    const real = r.prem + r.imp;
+    const dev  = real - est;
+    const waktu = _evGHWaktu[gh] || '';
+
+    grandEst  += est;
+    grandReal += real;
+
+    if(waktu) (groups[waktu] || groups['']).push({gh, est, real, dev});
+    else groups[''].push({gh, est, real, dev});
+
+    // Keterangan otomatis
+    if(real > est){ totalUnderest += dev; underestGHs.push(gh); }
+    else if(real < est){ totalOverest += dev; overestGHs.push(gh); }
+  });
+
+  const fmt2 = v => Math.abs(v).toLocaleString('id-ID', {minimumFractionDigits:2, maximumFractionDigits:2});
+  const grandDev = grandReal - grandEst;
+
+  // Date label
+  if(dateLabel && lastDate){
+    const [fy,fm,fd] = lastDate.split('-');
+    dateLabel.textContent = `· ${fd}/${fm}/${fy}`;
+  } else if(dateLabel){ dateLabel.textContent = ''; }
+
+  // Build body HTML
+  let html = '';
+  const fmtGHList = (arr) => arr.map(g=>`<strong>${g}</strong>`).join(', ');
+
+  // 1. Panen Mundur
+  if(groups['Panen Mundur'].length){
+    const totalMundur = groups['Panen Mundur'].reduce((a,r)=>a+Math.abs(r.dev),0);
+    html += `<div style="margin-bottom:6px;">
+      <span style="font-weight:700;">1. Panen Mundur</span>
+      <span style="color:var(--muted);font-size:11px;"> (belum terpanen sesuai jadwal)</span><br>
+      GH: ${fmtGHList(groups['Panen Mundur'].map(r=>r.gh))}<br>
+      <strong>Total deviasi : ${fmt2(totalMundur)} kg</strong>
+    </div>`;
+  }
+
+  // 2. Panen Maju
+  if(groups['Panen Maju'].length){
+    const totalMaju = groups['Panen Maju'].reduce((a,r)=>a+Math.abs(r.dev),0);
+    html += `<div style="margin-bottom:6px;">
+      <span style="font-weight:700;">2. Panen Maju</span><br>
+      GH: ${fmtGHList(groups['Panen Maju'].map(r=>r.gh))}<br>
+      <strong>Total deviasi : ${fmt2(totalMaju)} kg</strong>
+    </div>`;
+  }
+
+  // 3. Underestimate
+  if(underestGHs.length){
+    html += `<div style="margin-bottom:6px;">
+      <span style="font-weight:700;">3. Underestimate panen</span><br>
+      GH: ${fmtGHList(underestGHs)}<br>
+      <strong>Total : ${fmt2(totalUnderest)} kg</strong>
+    </div>`;
+  }
+
+  // 4. Overestimate
+  if(overestGHs.length){
+    html += `<div style="margin-bottom:6px;">
+      <span style="font-weight:700;">4. Overestimate panen</span><br>
+      GH: ${fmtGHList(overestGHs)}<br>
+      <strong>Total : ${fmt2(totalOverest)} kg</strong>
+    </div>`;
+  }
+
+  if(!html){
+    html = '<span style="color:var(--muted);font-size:11px;">Isi kolom Waktu di tabel GH untuk menghasilkan ringkasan evaluasi.</span>';
+  }
+
+  bodyEl.innerHTML = html;
+
+  // Kesimpulan otomatis
+  const devSign = grandDev >= 0 ? '+' : '-';
+  const devColor = grandDev >= 0 ? 'var(--green)' : 'var(--red)';
+  let kes = `<span style="font-weight:700;">Kesimpulan :</span><br>`;
+
+  const dominanWaktu = groups['Panen Maju'].length >= groups['Panen Mundur'].length ? 'Panen Maju' : 'Panen Mundur';
+  const dominanGHs   = dominanWaktu === 'Panen Maju'
+    ? groups['Panen Maju'].sort((a,b)=>Math.abs(b.dev)-Math.abs(a.dev)).slice(0,3).map(r=>r.gh)
+    : groups['Panen Mundur'].sort((a,b)=>Math.abs(b.dev)-Math.abs(a.dev)).slice(0,3).map(r=>r.gh);
+
+  kes += `Deviasi keseluruhan sebesar <strong style="color:${devColor};">${devSign}${fmt2(Math.abs(grandDev))} kg</strong>`;
+
+  if(dominanGHs.length){
+    kes += ` mayoritas disebabkan oleh <strong>${dominanWaktu}</strong> di beberapa GH utama`;
+    kes += `, terutama ${dominanGHs.map(g=>`<strong>${g}</strong>`).join(', ')}.`;
+  } else if(underestGHs.length || overestGHs.length){
+    const dom = totalUnderest > Math.abs(totalOverest) ? 'underestimate' : 'overestimate';
+    kes += ` didominasi oleh <strong>${dom} panen</strong>.`;
+  } else {
+    kes += `.`;
+  }
+
+  kesEl.innerHTML = kes;
+  card.style.display = '';
+}
 
 // ── Analisa Temuan Outspec Buah (dari RAW_OUTSPEC, filter by ev date range) ──
 function renderEvOutspecTemuan(){
