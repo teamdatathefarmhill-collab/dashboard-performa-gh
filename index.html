@@ -1551,9 +1551,9 @@ body {
     </div>
   </div>
 
-  <!-- Baris 2: Update Buah Terpanen s.d. Hari Ini -->
+  <!-- Baris 2: Panen Real di Tanggal Terakhir (sebelum estimasi berikutnya) -->
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 16px 14px;margin-bottom:10px;box-shadow:var(--shadow);">
-    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;text-align:center;" id="ev-real-label">Update Buah Terpanen s.d. Hari Ini</div>
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;text-align:center;" id="ev-real-label">Panen Real Terakhir</div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
       <div class="kpi info" style="text-align:center;opacity:.75;">
         <div class="kpi-lbl">Total Estimasi (Ref)</div>
@@ -1561,17 +1561,17 @@ body {
         <div class="kpi-sub">referensi</div>
       </div>
       <div class="kpi" style="text-align:center;background:var(--teal-bg);border-color:var(--teal-border);">
-        <div class="kpi-lbl" style="color:var(--teal);">Realisasi Aktual (P+I)</div>
+        <div class="kpi-lbl" style="color:var(--teal);">Realisasi (P+I)</div>
         <div class="kpi-val" style="color:var(--teal);" id="ev-k-real2">—</div>
-        <div class="kpi-sub">Premium + Imperfect saja</div>
+        <div class="kpi-sub" id="ev-k-real2-sub">Premium + Imperfect</div>
       </div>
       <div id="ev-k-dev2-card" class="kpi" style="text-align:center;">
-        <div class="kpi-lbl">Deviasi Aktual</div>
+        <div class="kpi-lbl">Deviasi</div>
         <div class="kpi-val" id="ev-k-dev2">—</div>
         <div class="kpi-sub">Aktual − Estimasi</div>
       </div>
       <div class="kpi warn" style="text-align:center;">
-        <div class="kpi-lbl">Outspec (Aktual)</div>
+        <div class="kpi-lbl">Outspec</div>
         <div class="kpi-val" id="ev-k-os2">—</div>
         <div class="kpi-sub" id="ev-k-os2-sub">—</div>
       </div>
@@ -5821,8 +5821,6 @@ function renderEvaluasi(){
     `${labelBulan}${ghLabel} · ${actualEntries.length} entri data${!hasActualData ? ' (belum ada panen)' : ''}`;
   document.getElementById('ev-est-label').textContent =
     `Estimasi Panen — ${labelBulan}${ghLabel}`;
-  document.getElementById('ev-real-label').textContent =
-    `Update Buah Terpanen s.d. Hari Ini — ${labelBulan}${ghLabel}`;
 
   // ─ Baris 1: Estimasi vs Realisasi+Sisa (P/I/O)
   document.getElementById('ev-k-est').textContent      = fmtKg(estTotal);
@@ -5843,28 +5841,11 @@ function renderEvaluasi(){
   devCard.className = 'kpi ' + (!hasActualData ? '' : devReal >= 0 ? 'ok' : 'warn');
   devCard.style.textAlign = 'center';
 
-  // ─ Baris 2: Realisasi Aktual (P+I) vs Estimasi
-  document.getElementById('ev-k-est2').textContent  = fmtKg(estTotal);
-  document.getElementById('ev-k-real2').textContent = hasActualData ? fmtKg(actReal) : '—';
-  document.getElementById('ev-k-os2').textContent   = hasActualData ? fmtKg(actOS)   : '—';
-  const os2Sub = document.getElementById('ev-k-os2-sub');
-  if(os2Sub) os2Sub.textContent = (hasActualData && actReal > 0)
-    ? `${(actOS/(actReal+actOS)*100).toFixed(1)}% dari total`
-    : '—';
-
-  const devCard2 = document.getElementById('ev-k-dev2-card');
-  document.getElementById('ev-k-dev2').textContent = hasActualData
-    ? ((devAct >= 0 ? '+' : '') + fmtKg(devAct))
-    : '—';
-  devCard2.className = 'kpi ' + (!hasActualData ? '' : devAct >= 0 ? 'ok' : 'warn');
-  devCard2.style.textAlign = 'center';
-
-  // ─ Baris 3: Estimasi panen hari selanjutnya (dari RAW.future)
-  // Cari tanggal future terdekat setelah hari ini sesuai filter GH
+  // ─ Baris 3 dulu: cari nextDate dulu karena baris 2 butuh info ini
   const fGHev = document.getElementById('ev-gh')?.value || '';
   const todayStr = new Date().toISOString().substring(0,10);
 
-  // Kumpulkan semua tanggal future yang ada
+  // Kumpulkan semua tanggal future
   const futureDates = new Set();
   Object.entries(RAW.daily||{}).forEach(([dk, d]) => {
     if(!d.isFuture) return;
@@ -5874,9 +5855,66 @@ function renderEvaluasi(){
     if(evOwnershipMode !== 'all' && !ghMatchesOwnership(d.gh, evOwnershipMode)) return;
     futureDates.add(tgl);
   });
-
   const nextDate = [...futureDates].sort()[0] || null;
 
+  // ─ Baris 2: Panen REAL di tanggal terakhir sebelum nextDate
+  // Cari tanggal aktual (non-future) paling recent
+  const actualDatesAll = new Set();
+  Object.entries(RAW.daily||{}).forEach(([dk, d]) => {
+    if(d.isFuture) return;
+    const tgl = dk.split('||')[2] || '';
+    if(!tgl) return;
+    if(fGHev && d.gh !== fGHev) return;
+    if(evOwnershipMode !== 'all' && !ghMatchesOwnership(d.gh, evOwnershipMode)) return;
+    // Kalau ada nextDate, ambil hanya yang sebelum nextDate
+    if(nextDate && tgl >= nextDate) return;
+    actualDatesAll.add(tgl);
+  });
+  const lastActualDate = [...actualDatesAll].sort().pop() || null;
+
+  // Aggregate panen di lastActualDate
+  let lastPrem = 0, lastImp = 0, lastOS = 0;
+  if(lastActualDate){
+    Object.entries(RAW.daily||{}).forEach(([dk, d]) => {
+      const tgl = dk.split('||')[2] || '';
+      if(tgl !== lastActualDate || d.isFuture) return;
+      if(fGHev && d.gh !== fGHev) return;
+      if(evOwnershipMode !== 'all' && !ghMatchesOwnership(d.gh, evOwnershipMode)) return;
+      lastPrem += d.premium;
+      lastImp  += d.imperfect;
+      lastOS   += d.outspec;
+    });
+  }
+  const lastRealPI = lastPrem + lastImp;
+  const lastTotalAll = lastRealPI + lastOS;
+  const [ly, lm, ldd] = lastActualDate ? lastActualDate.split('-') : ['','',''];
+  const lastDateLabel = lastActualDate ? `${ldd}/${lm}/${ly}` : '—';
+
+  // Update label baris 2
+  const realLabelEl = document.getElementById('ev-real-label');
+  if(realLabelEl) realLabelEl.textContent = lastActualDate
+    ? `Panen Real Terakhir — ${lastDateLabel}`
+    : 'Panen Real Terakhir';
+
+  document.getElementById('ev-k-est2').textContent  = fmtKg(estTotal);
+  document.getElementById('ev-k-real2').textContent = lastActualDate ? fmtKg(lastRealPI) : '—';
+  const real2SubEl = document.getElementById('ev-k-real2-sub');
+  if(real2SubEl) real2SubEl.textContent = lastActualDate ? `Tanggal: ${lastDateLabel}` : 'tidak ada data';
+  document.getElementById('ev-k-os2').textContent = lastActualDate ? fmtKg(lastOS) : '—';
+  const os2Sub = document.getElementById('ev-k-os2-sub');
+  if(os2Sub) os2Sub.textContent = (lastActualDate && lastTotalAll > 0)
+    ? `${(lastOS/lastTotalAll*100).toFixed(1)}% dari total`
+    : '—';
+
+  const devLast = lastActualDate ? (lastRealPI - estTotal) : 0;
+  const devCard2 = document.getElementById('ev-k-dev2-card');
+  document.getElementById('ev-k-dev2').textContent = lastActualDate
+    ? ((devLast >= 0 ? '+' : '') + fmtKg(devLast))
+    : '—';
+  devCard2.className = 'kpi ' + (!lastActualDate ? '' : devLast >= 0 ? 'ok' : 'warn');
+  devCard2.style.textAlign = 'center';
+
+  // ─ Baris 3: Estimasi panen hari selanjutnya
   const nextEl        = document.getElementById('ev-k-next-total');
   const nextDateEl    = document.getElementById('ev-k-next-date');
   const nextPremEl    = document.getElementById('ev-k-next-prem');
@@ -5892,14 +5930,13 @@ function renderEvaluasi(){
     if(nextImpEl)  nextImpEl.textContent  = '—';
     if(nextGHCountEl) nextGHCountEl.textContent = '—';
     if(nextGHListEl)  nextGHListEl.textContent  = '—';
+    if(nextLabelEl)   nextLabelEl.textContent   = 'Estimasi Panen Hari Selanjutnya';
   } else {
-    // Aggregate semua GH yang panen di nextDate
     let nextPrem = 0, nextImp = 0, nextOS = 0;
     const nextGHs = new Set();
     Object.entries(RAW.daily||{}).forEach(([dk, d]) => {
       const tgl = dk.split('||')[2] || '';
-      if(tgl !== nextDate) return;
-      if(!d.isFuture) return;
+      if(tgl !== nextDate || !d.isFuture) return;
       if(fGHev && d.gh !== fGHev) return;
       if(evOwnershipMode !== 'all' && !ghMatchesOwnership(d.gh, evOwnershipMode)) return;
       nextPrem += d.premium;
