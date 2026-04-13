@@ -5977,8 +5977,8 @@ function renderEvaluasi(){
     if(nextImpEl)   nextImpEl.textContent   = fmtKg(nextImp);
     if(nextGHCountEl) nextGHCountEl.textContent = nextGHs.size + ' GH';
     if(nextGHListEl){
-      const ghArr = [...nextGHs].slice(0, 4);
-      nextGHListEl.textContent = ghArr.join(', ') + (nextGHs.size > 4 ? ` +${nextGHs.size-4} lagi` : '');
+      const ghArr = [...nextGHs];
+      nextGHListEl.textContent = ghArr.join(', ');
     }
   }
 
