@@ -1928,6 +1928,7 @@ function buildEstimasiDataset(rows){
     periode: (r['Periode']||r['PERIODE']||'').trim(),
     month:   (r['Month']||r['MONTH']||'').trim().toLowerCase(),
     total:   parseFloat(r['Total']||r['TOTAL']||0),
+    grade:   (r['Grade']||r['GRADE']||r['grade']||'').toUpperCase().trim(),
     // Tanggal estimasi panen per baris — untuk filter per tanggal
     tgl: (r['Real Panen']||r['Real Pan']||r['REAL PANEN']||r['Tanggal']||r['TANGGAL']||r['tanggal']||'').substring(0,10),
   })).filter(r=>r.gh && r.total>0);
@@ -5904,6 +5905,8 @@ function renderEvaluasi(){
     RAW_ESTIMASI.data.forEach(r => {
       if(fGHev && r.gh !== fGHev) return;
       if(evOwnershipMode !== 'all' && !ghMatchesOwnership(r.gh, evOwnershipMode)) return;
+      // Hanya hitung Premium + Imperfect, exclude Outspec
+      if(r.grade === 'OUTSPEC') return;
       if(hasTgl){
         if(!r.tgl || r.tgl !== lastActualDate) return;
       } else {
