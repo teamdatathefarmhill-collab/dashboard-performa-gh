@@ -5896,10 +5896,21 @@ function renderEvaluasi(){
     ? `Panen Real Terakhir — ${lastDateLabel}`
     : 'Panen Real Terakhir';
 
-  // Estimasi khusus tanggal lastActualDate (bukan full range)
-  const estLastDate = lastActualDate
-    ? _getEstByDateRange(lastActualDate, lastActualDate, fGHev, false)
-    : 0;
+  // Estimasi khusus tanggal lastActualDate — pakai logika sama persis seperti baris 1
+  // tapi filter month dari lastActualDate, bukan dari UI filter
+  const estLastDate = (() => {
+    if(!lastActualDate || !RAW_ESTIMASI || !RAW_ESTIMASI.data) return 0;
+    const targetMonth = parseInt(lastActualDate.split('-')[1]);
+    let total = 0;
+    RAW_ESTIMASI.data.forEach(r => {
+      if(fGHev && r.gh !== fGHev) return;
+      if(evOwnershipMode !== 'all' && !ghMatchesOwnership(r.gh, evOwnershipMode)) return;
+      const rowMonth = MONTH_EN_MAP[r.month] || 0;
+      if(rowMonth !== targetMonth) return;
+      total += r.total;
+    });
+    return total;
+  })();
 
   document.getElementById('ev-k-est2').textContent  = lastActualDate ? fmtKg(estLastDate) : '—';
   document.getElementById('ev-k-real2').textContent = lastActualDate ? fmtKg(lastRealPI) : '—';
