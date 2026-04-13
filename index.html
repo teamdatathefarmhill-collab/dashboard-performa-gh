@@ -1615,7 +1615,7 @@ body {
         <div style="font-size:11px;color:var(--hint);" id="ev-gh-tbl-subtitle">Estimasi dari sheet estimasi · Realisasi aktual dari data kebun (P+I)</div>
       </div>
       <div style="font-size:10px;color:var(--hint);background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:6px;padding:4px 10px;align-self:center;">
-        ✏️ Kolom Keterangan dapat diisi langsung
+        ✏️ Kolom Waktu dapat diisi manual
       </div>
     </div>
     <table id="ev-gh-est-table" style="width:100%;border-collapse:collapse;font-size:11.5px;">
@@ -1627,7 +1627,8 @@ body {
           <th style="padding:9px 12px;font-weight:700;color:var(--red);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Outspec</th>
           <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Deviasi<br><span style="font-weight:500;font-size:9px;">Aktual − Est</span></th>
           <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">% Tercapai</th>
-          <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);text-align:left;white-space:nowrap;min-width:180px;">Keterangan</th>
+          <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Waktu</th>
+          <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);text-align:left;white-space:nowrap;">Keterangan</th>
         </tr>
       </thead>
       <tbody id="ev-gh-est-body">
@@ -1641,6 +1642,7 @@ body {
           <td style="padding:10px 12px;text-align:center;font-size:11px;font-weight:700;color:var(--red);" id="ev-gh-foot-os">—</td>
           <td style="padding:10px 12px;text-align:center;font-size:11px;font-weight:700;" id="ev-gh-foot-dev">—</td>
           <td style="padding:10px 12px;text-align:center;font-size:11px;font-weight:700;" id="ev-gh-foot-pct">—</td>
+          <td style="padding:10px 12px;"></td>
           <td style="padding:10px 12px;"></td>
         </tr>
       </tfoot>
@@ -1673,19 +1675,45 @@ body {
           <th style="padding:9px 12px;font-weight:700;color:var(--red);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Outspec</th>
           <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">% Perfect</th>
           <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">% Imperfect</th>
-          <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">% Outspec</th>
-          <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Avg Gramasi</th>
-          <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Status</th>
-          <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Ringkasan</th>
         </tr>
       </thead>
       <tbody id="ev-varian-body">
-        <tr><td colspan="11" style="text-align:center;padding:28px;color:var(--hint);font-size:11px;">Memuat data evaluasi...</td></tr>
+        <tr><td colspan="7" style="text-align:center;padding:28px;color:var(--hint);font-size:11px;">Memuat data evaluasi...</td></tr>
       </tbody>
     </table>
   </div>
 
   <!-- Chart dihapus -->
+
+  <!-- BAGIAN 4: Analisa Temuan Outspec Buah -->
+  <div class="sec">Analisa Temuan Outspec Buah</div>
+  <div class="card" style="overflow-x:auto;padding:0;margin-bottom:14px;" id="ev-outspec-temuan-card">
+    <div style="padding:14px 18px 12px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px;">Analisa Temuan Outspec Buah</div>
+        <div style="font-size:11px;color:var(--hint);" id="ev-outspec-temuan-subtitle">Berdasarkan data sheet outspec · disesuaikan dengan date range aktif</div>
+      </div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:11.5px;">
+      <thead>
+        <tr style="background:var(--surface2);text-align:center;">
+          <th style="padding:9px 14px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);text-align:left;white-space:nowrap;">Temuan</th>
+          <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Total (kg)</th>
+          <th style="padding:9px 12px;font-weight:700;color:var(--hint);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border-med);white-space:nowrap;">Persentase (%)</th>
+        </tr>
+      </thead>
+      <tbody id="ev-outspec-temuan-body">
+        <tr><td colspan="3" style="text-align:center;padding:28px;color:var(--hint);font-size:11px;">Memuat data...</td></tr>
+      </tbody>
+      <tfoot>
+        <tr id="ev-outspec-temuan-foot" style="background:var(--surface2);font-weight:700;display:none;">
+          <td style="padding:10px 14px;font-size:11px;font-weight:800;color:var(--text);">Total</td>
+          <td style="padding:10px 12px;text-align:center;font-size:11px;font-weight:800;" id="ev-outspec-temuan-foot-total">—</td>
+          <td style="padding:10px 12px;text-align:center;font-size:11px;font-weight:800;">100%</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
 
   <div style="text-align:center;font-size:10px;color:var(--hint);padding:10px 0 2px;" id="ev-footer"></div>
 </div>
@@ -5985,6 +6013,7 @@ function renderEvaluasi(){
   // ─ Tabel per GH + per Varian
   renderEvGHEstTable(entries);
   renderEvVarianTable(entries);
+  renderEvOutspecTemuan();
 
   // ─ Footer
   const ghCount = new Set(actualEntries.map(e=>e.gh)).size;
@@ -5995,7 +6024,7 @@ function renderEvaluasi(){
 }
 
 // ── Tabel Estimasi vs Realisasi per GH ───────────────────────
-const _evGHKeterangan = {}; // keterangan editable per GH, persisten dalam sesi
+const _evGHWaktu = {}; // waktu editable per GH (Sesuai / Panen Maju / Panen Mundur)
 
 function getEvEstimasiPerGH(){
   if(!RAW_ESTIMASI || !RAW_ESTIMASI.data) return {};
@@ -6051,7 +6080,7 @@ function renderEvGHEstTable(entries){
     .sort();
 
   if(!ghList.length){
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:28px;color:var(--hint);font-size:11px;">Tidak ada data untuk filter yang dipilih</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:28px;color:var(--hint);font-size:11px;">Tidak ada data untuk filter yang dipilih</td></tr>`;
     if(tfoot) tfoot.style.display = 'none';
     return;
   }
@@ -6078,7 +6107,18 @@ function renderEvGHEstTable(entries){
       ? `<span class="tbl-pct-chip ${pctCls}">${pct.toFixed(1)}%</span>`
       : `<span class="tbl-pct-chip chip-neu">—</span>`;
     const rowBg = i % 2 === 1 ? 'background:var(--surface2);' : '';
-    const ket = _evGHKeterangan[gh] || '';
+    const waktu = _evGHWaktu[gh] || '';
+
+    // Auto keterangan: Underestimate jika real > est, Overestimate jika real < est, Sesuai jika sama
+    let ketAuto = '—';
+    if(est > 0 || real > 0){
+      if(real > est) ketAuto = '<span style="color:var(--amber);font-weight:700;">Underestimate</span>';
+      else if(real < est) ketAuto = '<span style="color:var(--red);font-weight:700;">Overestimate</span>';
+      else ketAuto = '<span style="color:var(--green);font-weight:700;">Sesuai</span>';
+    }
+
+    const waktuOpts = ['','Sesuai','Panen Maju','Panen Mundur'].map(v =>
+      `<option value="${v}" ${waktu===v?'selected':''}>${v||'Pilih...'}</option>`).join('');
 
     html += `<tr style="${rowBg}border-bottom:1px solid var(--border);">
       <td style="padding:9px 12px;font-weight:600;color:var(--text);white-space:nowrap;">${gh}</td>
@@ -6088,13 +6128,13 @@ function renderEvGHEstTable(entries){
       <td style="padding:9px 12px;text-align:center;font-weight:700;color:${devColor};">${(est>0||real>0) ? devSign+fmtKg(dev) : '—'}</td>
       <td style="padding:9px 12px;text-align:center;">${pctHtml}</td>
       <td style="padding:6px 10px;">
-        <input type="text" placeholder="Isi keterangan..." value="${ket}"
-          data-gh="${gh.replace(/"/g,'&quot;')}"
-          oninput="_evGHKeterangan[this.dataset.gh]=this.value"
-          style="width:100%;border:1px solid var(--border-med);border-radius:6px;padding:5px 9px;font-size:11px;color:var(--text);background:var(--surface2);outline:none;transition:border-color .15s;"
-          onfocus="this.style.borderColor='var(--blue-mid)';this.style.background='var(--blue-bg)'"
-          onblur="this.style.borderColor='var(--border-med)';this.style.background='var(--surface2)'">
+        <select data-gh="${gh.replace(/"/g,'&quot;')}"
+          onchange="_evGHWaktu[this.dataset.gh]=this.value"
+          style="width:100%;border:1px solid var(--border-med);border-radius:6px;padding:5px 9px;font-size:11px;color:var(--text);background:var(--surface2);outline:none;cursor:pointer;">
+          ${waktuOpts}
+        </select>
       </td>
+      <td style="padding:9px 12px;text-align:center;font-size:11px;">${ketAuto}</td>
     </tr>`;
   });
 
@@ -6141,7 +6181,7 @@ function renderEvVarianTable(entries){
     });
     const ghRows = Object.values(byGH).sort((a,b)=>b.total-a.total);
     if(!ghRows.length){
-      tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:28px;color:var(--hint);">Tidak ada data untuk filter yang dipilih.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:28px;color:var(--hint);">Tidak ada data untuk filter yang dipilih.</td></tr>';
       return;
     }
     tbody.innerHTML = buildVarianRows(ghRows, true);
@@ -6175,18 +6215,10 @@ function buildVarianRows(rows, isGH){
     const iPct = tot > 0 ? (r.imperfect/tot*100)  : 0;
     const oPct = tot > 0 ? (r.outspec/tot*100)    : 0;
 
-    const status    = getVarianStatus(pPct, iPct, oPct);
-    const ringkasan = getVarianRingkasan(pPct, iPct, oPct);
-
     const color  = VARIAN_COLORS[r.varian] || '#6b7280';
     const rowBg  = i % 2 === 1 ? 'background:var(--surface2);' : '';
 
-    const osPctCls = oPct > 25 ? 'tbl-trend-dn' : oPct > 15 ? '' : 'tbl-trend-up';
     const pPctCls  = pPct < 60 ? 'tbl-trend-dn' : pPct >= 70 ? 'tbl-trend-up' : '';
-
-    const avgGramasi = r.gramasiCount > 0 ? (r.gramasiSum / r.gramasiCount) : 0;
-    const gramasiStr = avgGramasi > 0 ? avgGramasi.toFixed(0) + ' g' : '—';
-    const gramasiCls = avgGramasi > 0 ? (avgGramasi >= 250 ? 'tbl-trend-up' : avgGramasi < 200 ? 'tbl-trend-dn' : '') : '';
 
     return `<tr style="${rowBg}">
       <td style="padding:9px 14px;font-weight:700;color:${color};white-space:nowrap;">${r.varian}</td>
@@ -6196,12 +6228,6 @@ function buildVarianRows(rows, isGH){
       <td style="padding:9px 12px;text-align:right;color:var(--red);">${fmtKg(r.outspec)}</td>
       <td style="padding:9px 12px;text-align:center;"><span class="${pPctCls}" style="font-weight:700;">${pPct.toFixed(1)}%</span></td>
       <td style="padding:9px 12px;text-align:center;font-weight:600;">${iPct.toFixed(1)}%</td>
-      <td style="padding:9px 12px;text-align:center;"><span class="${osPctCls}" style="font-weight:700;">${oPct.toFixed(1)}%</span></td>
-      <td style="padding:9px 12px;text-align:center;"><span class="${gramasiCls}" style="font-weight:700;">${gramasiStr}</span></td>
-      <td style="padding:9px 12px;text-align:center;">
-        <span class="tbl-pct-chip ${status.cls}" style="white-space:nowrap;">${status.label}</span>
-      </td>
-      <td style="padding:9px 14px;color:var(--muted);font-size:10.5px;">${ringkasan}</td>
     </tr>`;
   }).join('');
 
@@ -6209,7 +6235,6 @@ function buildVarianRows(rows, isGH){
   if(gtTot > 0){
     const gPct = (gtPrem/gtTot*100).toFixed(1);
     const giPct= (gtImp/gtTot*100).toFixed(1);
-    const goPct= (gtOS/gtTot*100).toFixed(1);
     html += `<tr style="background:var(--surface2);border-top:2px solid var(--border-med);">
       <td style="padding:9px 14px;font-weight:800;color:var(--text);">GRAND TOTAL</td>
       <td style="padding:9px 12px;text-align:right;font-weight:800;">${fmtKg(gtTot)}</td>
@@ -6218,14 +6243,83 @@ function buildVarianRows(rows, isGH){
       <td style="padding:9px 12px;text-align:right;font-weight:700;color:var(--red);">${fmtKg(gtOS)}</td>
       <td style="padding:9px 12px;text-align:center;font-weight:800;">${gPct}%</td>
       <td style="padding:9px 12px;text-align:center;font-weight:800;">${giPct}%</td>
-      <td style="padding:9px 12px;text-align:center;font-weight:800;">${goPct}%</td>
-      <td colspan="3" style="padding:9px 12px;"></td>
     </tr>`;
   }
 
-  return html || '<tr><td colspan="11" style="text-align:center;padding:28px;color:var(--hint);">Tidak ada data.</td></tr>';
+  return html || '<tr><td colspan="7" style="text-align:center;padding:28px;color:var(--hint);">Tidak ada data.</td></tr>';
 }
 
+
+// ── Analisa Temuan Outspec Buah (dari RAW_OUTSPEC, filter by ev date range) ──
+function renderEvOutspecTemuan(){
+  const tbody = document.getElementById('ev-outspec-temuan-body');
+  const tfoot = document.getElementById('ev-outspec-temuan-foot');
+  const subtitle = document.getElementById('ev-outspec-temuan-subtitle');
+  if(!tbody) return;
+
+  if(!RAW_OUTSPEC || !RAW_OUTSPEC.length){
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:28px;color:var(--hint);font-size:11px;">Data outspec tidak tersedia. Pastikan sheet outspec sudah terhubung.</td></tr>';
+    if(tfoot) tfoot.style.display = 'none';
+    return;
+  }
+
+  // Ambil date range dari filter evaluasi
+  const fGHev = document.getElementById('ev-gh')?.value || '';
+  const from  = evMode === 'tanggal' ? (document.getElementById('ev-from')?.value || '') : '';
+  const to    = evMode === 'tanggal' ? (document.getElementById('ev-to')?.value   || '') : '';
+
+  // Filter RAW_OUTSPEC sesuai date range & GH
+  const filtered = RAW_OUTSPEC.filter(r => {
+    if(fGHev && r.gh !== fGHev) return false;
+    if(evOwnershipMode !== 'all' && !ghMatchesOwnership(r.gh, evOwnershipMode)) return false;
+    if(from && to && r.tgl){
+      if(r.tgl < from || r.tgl > to) return false;
+    }
+    return true;
+  });
+
+  if(!filtered.length){
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:28px;color:var(--hint);font-size:11px;">Tidak ada data outspec pada rentang tanggal ini.</td></tr>';
+    if(tfoot) tfoot.style.display = 'none';
+    return;
+  }
+
+  // Aggregate by notes (temuan)
+  const byTemuan = {};
+  let grandTotal = 0;
+  filtered.forEach(r => {
+    const key = r.notes || 'Lainnya';
+    byTemuan[key] = (byTemuan[key]||0) + r.qty;
+    grandTotal += r.qty;
+  });
+
+  // Sort descending
+  const sorted = Object.entries(byTemuan).sort((a,b) => b[1]-a[1]);
+
+  if(subtitle){
+    const dateInfo = (from && to) ? `${from} s.d. ${to}` : 'semua tanggal';
+    subtitle.textContent = `Berdasarkan data sheet outspec · ${dateInfo} · ${filtered.length} entri`;
+  }
+
+  let html = '';
+  sorted.forEach(([temuan, qty], i) => {
+    const pct = grandTotal > 0 ? (qty/grandTotal*100).toFixed(2) : '0.00';
+    const rowBg = i % 2 === 1 ? 'background:var(--surface2);' : '';
+    html += `<tr style="${rowBg}border-bottom:1px solid var(--border);">
+      <td style="padding:9px 14px;font-weight:600;color:var(--text);">${temuan}</td>
+      <td style="padding:9px 12px;text-align:center;font-weight:600;">${qty.toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+      <td style="padding:9px 12px;text-align:center;font-weight:600;">${pct}%</td>
+    </tr>`;
+  });
+
+  tbody.innerHTML = html;
+
+  if(tfoot){
+    tfoot.style.display = '';
+    document.getElementById('ev-outspec-temuan-foot-total').textContent =
+      grandTotal.toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2});
+  }
+}
 
 // ── KEPEMILIKAN FILTER ────────────────────────────────────────────────────────
 // GH Mitra: bergas 1-7, safaritex, densus, cangkirang
