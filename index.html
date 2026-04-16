@@ -6495,22 +6495,31 @@ function renderEvAnalisisSummary(){
   bodyEl.innerHTML = html;
 
   // Kesimpulan otomatis
-  const devSign = grandDev >= 0 ? '+' : '-';
-  const devColor = grandDev >= 0 ? 'var(--green)' : 'var(--red)';
+  const devSign = grandDev >= 0 ? '+' : '';
+  const devColor = grandDev >= 0 ? 'var(--green-mid)' : 'var(--red)';
   let kes = `<span style="font-weight:700;">Kesimpulan :</span><br>`;
 
+  const hasMaju   = groups['Panen Maju'].length > 0;
+  const hasMundur = groups['Panen Mundur'].length > 0;
   const dominanWaktu = groups['Panen Maju'].length >= groups['Panen Mundur'].length ? 'Panen Maju' : 'Panen Mundur';
   const dominanGHs   = dominanWaktu === 'Panen Maju'
     ? groups['Panen Maju'].sort((a,b)=>Math.abs(b.dev)-Math.abs(a.dev)).slice(0,3).map(r=>r.gh)
     : groups['Panen Mundur'].sort((a,b)=>Math.abs(b.dev)-Math.abs(a.dev)).slice(0,3).map(r=>r.gh);
 
-  kes += `Deviasi keseluruhan sebesar <strong style="color:${devColor};">${devSign}${fmt2(Math.abs(grandDev))} kg</strong>`;
+  kes += `Deviasi keseluruhan sebesar <strong style="color:${devColor};">${devSign}${fmt2(grandDev)} kg</strong>`;
 
   if(dominanGHs.length){
-    kes += ` mayoritas disebabkan oleh <strong>${dominanWaktu}</strong> di beberapa GH utama`;
-    kes += `, terutama ${dominanGHs.map(g=>`<strong>${g}</strong>`).join(', ')}.`;
+    kes += ` mayoritas disebabkan oleh <strong>${dominanWaktu.toLowerCase()}</strong> di beberapa GH utama, terutama ${dominanGHs.map(g=>`<strong>${g}</strong>`).join(', ')}.`;
   } else {
     kes += `.`;
+  }
+
+  // Tambahkan info over/underestimate di kalimat berikutnya jika ada
+  if(underestGHs.length){
+    kes += ` Di samping itu, terdapat underestimate panen <strong style="color:var(--green-mid);">+${fmt2(totalUnderest)} kg</strong>.`;
+  }
+  if(overestGHs.length){
+    kes += ` Di samping itu, terdapat overestimate panen <strong style="color:var(--red);">-${fmt2(Math.abs(totalOverest))} kg</strong>.`;
   }
 
   kesEl.innerHTML = kes;
