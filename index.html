@@ -6456,7 +6456,7 @@ function renderEvAnalisisSummary(){
       <span style="font-weight:700;">1. Panen Mundur</span>
       <span style="color:var(--muted);font-size:11px;"> (belum terpanen sesuai jadwal)</span><br>
       GH: ${fmtGHList(groups['Panen Mundur'].map(r=>r.gh))}<br>
-      <strong>Total deviasi : -${fmt2(totalMundur)} kg</strong>
+      <strong>Total deviasi : <span style="color:var(--red);">-${fmt2(totalMundur)} kg</span></strong>
     </div>`;
   }
 
@@ -6466,7 +6466,7 @@ function renderEvAnalisisSummary(){
     html += `<div style="background:var(--surface2);border-radius:8px;padding:10px 14px;">
       <span style="font-weight:700;">2. Panen Maju</span><br>
       GH: ${fmtGHList(groups['Panen Maju'].map(r=>r.gh))}<br>
-      <strong>Total deviasi : +${fmt2(totalMaju)} kg</strong>
+      <strong>Total deviasi : <span style="color:var(--green-mid);">+${fmt2(totalMaju)} kg</span></strong>
     </div>`;
   }
 
@@ -6475,7 +6475,7 @@ function renderEvAnalisisSummary(){
     html += `<div style="background:var(--green-bg);border:1px solid var(--green-border);border-radius:8px;padding:10px 14px;">
       <span style="font-weight:700;">3. Underestimate panen</span><br>
       GH: ${fmtGHList(underestGHs)}<br>
-      <strong>Total : ${fmt2(totalUnderest)} kg</strong>
+      <strong>Total : <span style="color:var(--green-mid);">+${fmt2(totalUnderest)} kg</span></strong>
     </div>`;
   }
 
@@ -6484,7 +6484,7 @@ function renderEvAnalisisSummary(){
     html += `<div style="background:var(--red-bg);border:1px solid var(--red-border);border-radius:8px;padding:10px 14px;">
       <span style="font-weight:700;">4. Overestimate panen</span><br>
       GH: ${fmtGHList(overestGHs)}<br>
-      <strong>Total : ${fmt2(Math.abs(totalOverest))} kg</strong>
+      <strong>Total : <span style="color:var(--red);">-${fmt2(Math.abs(totalOverest))} kg</span></strong>
     </div>`;
   }
 
