@@ -1232,6 +1232,7 @@ body {
               <div style="font-size:9px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Total</div>
               <div id="sanitasi-donut-total" style="font-size:18px;font-weight:700;color:var(--red);line-height:1.1;">—</div>
               <div style="font-size:8px;color:var(--hint);">tanaman</div>
+              <div id="sanitasi-donut-pop" style="font-size:8px;color:var(--hint);margin-top:2px;"></div>
             </div>
           </div>
           <div style="flex:1;min-width:120px;">
@@ -4718,7 +4719,7 @@ function render(){
         <div class="sbadge ${sClass}">${sLabel}</div>
         <div class="pb-bg"><div class="pb-fill" style="width:${pBar.toFixed(0)}%;background:${barColor}"></div></div>
         <div class="gh-st"><span>${pBar.toFixed(0)}%</span><strong>${fmt(r.selesai_dk||r.selesai)}</strong></div>
-        <div class="gh-st" style="margin-top:2px"><span>Est: ${fmt(r.est)}</span><span>Pop: ${r.pop>0?r.pop.toLocaleString('id-ID'):'-'}</span></div>
+        <div class="gh-st" style="margin-top:2px"><span>Est: ${r.pop>0?fmt(r.pop):fmt(r.est)}</span><span>Pop: ${r.pop>0?r.pop.toLocaleString('id-ID'):'-'}</span></div>
         ${etaHTML}
         ${(()=>{
           const bd = getMonthlyBreakdown(r);
@@ -5390,6 +5391,30 @@ function renderSanitasiKategoriChart(){
   // Angka total di tengah donut
   const dotTotal = document.getElementById('sanitasi-donut-total');
   if(dotTotal) dotTotal.textContent = total.toLocaleString('id-ID');
+
+  // Hitung total populasi awal dari GH yang sedang di-filter (sama dengan filter sanitasi)
+  const dotPopEl = document.getElementById('sanitasi-donut-pop');
+  if(dotPopEl && RAW){
+    let totalPop = 0;
+    // Ambil GH+Periode yang cocok dengan filter aktif sanitasi
+    RAW.gh_records.forEach(rec => {
+      if(selGHs.length && !selGHs.includes(rec.gh)) return;
+      // Cocokkan dengan filter periode yang dipakai sanitasi
+      const rPer = String(rec.periode).trim();
+      if(typeof periodeFilter === 'string'){
+        if(rPer !== periodeFilter) return;
+      } else if(periodeFilter instanceof Set){
+        // Cek apakah periode ini adalah periode terbesar untuk GH ini
+        const recNorm = normalizeGH(rec.gh);
+        let best = 0;
+        RAW_SANITASI.allRows.forEach(x=>{ if(x.ghNorm===recNorm){ const p=parseFloat(x.periode)||0; if(p>best) best=p; } });
+        if(String(best) !== rPer) return;
+      }
+      totalPop += rec.pop || 0;
+    });
+    dotPopEl.textContent = 'dari ' + totalPop.toLocaleString('id-ID') + ' pop';
+    dotPopEl.style.display = totalPop > 0 ? '' : 'none';
+  }
 
   // Legend dengan nama, jumlah, dan persen
   const legEl = document.getElementById('sanitasi-kategori-legend');
@@ -6431,7 +6456,7 @@ function renderEvAnalisisSummary(){
       <span style="font-weight:700;">1. Panen Mundur</span>
       <span style="color:var(--muted);font-size:11px;"> (belum terpanen sesuai jadwal)</span><br>
       GH: ${fmtGHList(groups['Panen Mundur'].map(r=>r.gh))}<br>
-      <strong>Total deviasi : ${fmt2(totalMundur)} kg</strong>
+      <strong>Total deviasi : -${fmt2(totalMundur)} kg</strong>
     </div>`;
   }
 
@@ -6441,7 +6466,7 @@ function renderEvAnalisisSummary(){
     html += `<div style="background:var(--surface2);border-radius:8px;padding:10px 14px;">
       <span style="font-weight:700;">2. Panen Maju</span><br>
       GH: ${fmtGHList(groups['Panen Maju'].map(r=>r.gh))}<br>
-      <strong>Total deviasi : ${fmt2(totalMaju)} kg</strong>
+      <strong>Total deviasi : +${fmt2(totalMaju)} kg</strong>
     </div>`;
   }
 
@@ -6484,9 +6509,6 @@ function renderEvAnalisisSummary(){
   if(dominanGHs.length){
     kes += ` mayoritas disebabkan oleh <strong>${dominanWaktu}</strong> di beberapa GH utama`;
     kes += `, terutama ${dominanGHs.map(g=>`<strong>${g}</strong>`).join(', ')}.`;
-  } else if(underestGHs.length || overestGHs.length){
-    const dom = totalUnderest > Math.abs(totalOverest) ? 'underestimate' : 'overestimate';
-    kes += ` didominasi oleh <strong>${dom} panen</strong>.`;
   } else {
     kes += `.`;
   }
